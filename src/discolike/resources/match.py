@@ -53,8 +53,7 @@ class MatchResource(SyncAPIResource):
             "strict": strict,
             "local_mode": local_mode,
         }
-        we_opened_it = isinstance(file, (str, pathlib.Path))
-        filename, fh = open_upload(file)
+        filename, fh, we_opened_it = open_upload(file)
         try:
             response = self._transport.request("POST", "/bulkmatch", params=params, files={"file": (filename, fh)})
         finally:
@@ -104,8 +103,7 @@ class AsyncMatchResource(AsyncAPIResource):
             "strict": strict,
             "local_mode": local_mode,
         }
-        we_opened_it = isinstance(file, (str, pathlib.Path))
-        filename, fh = open_upload(file)
+        filename, fh, we_opened_it = open_upload(file)
         try:
             response = await self._transport.request(
                 "POST", "/bulkmatch", params=params, files={"file": (filename, fh)}

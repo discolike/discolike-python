@@ -31,8 +31,8 @@ class AsyncAPIResource:
         self._transport = transport
 
 
-def open_upload(file: pathlib.Path | str | BinaryIO) -> tuple[str, BinaryIO]:
+def open_upload(file: pathlib.Path | str | BinaryIO) -> tuple[str, BinaryIO, bool]:
     if isinstance(file, (str, pathlib.Path)):
         path = pathlib.Path(file)
-        return path.name, open(path, "rb")
-    return pathlib.Path(getattr(file, "name", "upload.csv")).name, file
+        return path.name, open(path, "rb"), True
+    return pathlib.Path(getattr(file, "name", "upload.csv")).name, file, False
