@@ -20,6 +20,16 @@ def test_save_and_load_roundtrip(isolated_config) -> None:
     assert mode == 0o600
 
 
+def test_save_tightens_preexisting_loose_mode(isolated_config) -> None:
+    config_path().parent.mkdir(parents=True, exist_ok=True)
+    config_path().write_text("{}")
+    config_path().chmod(0o644)
+    save_config({"auth_method": "api_key", "api_key": "dk-456"})
+    assert load_config()["api_key"] == "dk-456"
+    mode = stat.S_IMODE(config_path().stat().st_mode)
+    assert mode == 0o600
+
+
 def test_load_missing_returns_empty(isolated_config) -> None:
     assert load_config() == {}
 
@@ -43,4 +53,10 @@ def test_resolve_nothing_raises_with_guidance(isolated_config) -> None:
 def test_corrupt_config_returns_empty(isolated_config) -> None:
     config_path().parent.mkdir(parents=True, exist_ok=True)
     config_path().write_text("{not json")
+    assert load_config() == {}
+
+
+def test_binary_garbage_config_returns_empty(isolated_config) -> None:
+    config_path().parent.mkdir(parents=True, exist_ok=True)
+    config_path().write_bytes(b"\xff\xfe\x00garbage")
     assert load_config() == {}

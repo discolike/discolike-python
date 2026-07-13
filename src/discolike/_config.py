@@ -28,7 +28,7 @@ def load_config() -> dict[str, Any]:
         return {}
     try:
         loaded = json.loads(path.read_text())
-    except (json.JSONDecodeError, OSError):
+    except (ValueError, OSError):
         return {}
     return loaded if isinstance(loaded, dict) else {}
 
@@ -36,7 +36,9 @@ def load_config() -> dict[str, Any]:
 def save_config(config: dict[str, Any]) -> None:
     path = config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(config, indent=2) + "\n")
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as handle:
+        handle.write(json.dumps(config, indent=2) + "\n")
     path.chmod(0o600)
 
 
