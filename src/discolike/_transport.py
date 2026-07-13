@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import Any
 
 import httpx
 
@@ -55,7 +55,6 @@ class Transport:
         data: Any = None,
     ) -> httpx.Response:
         clean_params = drop_none(params)
-        last_response: httpx.Response | None = None
         for attempt in range(self._max_retries + 1):
             try:
                 response = self._client.request(
@@ -67,12 +66,10 @@ class Transport:
                 time.sleep(_retry_delay(None, attempt))
                 continue
             if response.status_code in RETRYABLE_STATUSES and attempt < self._max_retries:
-                last_response = response
                 time.sleep(_retry_delay(response, attempt))
                 continue
             raise_for_status(response)
             return response
-        raise_for_status(cast(httpx.Response, last_response))
         raise AssertionError("unreachable")
 
     def close(self) -> None:
@@ -104,7 +101,6 @@ class AsyncTransport:
         data: Any = None,
     ) -> httpx.Response:
         clean_params = drop_none(params)
-        last_response: httpx.Response | None = None
         for attempt in range(self._max_retries + 1):
             try:
                 response = await self._client.request(
@@ -116,12 +112,10 @@ class AsyncTransport:
                 await asyncio.sleep(_retry_delay(None, attempt))
                 continue
             if response.status_code in RETRYABLE_STATUSES and attempt < self._max_retries:
-                last_response = response
                 await asyncio.sleep(_retry_delay(response, attempt))
                 continue
             raise_for_status(response)
             return response
-        raise_for_status(cast(httpx.Response, last_response))
         raise AssertionError("unreachable")
 
     async def aclose(self) -> None:

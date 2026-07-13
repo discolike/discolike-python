@@ -24,7 +24,13 @@ def make_transport(handler) -> Transport:
 
 
 def test_drop_none() -> None:
-    assert drop_none({"a": 1, "b": None, "c": ["x", "y"], "d": False}) == {"a": 1, "c": ["x", "y"], "d": False}
+    assert drop_none({"a": 1, "b": None, "c": ["x", "y"], "d": False, "e": 0, "f": ""}) == {
+        "a": 1,
+        "c": ["x", "y"],
+        "d": False,
+        "e": 0,
+        "f": "",
+    }
     assert drop_none(None) == {}
 
 
@@ -81,6 +87,23 @@ def test_400_does_not_retry() -> None:
     with pytest.raises(ValidationError):
         make_transport(handler).request("GET", "/usage")
     assert len(calls) == 1
+
+
+def test_max_retries_zero_does_not_retry(no_sleep) -> None:
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(503, json={"detail": "unavailable"})
+
+    from discolike import ServerError
+
+    http = httpx.Client(transport=httpx.MockTransport(handler), base_url="https://api.test/v1")
+    transport = Transport("test-key", base_url="https://api.test/v1", timeout=5.0, max_retries=0, http_client=http)
+    with pytest.raises(ServerError):
+        transport.request("GET", "/usage")
+    assert len(calls) == 1
+    assert no_sleep == []
 
 
 async def test_async_transport_retries(no_sleep) -> None:
