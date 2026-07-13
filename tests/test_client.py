@@ -36,6 +36,7 @@ async def test_usage_async() -> None:
 
 
 def test_route_metadata_stamped() -> None:
+    from discolike.resources._base import get_discolike_route
     from discolike.resources.account import AccountResource
 
-    assert AccountResource.usage.__discolike_route__ == ("GET", "/usage", True)  # ty: ignore[unresolved-attribute]
+    assert get_discolike_route(AccountResource.usage) == ("GET", "/usage", True)

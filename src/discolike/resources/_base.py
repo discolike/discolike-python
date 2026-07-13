@@ -16,6 +16,10 @@ def api_route(method: str, path: str, *, openapi: bool = True) -> Callable[[F], 
     return stamp
 
 
+def get_discolike_route(fn: object) -> tuple[str, str, bool] | None:
+    return getattr(fn, "__discolike_route__", None)
+
+
 class SyncAPIResource:
     def __init__(self, transport: Transport) -> None:
         self._transport = transport
