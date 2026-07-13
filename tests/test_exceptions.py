@@ -62,5 +62,11 @@ def test_fastapi_validation_detail_list() -> None:
     assert "domain" in str(exc_info.value)
 
 
+def test_detail_list_with_non_dict_items() -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        raise_for_status(_response(422, json_body={"detail": ["some string error"]}))
+    assert "some string error" in str(exc_info.value)
+
+
 def test_all_are_discolike_errors() -> None:
     assert issubclass(RateLimitError, DiscolikeError)

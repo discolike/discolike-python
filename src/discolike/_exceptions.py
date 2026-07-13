@@ -52,20 +52,24 @@ _STATUS_MAP: dict[int, type[DiscolikeError]] = {
     403: PlanAccessError,
     404: NotFoundError,
     422: ValidationError,
-    429: RateLimitError,
 }
 
 
 def _extract_message(response: httpx.Response) -> tuple[str, Any]:
     try:
         payload = response.json()
-    except (json.JSONDecodeError, ValueError):
+    except ValueError:
         return response.text[:500] or f"HTTP {response.status_code}", None
     detail = payload.get("detail") if isinstance(payload, dict) else None
     if isinstance(detail, str):
         return detail, payload
     if isinstance(detail, list):
-        parts = [f"{'.'.join(str(x) for x in item.get('loc', []))}: {item.get('msg', '')}" for item in detail]
+        parts = [
+            f"{'.'.join(str(x) for x in item.get('loc', []))}: {item.get('msg', '')}"
+            if isinstance(item, dict)
+            else str(item)
+            for item in detail
+        ]
         return "; ".join(parts) or f"HTTP {response.status_code}", payload
     return json.dumps(payload)[:500], payload
 
