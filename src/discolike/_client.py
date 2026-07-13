@@ -7,6 +7,7 @@ import httpx
 from discolike._config import DEFAULT_BASE_URL, resolve_api_key
 from discolike._transport import AsyncTransport, Transport
 from discolike.resources.account import AccountResource, AsyncAccountResource
+from discolike.resources.companies import AsyncCompaniesResource, CompaniesResource
 from discolike.resources.discovery import AsyncDiscoveryResource, Company, Count, DiscoveryResource
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
@@ -31,6 +32,7 @@ class Discolike:
             http_client=http_client,
         )
         self.account = AccountResource(self._transport)
+        self.companies = CompaniesResource(self._transport)
         self._discovery = DiscoveryResource(self._transport)
 
     def discover(self, **kwargs: Any) -> list[Company]:
@@ -67,6 +69,7 @@ class AsyncDiscolike:
             http_client=http_client,
         )
         self.account = AsyncAccountResource(self._transport)
+        self.companies = AsyncCompaniesResource(self._transport)
         self._discovery = AsyncDiscoveryResource(self._transport)
 
     async def discover(self, **kwargs: Any) -> list[Company]:
