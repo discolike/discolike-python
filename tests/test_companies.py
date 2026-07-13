@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from conftest import make_client
+from conftest import make_async_client, make_client
 
 CASES = [
     ("data", {"domain": "acme.com"}, "/v1/bizdata"),
@@ -28,6 +28,24 @@ def test_companies_methods(method: str, kwargs: dict, path: str) -> None:
 
     with make_client(handler) as client:
         result = getattr(client.companies, method)(**kwargs)
+
+    assert seen["path"] == path
+    for key, value in kwargs.items():
+        assert seen["params"][key] == str(value)
+    assert result.model_extra["anything"] == 1
+
+
+@pytest.mark.parametrize(("method", "kwargs", "path"), CASES)
+async def test_companies_methods_async(method: str, kwargs: dict, path: str) -> None:
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["path"] = request.url.path
+        seen["params"] = dict(httpx.QueryParams(request.url.query))
+        return httpx.Response(200, json={"domain": "acme.com", "anything": 1})
+
+    async with make_async_client(handler) as client:
+        result = await getattr(client.companies, method)(**kwargs)
 
     assert seen["path"] == path
     for key, value in kwargs.items():
