@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import pathlib
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any, BinaryIO, TypeVar
 
 from discolike._transport import AsyncTransport, Transport
 
@@ -28,3 +29,10 @@ class SyncAPIResource:
 class AsyncAPIResource:
     def __init__(self, transport: AsyncTransport) -> None:
         self._transport = transport
+
+
+def open_upload(file: pathlib.Path | str | BinaryIO) -> tuple[str, BinaryIO]:
+    if isinstance(file, (str, pathlib.Path)):
+        path = pathlib.Path(file)
+        return path.name, open(path, "rb")
+    return pathlib.Path(getattr(file, "name", "upload.csv")).name, file

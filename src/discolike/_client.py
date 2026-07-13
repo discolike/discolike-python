@@ -9,6 +9,7 @@ from discolike._transport import AsyncTransport, Transport
 from discolike.resources.account import AccountResource, AsyncAccountResource
 from discolike.resources.companies import AsyncCompaniesResource, CompaniesResource
 from discolike.resources.discovery import AsyncDiscoveryResource, Company, Count, DiscoveryResource
+from discolike.resources.match import AsyncMatchResource, MatchResource
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
 DEFAULT_MAX_RETRIES = 3
@@ -33,6 +34,7 @@ class Discolike:
         )
         self.account = AccountResource(self._transport)
         self.companies = CompaniesResource(self._transport)
+        self.match = MatchResource(self._transport)
         self._discovery = DiscoveryResource(self._transport)
 
     def discover(self, **kwargs: Any) -> list[Company]:
@@ -70,6 +72,7 @@ class AsyncDiscolike:
         )
         self.account = AsyncAccountResource(self._transport)
         self.companies = AsyncCompaniesResource(self._transport)
+        self.match = AsyncMatchResource(self._transport)
         self._discovery = AsyncDiscoveryResource(self._transport)
 
     async def discover(self, **kwargs: Any) -> list[Company]:
