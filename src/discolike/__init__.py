@@ -11,6 +11,7 @@ from discolike._exceptions import (
     ServerError,
     ValidationError,
 )
+from discolike._jobs import AsyncJob, Job, JobStatus
 from discolike._models import DiscolikeModel
 from discolike._version import __version__
 
@@ -18,11 +19,14 @@ __all__ = [
     "__version__",
     "APIConnectionError",
     "AsyncDiscolike",
+    "AsyncJob",
     "AuthenticationError",
     "Discolike",
     "DiscolikeError",
     "DiscolikeModel",
+    "Job",
     "JobFailedError",
+    "JobStatus",
     "JobTimeoutError",
     "NotFoundError",
     "PlanAccessError",
