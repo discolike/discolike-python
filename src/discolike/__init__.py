@@ -14,6 +14,7 @@ from discolike._exceptions import (
 from discolike._jobs import AsyncJob, Job, JobStatus
 from discolike._models import DiscolikeModel
 from discolike._version import __version__
+from discolike.resources.discovery import Company, Count
 
 __all__ = [
     "__version__",
@@ -21,6 +22,8 @@ __all__ = [
     "AsyncDiscolike",
     "AsyncJob",
     "AuthenticationError",
+    "Company",
+    "Count",
     "Discolike",
     "DiscolikeError",
     "DiscolikeModel",
