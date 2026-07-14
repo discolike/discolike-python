@@ -9,6 +9,7 @@
 - CLI: `--format json|table` now available on every data-emitting command, including `--wait` job results.
 - CLI: negation filters (`--negate-country`, `--negate-seniority`, …) on `discover`, `count`, and the `contacts` commands.
 - CLI: help text on every command and option, and a new `--help` banner. 🪩
+- SDK: `JobTimeoutError` now says the task is still running server-side and how to resume — DiscoGen tasks may legitimately run for hours (the platform extends the deadline while a task keeps completing items, up to 12h).
 
 ## 0.1.0 (2026-07-13)
 

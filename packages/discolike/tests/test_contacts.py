@@ -247,10 +247,10 @@ def test_route_metadata_stamped() -> None:
     from discolike.resources._base import get_discolike_route
     from discolike.resources.contacts import ContactsResource
 
-    assert get_discolike_route(ContactsResource.search) == ("GET", "/contacts", False, ())
-    assert get_discolike_route(ContactsResource.count) == ("GET", "/contacts/count", False, ())
-    assert get_discolike_route(ContactsResource.lookup) == ("GET", "/contacts/lookup", False, ())
-    assert get_discolike_route(ContactsResource.match) == ("GET", "/contacts/match", False, ())
-    assert get_discolike_route(ContactsResource.bulk_match) == ("POST", "/contacts/bulk-match", False, ())
+    assert get_discolike_route(ContactsResource.search) == ("GET", "/contacts", True, ())
+    assert get_discolike_route(ContactsResource.count) == ("GET", "/contacts/count", True, ())
+    assert get_discolike_route(ContactsResource.lookup) == ("GET", "/contacts/lookup", True, ())
+    assert get_discolike_route(ContactsResource.match) == ("GET", "/contacts/match", True, ())
+    assert get_discolike_route(ContactsResource.bulk_match) == ("POST", "/contacts/bulk-match", True, ())
     assert get_discolike_route(ContactsResource.discover) == ("POST", "/contacts/discover", True, ("jobstart_date",))
     assert get_discolike_route(ContactsResource.generate) == ("POST", "/contacts/discover/generate", True, ())
