@@ -80,10 +80,60 @@ def test_emit_table_flag_falls_back_to_json_for_empty_list(capsys: pytest.Captur
     assert json.loads(captured.out) == []
 
 
-def test_emit_table_flag_falls_back_to_json_for_nested_data(capsys: pytest.CaptureFixture[str]) -> None:
-    emit([{"domain": "acme.com", "tags": ["a", "b"]}], fmt="table")
+def test_emit_table_renders_scalar_columns_and_drops_nested_ones(capsys: pytest.CaptureFixture[str]) -> None:
+    emit(
+        [
+            {"domain": "acme.com", "score": 80, "address": {"city": "Perth"}, "phones": ["+1555"]},
+            {"domain": "beta.com", "score": 60, "address": {"city": "Austin"}, "phones": []},
+        ],
+        fmt="table",
+    )
     captured = capsys.readouterr()
-    assert json.loads(captured.out) == [{"domain": "acme.com", "tags": ["a", "b"]}]
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(captured.out)
+    assert "domain" in captured.out
+    assert "acme.com" in captured.out
+    assert "address" not in captured.out
+    assert "phones" not in captured.out
+
+
+def test_emit_table_drops_column_nested_in_any_row(capsys: pytest.CaptureFixture[str]) -> None:
+    emit(
+        [
+            {"domain": "acme.com", "status": "active"},
+            {"domain": "beta.com", "status": {"status": "active", "confidence": 1.0}},
+        ],
+        fmt="table",
+    )
+    captured = capsys.readouterr()
+    assert "domain" in captured.out
+    assert "status" not in captured.out
+
+
+def test_emit_table_truncates_long_cells(capsys: pytest.CaptureFixture[str]) -> None:
+    emit([{"domain": "acme.com", "description": "x" * 500}], fmt="table")
+    captured = capsys.readouterr()
+    assert "…" in captured.out
+    assert "x" * 200 not in captured.out.replace("\n", "")
+
+
+def test_emit_table_renders_none_as_empty_cell(capsys: pytest.CaptureFixture[str]) -> None:
+    emit([{"domain": "acme.com", "redirect_domain": None}], fmt="table")
+    captured = capsys.readouterr()
+    assert "None" not in captured.out
+
+
+def test_emit_table_caps_column_count(capsys: pytest.CaptureFixture[str]) -> None:
+    emit([{f"col{i}": i for i in range(12)}], fmt="table")
+    captured = capsys.readouterr()
+    assert "col7" in captured.out
+    assert "col8" not in captured.out
+
+
+def test_emit_table_flag_falls_back_to_json_when_no_scalar_columns(capsys: pytest.CaptureFixture[str]) -> None:
+    emit([{"tags": ["a", "b"]}], fmt="table")
+    captured = capsys.readouterr()
+    assert json.loads(captured.out) == [{"tags": ["a", "b"]}]
 
 
 @pytest.mark.parametrize(
