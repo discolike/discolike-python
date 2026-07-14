@@ -111,8 +111,11 @@ def test_cli_help_shows_auth_subcommand() -> None:
 
 
 def test_cli_version_flag() -> None:
+    from importlib.metadata import version
+
     from discolike import __version__
 
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert __version__ in result.output
+    assert f"discolike-cli {version('discolike-cli')}" in result.output
+    assert f"(discolike {__version__})" in result.output

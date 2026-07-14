@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from importlib.metadata import version as package_version
 from typing import Any
 
 import typer
 
 from discolike import Discolike
-from discolike._version import __version__
+from discolike import __version__ as sdk_version
 from discolike_cli import account
 from discolike_cli import auth
 from discolike_cli import company
@@ -33,7 +34,7 @@ def main(
     version: bool = typer.Option(False, "--version"),
 ) -> None:
     if version:
-        typer.echo(__version__)
+        typer.echo(f"discolike-cli {package_version('discolike-cli')} (discolike {sdk_version})")
         raise typer.Exit
     ctx.obj = {"api_key": api_key, "base_url": base_url}
 
