@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import typer
 
 from discolike.cli._output import emit
@@ -18,8 +20,8 @@ def _parse_param(raw: str) -> tuple[str, str | list[str]]:
     return key, value
 
 
-def _merge_params(param: list[str] | None, **options: object) -> dict[str, object]:
-    kwargs: dict[str, object] = dict(_parse_param(raw) for raw in param or [])
+def _merge_params(param: list[str] | None, **options: Any) -> dict[str, Any]:  # noqa: ANN401 -- forwarded as **kwargs to typed resource/client methods
+    kwargs: dict[str, Any] = dict(_parse_param(raw) for raw in param or [])
     kwargs.update({key: value for key, value in options.items() if value is not None})
     return kwargs
 
