@@ -151,7 +151,7 @@ Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `ap
 
 - Results print as JSON to stdout; errors print as JSON (`error`, `message`, `status_code`) to stderr.
 - Pass `--format table` for a human-readable table — used automatically when stdout is a TTY.
-- Async endpoints (`match --file`, `discogen run`, `discogen run-personas`, `append`, `segment`, `validate-icp`) take `--wait` to block until the job finishes. Without it, you get a `task_id` back to poll with `discolike discogen status <task_id> --family <family>`.
+- Async endpoints (`match --file`, `discogen run`, `discogen run-personas`, `segment`, `validate-icp`) take `--wait` to block until the job finishes. Without it, you get a `task_id` back to poll with `discolike discogen status <task_id> --family <family>`. `append` is synchronous — it returns enriched rows directly (or writes CSV bytes to `--output`).
 
 | Exit code | Meaning |
 |---|---|
@@ -181,7 +181,7 @@ All responses are typed [Pydantic](https://docs.pydantic.dev/) models.
 
 ### Long-running jobs
 
-Bulk operations (`match.bulk`, `append` at scale, `segment`, `validate_icp`, `contacts.bulk_match`) return a `Job` handle instead of blocking:
+Bulk operations (`match.bulk`, `segment`, `validate_icp`, `contacts.bulk_match`) return a `Job` handle instead of blocking:
 
 ```python
 job = client.segment(domains=["stripe.com", "adyen.com", "checkout.com"])
