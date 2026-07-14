@@ -1,24 +1,12 @@
-import importlib
 import importlib.util
 import inspect
 import pathlib
-import pkgutil
 import sys
 
-import discolike.resources
 from discolike.resources._base import get_discolike_route
 
 ALLOW_UNSTAMPED = {"job"}
 SCRIPT_PATH = pathlib.Path(__file__).parent.parent / "scripts" / "check_contract.py"
-
-
-def _resource_modules():
-    modules = [discolike.resources]
-    modules.extend(
-        importlib.import_module(module_info.name)
-        for module_info in pkgutil.iter_modules(discolike.resources.__path__, prefix=f"{discolike.resources.__name__}.")
-    )
-    return modules
 
 
 def _load_check_contract():
@@ -32,8 +20,9 @@ def _load_check_contract():
 
 
 def test_all_public_resource_methods_are_stamped():
+    check_contract = _load_check_contract()
     unstamped = []
-    for module in _resource_modules():
+    for module in check_contract._resource_modules():
         for _, cls in inspect.getmembers(module, inspect.isclass):
             if cls.__module__ != module.__name__:
                 continue

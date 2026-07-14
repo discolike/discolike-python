@@ -99,10 +99,11 @@ def lookup_command(
     ctx: typer.Context,
     persona_id: int | None = typer.Option(None, "--persona-id"),
     linkedin: str | None = typer.Option(None, "--linkedin"),
+    email: str | None = typer.Option(None, "--email"),
 ) -> None:
     from discolike.cli.main import get_client
 
-    emit(get_client(ctx).contacts.lookup(persona_id=persona_id, linkedin=linkedin))
+    emit(get_client(ctx).contacts.lookup(persona_id=persona_id, linkedin=linkedin, email=email))
 
 
 @app.command("match")

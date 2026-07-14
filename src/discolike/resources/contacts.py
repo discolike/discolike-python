@@ -137,7 +137,9 @@ class ContactsResource(SyncAPIResource):
         return DiscolikeModel.model_validate(self._transport.request("GET", "/contacts/count", params=params).json())
 
     @api_route("GET", "/contacts/lookup", openapi=False)
-    def lookup(self, *, persona_id: int | None = None, linkedin: str | None = None) -> Contact:
+    def lookup(
+        self, *, persona_id: int | None = None, linkedin: str | None = None, email: str | None = None
+    ) -> Contact:
         params = {k: v for k, v in locals().items() if k != "self"}
         return Contact.model_validate(self._transport.request("GET", "/contacts/lookup", params=params).json())
 
@@ -320,7 +322,9 @@ class AsyncContactsResource(AsyncAPIResource):
         return DiscolikeModel.model_validate(response.json())
 
     @api_route("GET", "/contacts/lookup", openapi=False)
-    async def lookup(self, *, persona_id: int | None = None, linkedin: str | None = None) -> Contact:
+    async def lookup(
+        self, *, persona_id: int | None = None, linkedin: str | None = None, email: str | None = None
+    ) -> Contact:
         params = {k: v for k, v in locals().items() if k != "self"}
         response = await self._transport.request("GET", "/contacts/lookup", params=params)
         return Contact.model_validate(response.json())

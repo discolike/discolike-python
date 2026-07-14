@@ -35,7 +35,9 @@ def _resource_modules() -> list[ModuleType]:
     modules = [discolike.resources]
     modules.extend(
         importlib.import_module(module_info.name)
-        for module_info in pkgutil.iter_modules(discolike.resources.__path__, prefix=f"{discolike.resources.__name__}.")
+        for module_info in pkgutil.walk_packages(
+            discolike.resources.__path__, prefix=f"{discolike.resources.__name__}."
+        )
     )
     return modules
 

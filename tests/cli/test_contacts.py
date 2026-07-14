@@ -114,11 +114,12 @@ def test_contacts_lookup_by_persona_id(monkeypatch: pytest.MonkeyPatch) -> None:
         return httpx.Response(200, json={"persona_id": 7, "domain": "acme.com"})
 
     _install_build_client(monkeypatch, handler)
-    result = runner.invoke(app, ["contacts", "lookup", "--persona-id", "7"])
+    result = runner.invoke(app, ["contacts", "lookup", "--persona-id", "7", "--email", "jane@acme.com"])
     assert result.exit_code == 0, result.output
     request = captured["request"]
     assert request.url.path == "/v1/contacts/lookup"
     assert request.url.params.get("persona_id") == "7"
+    assert request.url.params.get("email") == "jane@acme.com"
     assert json.loads(result.stdout) == {
         "persona_id": 7,
         "domain": "acme.com",

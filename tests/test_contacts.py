@@ -67,10 +67,11 @@ def test_lookup() -> None:
         )
 
     with make_client(handler) as client:
-        result = client.contacts.lookup(persona_id=12345678)
+        result = client.contacts.lookup(persona_id=12345678, email="jane@example.com")
 
     assert seen["path"] == "/v1/contacts/lookup"
     assert seen["params"]["persona_id"] == "12345678"
+    assert seen["params"]["email"] == "jane@example.com"
     assert result.persona_id == 12345678
     assert result.name == "Jane Doe"
 
