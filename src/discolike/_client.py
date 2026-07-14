@@ -5,10 +5,17 @@ from typing import Any
 import httpx
 
 from discolike._config import DEFAULT_BASE_URL, resolve_api_key
+from discolike._jobs import AsyncJob, Job
 from discolike._transport import AsyncTransport, Transport
 from discolike.resources.account import AccountResource, AsyncAccountResource
 from discolike.resources.companies import AsyncCompaniesResource, CompaniesResource
 from discolike.resources.contacts import AsyncContactsResource, ContactsResource
+from discolike.resources.discogen import (
+    AsyncDiscogenResource,
+    AsyncValidateResource,
+    DiscogenResource,
+    ValidateResource,
+)
 from discolike.resources.discovery import AsyncDiscoveryResource, Company, Count, DiscoveryResource
 from discolike.resources.match import AsyncMatchResource, MatchResource
 
@@ -37,13 +44,18 @@ class Discolike:
         self.companies = CompaniesResource(self._transport)
         self.contacts = ContactsResource(self._transport)
         self.match = MatchResource(self._transport)
+        self.discogen = DiscogenResource(self._transport)
         self._discovery = DiscoveryResource(self._transport)
+        self._validate = ValidateResource(self._transport)
 
     def discover(self, **kwargs: Any) -> list[Company]:
         return self._discovery.discover(**kwargs)
 
     def count(self, **kwargs: Any) -> Count:
         return self._discovery.count(**kwargs)
+
+    def validate_icp(self, **kwargs: Any) -> Job:
+        return self._validate.icp(**kwargs)
 
     def close(self) -> None:
         self._transport.close()
@@ -76,13 +88,18 @@ class AsyncDiscolike:
         self.companies = AsyncCompaniesResource(self._transport)
         self.contacts = AsyncContactsResource(self._transport)
         self.match = AsyncMatchResource(self._transport)
+        self.discogen = AsyncDiscogenResource(self._transport)
         self._discovery = AsyncDiscoveryResource(self._transport)
+        self._validate = AsyncValidateResource(self._transport)
 
     async def discover(self, **kwargs: Any) -> list[Company]:
         return await self._discovery.discover(**kwargs)
 
     async def count(self, **kwargs: Any) -> Count:
         return await self._discovery.count(**kwargs)
+
+    async def validate_icp(self, **kwargs: Any) -> AsyncJob:
+        return await self._validate.icp(**kwargs)
 
     async def aclose(self) -> None:
         await self._transport.aclose()
