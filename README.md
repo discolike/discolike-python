@@ -46,6 +46,7 @@ This repo ships two packages: [`discolike`](https://pypi.org/project/discolike/)
 ```bash
 pip install discolike       # SDK only, for use as a library
 pip install discolike-cli   # CLI — installs discolike as a dependency
+pip install "discolike[cli]"  # same thing, extras spelling
 ```
 
 Or with [uv](https://docs.astral.sh/uv/):

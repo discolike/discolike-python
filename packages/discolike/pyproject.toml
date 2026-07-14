@@ -26,10 +26,16 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 
+[project.optional-dependencies]
+cli = ["discolike-cli>=0.1.0"]
+
 [project.urls]
 Homepage = "https://www.discolike.com"
 Documentation = "https://docs.discolike.com"
 Repository = "https://github.com/Discolike/discolike-python"
+
+[tool.uv.sources]
+discolike-cli = { workspace = true }
 
 [tool.hatch.version]
 path = "src/discolike/_version.py"

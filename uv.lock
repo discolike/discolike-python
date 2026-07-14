@@ -75,6 +75,11 @@ dependencies = [
     { name = "pydantic" },
 ]
 
+[package.optional-dependencies]
+cli = [
+    { name = "discolike-cli" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
@@ -85,9 +90,11 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "discolike-cli", marker = "extra == 'cli'", editable = "packages/discolike-cli" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "pydantic", specifier = ">=2.7" },
 ]
+provides-extras = ["cli"]
 
 [package.metadata.requires-dev]
 dev = [
