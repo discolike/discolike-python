@@ -17,7 +17,9 @@ from discolike.resources.discogen import (
     ValidateResource,
 )
 from discolike.resources.discovery import AsyncDiscoveryResource, Company, Count, DiscoveryResource
+from discolike.resources.enrich import AppendResult, AsyncEnrichResource, EnrichResource
 from discolike.resources.match import AsyncMatchResource, MatchResource
+from discolike.resources.queries import AsyncQueriesResource, QueriesResource
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
 DEFAULT_MAX_RETRIES = 3
@@ -45,8 +47,10 @@ class Discolike:
         self.contacts = ContactsResource(self._transport)
         self.match = MatchResource(self._transport)
         self.discogen = DiscogenResource(self._transport)
+        self.queries = QueriesResource(self._transport)
         self._discovery = DiscoveryResource(self._transport)
         self._validate = ValidateResource(self._transport)
+        self._enrich = EnrichResource(self._transport)
 
     def discover(self, **kwargs: Any) -> list[Company]:
         return self._discovery.discover(**kwargs)
@@ -56,6 +60,12 @@ class Discolike:
 
     def validate_icp(self, **kwargs: Any) -> Job:
         return self._validate.icp(**kwargs)
+
+    def append(self, **kwargs: Any) -> list[AppendResult] | bytes:
+        return self._enrich.append(**kwargs)
+
+    def segment(self, **kwargs: Any) -> Job:
+        return self._enrich.segment(**kwargs)
 
     def close(self) -> None:
         self._transport.close()
@@ -89,8 +99,10 @@ class AsyncDiscolike:
         self.contacts = AsyncContactsResource(self._transport)
         self.match = AsyncMatchResource(self._transport)
         self.discogen = AsyncDiscogenResource(self._transport)
+        self.queries = AsyncQueriesResource(self._transport)
         self._discovery = AsyncDiscoveryResource(self._transport)
         self._validate = AsyncValidateResource(self._transport)
+        self._enrich = AsyncEnrichResource(self._transport)
 
     async def discover(self, **kwargs: Any) -> list[Company]:
         return await self._discovery.discover(**kwargs)
@@ -100,6 +112,12 @@ class AsyncDiscolike:
 
     async def validate_icp(self, **kwargs: Any) -> AsyncJob:
         return await self._validate.icp(**kwargs)
+
+    async def append(self, **kwargs: Any) -> list[AppendResult] | bytes:
+        return await self._enrich.append(**kwargs)
+
+    async def segment(self, **kwargs: Any) -> AsyncJob:
+        return await self._enrich.segment(**kwargs)
 
     async def aclose(self) -> None:
         await self._transport.aclose()
