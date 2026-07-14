@@ -123,6 +123,14 @@ def test_segment_raises_when_both_domains_and_file_given(tmp_path) -> None:
         client.segment(domains=["acme.com"], file=csv_path)
 
 
+def test_segment_raises_when_domain_column_given_with_domains() -> None:
+    with (
+        make_client(lambda request: httpx.Response(200, json={})) as client,
+        pytest.raises(ValueError, match="domain_column only applies to file uploads"),
+    ):
+        client.segment(domains=["acme.com"], domain_column="domain")
+
+
 async def test_segment_async_domains_branch() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"task_id": "seg-3"})
@@ -138,6 +146,6 @@ def test_route_metadata_stamped() -> None:
     from discolike.resources._base import get_discolike_route
     from discolike.resources.enrich import EnrichResource
 
-    assert get_discolike_route(EnrichResource.append) == ("POST", "/append", True)
-    assert get_discolike_route(EnrichResource.segment) == ("GET", "/segment", True)
-    assert get_discolike_route(EnrichResource._segment_file) == ("POST", "/segment", True)
+    assert get_discolike_route(EnrichResource.append) == ("POST", "/append", True, ())
+    assert get_discolike_route(EnrichResource.segment) == ("GET", "/segment", True, ("domain_column",))
+    assert get_discolike_route(EnrichResource._segment_file) == ("POST", "/segment", True, ())

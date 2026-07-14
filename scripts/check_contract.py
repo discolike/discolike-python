@@ -52,14 +52,15 @@ def collect_routes() -> list[RouteEntry]:
                 route = get_discolike_route(member)
                 if route is None:
                     continue
-                http_method, path, openapi = route
+                http_method, path, openapi, ignore_params = route
                 key = (http_method, path)
                 if key in seen:
                     continue
+                excluded = IGNORE_PARAMS | set(ignore_params)
                 params = tuple(
                     name
                     for name, param in inspect.signature(member).parameters.items()
-                    if param.kind is inspect.Parameter.KEYWORD_ONLY and name not in IGNORE_PARAMS
+                    if param.kind is inspect.Parameter.KEYWORD_ONLY and name not in excluded
                 )
                 seen[key] = RouteEntry(class_name, method_name, http_method, path, openapi, params)
     return list(seen.values())

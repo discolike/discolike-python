@@ -41,4 +41,4 @@ def test_route_metadata_stamped() -> None:
     from discolike.resources._base import get_discolike_route
     from discolike.resources.account import AccountResource
 
-    assert get_discolike_route(AccountResource.usage) == ("GET", "/usage", True)
+    assert get_discolike_route(AccountResource.usage) == ("GET", "/usage", True, ())

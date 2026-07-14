@@ -251,8 +251,8 @@ def test_route_metadata_stamped() -> None:
     from discolike.resources.discogen import DiscogenResource
     from discolike.resources.discogen import ValidateResource
 
-    assert get_discolike_route(DiscogenResource.process) == ("POST", "/discogen/process", True)
-    assert get_discolike_route(DiscogenResource.process_personas) == ("POST", "/discogen/process-personas", True)
-    assert get_discolike_route(DiscogenResource.models) == ("GET", "/discogen/models", True)
+    assert get_discolike_route(DiscogenResource.process) == ("POST", "/discogen/process", True, ())
+    assert get_discolike_route(DiscogenResource.process_personas) == ("POST", "/discogen/process-personas", True, ())
+    assert get_discolike_route(DiscogenResource.models) == ("GET", "/discogen/models", True, ())
     assert get_discolike_route(DiscogenResource.job) is None
-    assert get_discolike_route(ValidateResource.icp) == ("POST", "/validate/icp", True)
+    assert get_discolike_route(ValidateResource.icp) == ("POST", "/validate/icp", True, ())

@@ -57,7 +57,7 @@ class EnrichResource(SyncAPIResource):
                 fh.close()
         return Job(self._transport, task_family=FAMILY_SEGMENT, task_id=response.json()["task_id"])
 
-    @api_route("GET", "/segment")
+    @api_route("GET", "/segment", ignore_params=("domain_column",))
     def segment(
         self,
         *,
@@ -69,6 +69,8 @@ class EnrichResource(SyncAPIResource):
         if (domains is None) == (file is None):
             raise ValueError("exactly one of domains or file is required")
         if domains is not None:
+            if domain_column is not None:
+                raise ValueError("domain_column only applies to file uploads")
             params = {"domains": ",".join(domains), "max_segments": max_segments}
             response = self._transport.request("GET", "/segment", params=params)
             return Job(self._transport, task_family=FAMILY_SEGMENT, task_id=response.json()["task_id"])
@@ -114,7 +116,7 @@ class AsyncEnrichResource(AsyncAPIResource):
                 fh.close()
         return AsyncJob(self._transport, task_family=FAMILY_SEGMENT, task_id=response.json()["task_id"])
 
-    @api_route("GET", "/segment")
+    @api_route("GET", "/segment", ignore_params=("domain_column",))
     async def segment(
         self,
         *,
@@ -126,6 +128,8 @@ class AsyncEnrichResource(AsyncAPIResource):
         if (domains is None) == (file is None):
             raise ValueError("exactly one of domains or file is required")
         if domains is not None:
+            if domain_column is not None:
+                raise ValueError("domain_column only applies to file uploads")
             params = {"domains": ",".join(domains), "max_segments": max_segments}
             response = await self._transport.request("GET", "/segment", params=params)
             return AsyncJob(self._transport, task_family=FAMILY_SEGMENT, task_id=response.json()["task_id"])

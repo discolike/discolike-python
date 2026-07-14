@@ -103,7 +103,7 @@ def test_route_metadata_stamped() -> None:
     from discolike.resources._base import get_discolike_route
     from discolike.resources.queries import QueriesResource
 
-    assert get_discolike_route(QueriesResource.list) == ("GET", "/queries/saved", True)
-    assert get_discolike_route(QueriesResource.create_exclusion_list) == ("POST", "/queries/exclusion-list", True)
-    assert get_discolike_route(QueriesResource.update) == ("PATCH", "/queries/{query_id}", True)
-    assert get_discolike_route(QueriesResource.delete) == ("DELETE", "/queries/{query_id}", True)
+    assert get_discolike_route(QueriesResource.list) == ("GET", "/queries/saved", True, ())
+    assert get_discolike_route(QueriesResource.create_exclusion_list) == ("POST", "/queries/exclusion-list", True, ())
+    assert get_discolike_route(QueriesResource.update) == ("PATCH", "/queries/{query_id}", True, ())
+    assert get_discolike_route(QueriesResource.delete) == ("DELETE", "/queries/{query_id}", True, ())
