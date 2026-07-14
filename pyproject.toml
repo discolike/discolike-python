@@ -28,6 +28,9 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
 ]
 
+[project.scripts]
+discolike = "discolike.cli.main:app"
+
 [project.urls]
 Homepage = "https://www.discolike.com"
 Documentation = "https://docs.discolike.com"
