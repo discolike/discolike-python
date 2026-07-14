@@ -13,5 +13,5 @@ jobs:
             - uses: astral-sh/setup-uv@v5
               with:
                   python-version: '3.14'
-            - run: uv sync --all-groups
+            - run: uv sync --all-packages
             - run: uv run python scripts/check_contract.py

@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "discolike-cli"
+version = "0.1.0"
+description = "Official CLI for the DiscoLike API"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [{ name = "DiscoLike", email = "support@discolike.com" }]
+dependencies = [
+  "discolike>=0.1.0",
+  "typer>=0.12",
+  "rich>=13.0",
+]
+keywords = ["discolike", "cli", "business-data", "enrichment"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+
+[project.scripts]
+discolike = "discolike_cli.main:app"
+
+[project.urls]
+Homepage = "https://www.discolike.com"
+Documentation = "https://docs.discolike.com"
+Repository = "https://github.com/Discolike/discolike-python"
+
+[tool.uv.sources]
+discolike = { workspace = true }
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-asyncio>=0.24",
+  "ruff>=0.8",
+  "ty",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

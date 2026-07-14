@@ -14,5 +14,7 @@ jobs:
             - uses: astral-sh/setup-uv@v5
               with:
                   python-version: '3.14'
-            - run: uv build
+            - run: uv build --package discolike -o dist/ && uv build --package discolike-cli -o dist/
             - uses: pypa/gh-action-pypi-publish@release/v1
+              with:
+                  packages-dir: dist/

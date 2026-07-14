@@ -29,9 +29,9 @@
 
 ---
 
-DiscoLike indexes **70M+ business websites worldwide**, analyzed in **50 languages** — roughly **3x the coverage of LinkedIn-dependent databases**. This package gives you that index from Python or your terminal: discover lookalike companies, size segments, enrich domain lists, match messy company names to domains, and find the right contacts.
+DiscoLike indexes **70M+ business websites worldwide**, analyzed in **50 languages** — roughly **3x the coverage of LinkedIn-dependent databases**. This repo gives you that index from Python or your terminal, as two packages: discover lookalike companies, size segments, enrich domain lists, match messy company names to domains, and find the right contacts.
 
-> **If you're a coding agent:** the fastest integration is the hosted MCP server — `https://api.discolike.com/v1/mcp` (streamable-http, OAuth; ~36 tools). For scripting and pipelines use this package: `uvx discolike` or `pip install discolike`, auth via `DISCOLIKE_API_KEY`. Machine-readable API index: `https://docs.discolike.com/llms.txt`.
+> **If you're a coding agent:** the fastest integration is the hosted MCP server — `https://api.discolike.com/v1/mcp` (streamable-http, OAuth; ~36 tools). For scripting and pipelines use `pip install discolike` as a library; for the terminal use `pip install discolike-cli` or `uvx --from discolike-cli discolike`, auth via `DISCOLIKE_API_KEY`. Machine-readable API index: `https://docs.discolike.com/llms.txt`.
 
 <p align="center">
   <a href="https://www.discolike.com">
@@ -41,15 +41,24 @@ DiscoLike indexes **70M+ business websites worldwide**, analyzed in **50 languag
 
 ## Installation
 
+This repo ships two packages: [`discolike`](https://pypi.org/project/discolike/) (the SDK) and [`discolike-cli`](https://pypi.org/project/discolike-cli/) (the `discolike` command, depends on the SDK).
+
 ```bash
-pip install discolike
+pip install discolike       # SDK only, for use as a library
+pip install discolike-cli   # CLI — installs discolike as a dependency
 ```
 
 Or with [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv add discolike          # as a library
-uv tool install discolike # CLI only
+uv add discolike               # as a library
+uv tool install discolike-cli  # CLI only
+```
+
+Or run the CLI without installing:
+
+```bash
+uvx --from discolike-cli discolike --help
 ```
 
 Requires Python 3.10+.
@@ -221,9 +230,12 @@ A provided `http_client` is mutated in place (the auth header is stamped on it, 
 
 ## Development
 
+This is a [uv workspace](https://docs.astral.sh/uv/concepts/projects/workspaces/) with two members: `packages/discolike` (the SDK) and `packages/discolike-cli` (the CLI).
+
 ```bash
-uv sync
-uv run pytest
+uv sync --all-packages
+uv run pytest packages/discolike/tests
+uv run pytest packages/discolike-cli/tests
 uv run ruff check .
 ```
 

@@ -16,8 +16,9 @@ jobs:
             - uses: astral-sh/setup-uv@v5
               with:
                   python-version: ${{ matrix.python-version }}
-            - run: uv sync --all-groups
+            - run: uv sync --all-packages
             - run: uv run ruff check .
             - run: uv run ruff format --check .
-            - run: uv run ty check src/ tests/
-            - run: uv run pytest -q
+            - run: uv run ty check packages/discolike/src packages/discolike/tests packages/discolike-cli/src packages/discolike-cli/tests
+            - run: uv run pytest packages/discolike/tests -q
+            - run: uv run pytest packages/discolike-cli/tests -q
