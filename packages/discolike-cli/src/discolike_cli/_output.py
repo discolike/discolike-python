@@ -117,7 +117,7 @@ def handle_errors(fn: Callable[P, R]) -> Callable[P, R]:
     return wrapper
 
 
-def run_job(job: SupportsWait, *, wait: bool, timeout: float) -> None:
+def run_job(job: SupportsWait, *, wait: bool, timeout: float, fmt: str | None = None) -> None:
     if not wait:
         emit(
             {
@@ -132,4 +132,4 @@ def run_job(job: SupportsWait, *, wait: bool, timeout: float) -> None:
         sys.stderr.write(f"progress: {status.progress}%\n")
 
     final = job.wait(timeout=timeout, on_poll=_on_poll)
-    emit(final.results if final.results is not None else final.to_dict())
+    emit(final.results if final.results is not None else final.to_dict(), fmt=fmt)

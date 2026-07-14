@@ -29,6 +29,10 @@ from discolike.resources.enrich import AsyncEnrichResource
 from discolike.resources.enrich import EnrichResource
 from discolike.resources.match import AsyncMatchResource
 from discolike.resources.match import MatchResource
+from discolike.resources.providers import AsyncLLMProvidersResource
+from discolike.resources.providers import AsyncSearchProvidersResource
+from discolike.resources.providers import LLMProvidersResource
+from discolike.resources.providers import SearchProvidersResource
 from discolike.resources.queries import AsyncQueriesResource
 from discolike.resources.queries import QueriesResource
 
@@ -59,6 +63,8 @@ class Discolike:
         self.match = MatchResource(self._transport)
         self.discogen = DiscogenResource(self._transport)
         self.queries = QueriesResource(self._transport)
+        self.search_providers = SearchProvidersResource(self._transport)
+        self.llm_providers = LLMProvidersResource(self._transport)
         self._discovery = DiscoveryResource(self._transport)
         self._validate = ValidateResource(self._transport)
         self._enrich = EnrichResource(self._transport)
@@ -111,6 +117,8 @@ class AsyncDiscolike:
         self.match = AsyncMatchResource(self._transport)
         self.discogen = AsyncDiscogenResource(self._transport)
         self.queries = AsyncQueriesResource(self._transport)
+        self.search_providers = AsyncSearchProvidersResource(self._transport)
+        self.llm_providers = AsyncLLMProvidersResource(self._transport)
         self._discovery = AsyncDiscoveryResource(self._transport)
         self._validate = AsyncValidateResource(self._transport)
         self._enrich = AsyncEnrichResource(self._transport)

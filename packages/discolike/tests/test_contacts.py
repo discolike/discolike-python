@@ -25,12 +25,18 @@ def test_search_builds_query_and_parses_list() -> None:
         )
 
     with make_client(handler) as client:
-        results = client.contacts.search(seniority=["vp", "director"], domain=["acme.com"], max_records=25)
+        results = client.contacts.search(
+            seniority=["vp", "director"],
+            domain=["acme.com"],
+            jobstart_date="2025-01-01,2025-06-30",
+            max_records=25,
+        )
 
     assert seen["path"] == "/v1/contacts"
     assert seen["method"] == "GET"
     assert seen["params"].get_list("seniority") == ["vp", "director"]
     assert seen["params"]["domain"] == "acme.com"
+    assert seen["params"]["jobstart_date"] == "2025-01-01,2025-06-30"
     assert seen["params"]["max_records"] == "25"
     assert results[0].persona_id == 1
     assert results[0].model_extra["extra_field"] == "kept"  # ty: ignore[not-subscriptable]
@@ -46,12 +52,13 @@ def test_count() -> None:
         return httpx.Response(200, json={"count": 1234})
 
     with make_client(handler) as client:
-        result = client.contacts.count(seniority=["vp"], has_email=True)
+        result = client.contacts.count(seniority=["vp"], has_email=True, jobstart_date="2025-01-01")
 
     assert seen["path"] == "/v1/contacts/count"
     assert seen["method"] == "GET"
     assert seen["params"]["seniority"] == "vp"
     assert seen["params"]["has_email"] == "true"
+    assert seen["params"]["jobstart_date"] == "2025-01-01"
     assert result.model_extra["count"] == 1234  # ty: ignore[not-subscriptable]
 
 
@@ -155,13 +162,20 @@ def test_discover_posts_json_body() -> None:
         )
 
     with make_client(handler) as client:
-        result = client.contacts.discover(domain=["acme.com"], seniority=["vp"], results_by_company=10, consensus=2)
+        result = client.contacts.discover(
+            domain=["acme.com"],
+            seniority=["vp"],
+            jobstart_date="2025-01-01",
+            results_by_company=10,
+            consensus=2,
+        )
 
     assert seen["path"] == "/v1/contacts/discover"
     assert seen["method"] == "POST"
     assert seen["body"] == {
         "domain": ["acme.com"],
         "seniority": ["vp"],
+        "jobstart_date": "2025-01-01",
         "results_by_company": 10,
         "consensus": 2,
     }
@@ -238,5 +252,5 @@ def test_route_metadata_stamped() -> None:
     assert get_discolike_route(ContactsResource.lookup) == ("GET", "/contacts/lookup", False, ())
     assert get_discolike_route(ContactsResource.match) == ("GET", "/contacts/match", False, ())
     assert get_discolike_route(ContactsResource.bulk_match) == ("POST", "/contacts/bulk-match", False, ())
-    assert get_discolike_route(ContactsResource.discover) == ("POST", "/contacts/discover", True, ())
+    assert get_discolike_route(ContactsResource.discover) == ("POST", "/contacts/discover", True, ("jobstart_date",))
     assert get_discolike_route(ContactsResource.generate) == ("POST", "/contacts/discover/generate", True, ())

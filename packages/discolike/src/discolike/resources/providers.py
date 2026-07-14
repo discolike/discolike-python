@@ -1,0 +1,305 @@
+from __future__ import annotations
+
+from discolike._models import DiscolikeModel
+from discolike._transport import drop_none
+from discolike.resources._base import AsyncAPIResource
+from discolike.resources._base import SyncAPIResource
+from discolike.resources._base import api_route
+
+
+class SearchProviderList(DiscolikeModel):
+    pass
+
+
+class SearchProviderConfig(DiscolikeModel):
+    integration_id: str | None = None
+    integration_name: str | None = None
+
+
+class SearchProviderResult(DiscolikeModel):
+    message: str | None = None
+    integration_id: str | None = None
+
+
+class SearchModels(DiscolikeModel):
+    pass
+
+
+class LLMProviderList(DiscolikeModel):
+    pass
+
+
+class LLMProviderConfig(DiscolikeModel):
+    integration_id: str | None = None
+    integration_name: str | None = None
+
+
+class LLMIntegrationResult(DiscolikeModel):
+    message: str | None = None
+    integration_id: str | None = None
+    status: str | None = None
+
+
+class SearchProvidersResource(SyncAPIResource):
+    @api_route("GET", "/search-providers")
+    def list(self) -> SearchProviderList:
+        return SearchProviderList.model_validate(self._transport.request("GET", "/search-providers").json())
+
+    @api_route("POST", "/search-providers")
+    def create(
+        self,
+        *,
+        integration_name: str,
+        provider: str,
+        search_model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> SearchProviderConfig:
+        body = {k: v for k, v in locals().items() if k != "self"}
+        response = self._transport.request("POST", "/search-providers", json_body=drop_none(body))
+        return SearchProviderConfig.model_validate(response.json())
+
+    @api_route("PUT", "/search-providers/{integration_id}")
+    def update(
+        self,
+        *,
+        integration_id: str,
+        integration_name: str,
+        provider: str,
+        search_model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> SearchProviderConfig:
+        body = {
+            "integration_name": integration_name,
+            "provider": provider,
+            "search_model": search_model,
+            "api_key": api_key,
+            "base_url": base_url,
+        }
+        response = self._transport.request("PUT", f"/search-providers/{integration_id}", json_body=drop_none(body))
+        return SearchProviderConfig.model_validate(response.json())
+
+    @api_route("DELETE", "/search-providers/{integration_id}")
+    def delete(self, *, integration_id: str) -> None:
+        self._transport.request("DELETE", f"/search-providers/{integration_id}")
+
+    @api_route("PUT", "/search-providers/{integration_id}/default")
+    def set_default(self, *, integration_id: str) -> SearchProviderResult:
+        response = self._transport.request("PUT", f"/search-providers/{integration_id}/default")
+        return SearchProviderResult.model_validate(response.json())
+
+    @api_route("DELETE", "/search-providers/{integration_id}/default")
+    def clear_default(self, *, integration_id: str) -> SearchProviderResult:
+        response = self._transport.request("DELETE", f"/search-providers/{integration_id}/default")
+        return SearchProviderResult.model_validate(response.json())
+
+    @api_route("GET", "/search-providers/models")
+    def models(self) -> SearchModels:
+        return SearchModels.model_validate(self._transport.request("GET", "/search-providers/models").json())
+
+
+class AsyncSearchProvidersResource(AsyncAPIResource):
+    @api_route("GET", "/search-providers")
+    async def list(self) -> SearchProviderList:
+        response = await self._transport.request("GET", "/search-providers")
+        return SearchProviderList.model_validate(response.json())
+
+    @api_route("POST", "/search-providers")
+    async def create(
+        self,
+        *,
+        integration_name: str,
+        provider: str,
+        search_model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> SearchProviderConfig:
+        body = {k: v for k, v in locals().items() if k != "self"}
+        response = await self._transport.request("POST", "/search-providers", json_body=drop_none(body))
+        return SearchProviderConfig.model_validate(response.json())
+
+    @api_route("PUT", "/search-providers/{integration_id}")
+    async def update(
+        self,
+        *,
+        integration_id: str,
+        integration_name: str,
+        provider: str,
+        search_model: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> SearchProviderConfig:
+        body = {
+            "integration_name": integration_name,
+            "provider": provider,
+            "search_model": search_model,
+            "api_key": api_key,
+            "base_url": base_url,
+        }
+        response = await self._transport.request(
+            "PUT", f"/search-providers/{integration_id}", json_body=drop_none(body)
+        )
+        return SearchProviderConfig.model_validate(response.json())
+
+    @api_route("DELETE", "/search-providers/{integration_id}")
+    async def delete(self, *, integration_id: str) -> None:
+        await self._transport.request("DELETE", f"/search-providers/{integration_id}")
+
+    @api_route("PUT", "/search-providers/{integration_id}/default")
+    async def set_default(self, *, integration_id: str) -> SearchProviderResult:
+        response = await self._transport.request("PUT", f"/search-providers/{integration_id}/default")
+        return SearchProviderResult.model_validate(response.json())
+
+    @api_route("DELETE", "/search-providers/{integration_id}/default")
+    async def clear_default(self, *, integration_id: str) -> SearchProviderResult:
+        response = await self._transport.request("DELETE", f"/search-providers/{integration_id}/default")
+        return SearchProviderResult.model_validate(response.json())
+
+    @api_route("GET", "/search-providers/models")
+    async def models(self) -> SearchModels:
+        response = await self._transport.request("GET", "/search-providers/models")
+        return SearchModels.model_validate(response.json())
+
+
+class LLMProvidersResource(SyncAPIResource):
+    @api_route("GET", "/llm-providers/config")
+    def list(self) -> LLMProviderList:
+        return LLMProviderList.model_validate(self._transport.request("GET", "/llm-providers/config").json())
+
+    @api_route("POST", "/llm-providers/config")
+    def create(
+        self,
+        *,
+        integration_name: str,
+        provider: str,
+        api_key: str,
+        model_name: str,
+        base_url: str | None = None,
+    ) -> LLMIntegrationResult:
+        body = {k: v for k, v in locals().items() if k != "self"}
+        response = self._transport.request("POST", "/llm-providers/config", json_body=drop_none(body))
+        return LLMIntegrationResult.model_validate(response.json())
+
+    @api_route("GET", "/llm-providers/config/{integration_id}")
+    def get(self, *, integration_id: str) -> LLMProviderConfig:
+        response = self._transport.request("GET", f"/llm-providers/config/{integration_id}")
+        return LLMProviderConfig.model_validate(response.json())
+
+    @api_route("PUT", "/llm-providers/config/{integration_id}")
+    def update(
+        self,
+        *,
+        integration_id: str,
+        integration_name: str,
+        provider: str,
+        model_name: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> LLMIntegrationResult:
+        body = drop_none(
+            {
+                "integration_name": integration_name,
+                "provider": provider,
+                "model_name": model_name,
+                "base_url": base_url,
+            }
+        )
+        body["api_key"] = api_key
+        response = self._transport.request("PUT", f"/llm-providers/config/{integration_id}", json_body=body)
+        return LLMIntegrationResult.model_validate(response.json())
+
+    @api_route("DELETE", "/llm-providers/config/{integration_id}")
+    def delete(self, *, integration_id: str) -> None:
+        self._transport.request("DELETE", f"/llm-providers/config/{integration_id}")
+
+    @api_route("POST", "/llm-providers/config/{integration_id}/set-default")
+    def set_default(self, *, integration_id: str) -> LLMIntegrationResult:
+        response = self._transport.request("POST", f"/llm-providers/config/{integration_id}/set-default")
+        return LLMIntegrationResult.model_validate(response.json())
+
+    @api_route("POST", "/llm-providers/test-connection")
+    def test_connection(
+        self,
+        *,
+        integration_name: str,
+        provider: str,
+        api_key: str,
+        model_name: str,
+        base_url: str | None = None,
+    ) -> LLMIntegrationResult:
+        body = {k: v for k, v in locals().items() if k != "self"}
+        response = self._transport.request("POST", "/llm-providers/test-connection", json_body=drop_none(body))
+        return LLMIntegrationResult.model_validate(response.json())
+
+
+class AsyncLLMProvidersResource(AsyncAPIResource):
+    @api_route("GET", "/llm-providers/config")
+    async def list(self) -> LLMProviderList:
+        response = await self._transport.request("GET", "/llm-providers/config")
+        return LLMProviderList.model_validate(response.json())
+
+    @api_route("POST", "/llm-providers/config")
+    async def create(
+        self,
+        *,
+        integration_name: str,
+        provider: str,
+        api_key: str,
+        model_name: str,
+        base_url: str | None = None,
+    ) -> LLMIntegrationResult:
+        body = {k: v for k, v in locals().items() if k != "self"}
+        response = await self._transport.request("POST", "/llm-providers/config", json_body=drop_none(body))
+        return LLMIntegrationResult.model_validate(response.json())
+
+    @api_route("GET", "/llm-providers/config/{integration_id}")
+    async def get(self, *, integration_id: str) -> LLMProviderConfig:
+        response = await self._transport.request("GET", f"/llm-providers/config/{integration_id}")
+        return LLMProviderConfig.model_validate(response.json())
+
+    @api_route("PUT", "/llm-providers/config/{integration_id}")
+    async def update(
+        self,
+        *,
+        integration_id: str,
+        integration_name: str,
+        provider: str,
+        model_name: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ) -> LLMIntegrationResult:
+        body = drop_none(
+            {
+                "integration_name": integration_name,
+                "provider": provider,
+                "model_name": model_name,
+                "base_url": base_url,
+            }
+        )
+        body["api_key"] = api_key
+        response = await self._transport.request("PUT", f"/llm-providers/config/{integration_id}", json_body=body)
+        return LLMIntegrationResult.model_validate(response.json())
+
+    @api_route("DELETE", "/llm-providers/config/{integration_id}")
+    async def delete(self, *, integration_id: str) -> None:
+        await self._transport.request("DELETE", f"/llm-providers/config/{integration_id}")
+
+    @api_route("POST", "/llm-providers/config/{integration_id}/set-default")
+    async def set_default(self, *, integration_id: str) -> LLMIntegrationResult:
+        response = await self._transport.request("POST", f"/llm-providers/config/{integration_id}/set-default")
+        return LLMIntegrationResult.model_validate(response.json())
+
+    @api_route("POST", "/llm-providers/test-connection")
+    async def test_connection(
+        self,
+        *,
+        integration_name: str,
+        provider: str,
+        api_key: str,
+        model_name: str,
+        base_url: str | None = None,
+    ) -> LLMIntegrationResult:
+        body = {k: v for k, v in locals().items() if k != "self"}
+        response = await self._transport.request("POST", "/llm-providers/test-connection", json_body=drop_none(body))
+        return LLMIntegrationResult.model_validate(response.json())

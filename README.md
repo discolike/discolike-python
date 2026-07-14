@@ -147,7 +147,7 @@ The same API from your terminal, with `--help` on every command:
 
 ```bash
 discolike auth login
-discolike discover --icp-text "managed IT services for SMBs" --country US --max-records 25
+discolike discover --icp-prompt "managed IT services for SMBs" --country US --max-records 25
 discolike match "Stripe Inc" --city "San Francisco"
 discolike match --file companies.csv --name-column company_name --wait
 discolike count --phrase-match "book a demo" --country US
@@ -155,7 +155,7 @@ discolike company data stripe.com
 discolike extract https://stripe.com/enterprise
 ```
 
-Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment` — plus `auth`, `company`, `contacts`, `discogen`, `queries`, and `account` command groups.
+Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment` — plus `auth`, `company`, `contacts`, `discogen`, `queries`, `account`, `search-providers`, and `llm-providers` command groups.
 
 ### CLI conventions
 
@@ -185,6 +185,7 @@ Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `ap
 | `client.segment()` | Auto-segment a list of domains |
 | `client.validate_icp()` | Validate a domain list against an ICP definition |
 | `client.queries` | Saved inclusion/exclusion lists for reusable targeting |
+| `client.search_providers` / `client.llm_providers` | Manage BYOK search and LLM provider integrations for DiscoGen |
 | `client.account` | Usage and quota |
 
 All responses are typed [Pydantic](https://docs.pydantic.dev/) models.

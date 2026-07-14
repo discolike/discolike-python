@@ -101,6 +101,16 @@ def test_company_public_links_requires_source(monkeypatch: pytest.MonkeyPatch) -
     assert result.exit_code == 2
 
 
+def test_company_data_format_table_falls_back_to_json_for_dict(monkeypatch: pytest.MonkeyPatch) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"name": "Acme", "domain": "acme.com"})
+
+    _install_build_client(monkeypatch, handler)
+    result = runner.invoke(app, ["company", "data", "acme.com", "--format", "table"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout) == {"name": "Acme", "domain": "acme.com"}
+
+
 def test_extract_hits_extract_endpoint_with_url(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, httpx.Request] = {}
 

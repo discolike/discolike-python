@@ -60,6 +60,39 @@ def test_match_bulk_file_with_wait_polls_to_completion(monkeypatch: pytest.Monke
     assert "progress: 40%" in result.stderr
 
 
+def test_match_bulk_file_with_wait_format_table_renders_table(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    names_file = tmp_path / "names.csv"
+    names_file.write_text("company\nAcme\n")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/bulkmatch":
+            return httpx.Response(200, json={"task_id": "bm-5"})
+        assert request.url.path == "/v1/bulkmatch/status/bm-5"
+        return httpx.Response(200, json={"status": "completed", "progress": 100, "results": [{"domain": "acme.com"}]})
+
+    _install_build_client(monkeypatch, handler)
+    result = runner.invoke(
+        app,
+        [
+            "match",
+            "--file",
+            str(names_file),
+            "--name-column",
+            "company",
+            "--wait",
+            "--timeout",
+            "5",
+            "--format",
+            "table",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    with pytest.raises(json.JSONDecodeError):
+        json.loads(result.stdout)
+    assert "domain" in result.stdout
+    assert "acme.com" in result.stdout
+
+
 def test_match_bulk_file_without_wait_prints_task_hint(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
     names_file = tmp_path / "names.csv"
     names_file.write_text("name\nAcme\n")

@@ -15,7 +15,7 @@ from discolike._config import save_config
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
 
-app = typer.Typer(help="Manage API credentials")
+app = typer.Typer(help="Manage API credentials: log in, check key status, log out.")
 
 MASKED_VISIBLE_CHARS = 4
 
@@ -27,8 +27,9 @@ def _mask(key: str) -> str:
 @app.command()
 @handle_errors
 def login(
-    api_key: str | None = typer.Option(None, help=f"API key. Create one at {KEYS_URL}"),
+    api_key: str | None = typer.Option(None, help=f"API key. Create one at {KEYS_URL}. Prompted for if omitted."),
 ) -> None:
+    """Verify an API key and save it to the local config file."""
     from discolike_cli.main import build_client
 
     key = api_key or typer.prompt("API key", hide_input=True)
@@ -40,6 +41,7 @@ def login(
 @app.command()
 @handle_errors
 def status() -> None:
+    """Show which API key is in use (env or config) and verify it against the API."""
     from discolike_cli.main import build_client
 
     key = os.environ.get(ENV_API_KEY)
@@ -56,5 +58,6 @@ def status() -> None:
 @app.command()
 @handle_errors
 def logout() -> None:
+    """Delete saved credentials from the local config file."""
     delete_config()
     emit({"logged_out": True})
