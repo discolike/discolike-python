@@ -104,6 +104,9 @@ select = [
     "YTT",  # flake8-2020 (sys.version_info traps)
 ]
 
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["typer.Argument", "typer.Option"]
+
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
 

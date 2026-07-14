@@ -7,6 +7,9 @@ import typer
 from discolike import Discolike
 from discolike._version import __version__
 from discolike.cli import auth
+from discolike.cli import company
+from discolike.cli import discover
+from discolike.cli import match
 
 app = typer.Typer(
     name="discolike",
@@ -36,3 +39,8 @@ def get_client(ctx: typer.Context) -> Discolike:
 
 
 app.add_typer(auth.app, name="auth")
+app.add_typer(company.app, name="company")
+app.command(name="discover")(discover.discover_command)
+app.command(name="count")(discover.count_command)
+app.command(name="match")(match.match_command)
+app.command(name="extract")(company.extract_command)
