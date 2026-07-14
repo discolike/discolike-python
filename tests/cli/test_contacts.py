@@ -78,6 +78,16 @@ def test_contacts_search_sends_options_and_param_escape_hatch(monkeypatch: pytes
     ]
 
 
+def test_contacts_search_invalid_param_kwarg_exits_2(monkeypatch: pytest.MonkeyPatch) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[])
+
+    _install_build_client(monkeypatch, handler)
+    result = runner.invoke(app, ["contacts", "search", "--param", "bogus_kwarg=1"])
+    assert result.exit_code == 2
+    assert "bogus_kwarg" in result.output
+
+
 def test_contacts_search_unauthorized_exits_3(monkeypatch: pytest.MonkeyPatch) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(401, json={"detail": "invalid key"})

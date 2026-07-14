@@ -4,6 +4,7 @@ from typing import Any
 
 import typer
 
+from discolike.cli._output import call_typed
 from discolike.cli._output import emit
 from discolike.cli._output import handle_errors
 
@@ -71,7 +72,7 @@ def discover_command(
         max_records=max_records,
         offset=offset,
     )
-    companies = get_client(ctx).discover(**kwargs)
+    companies = call_typed(get_client(ctx).discover, **kwargs)
     emit(companies, fmt=fmt)
 
 
@@ -106,5 +107,5 @@ def count_command(
         min_digital_footprint=min_digital_footprint,
         max_digital_footprint=max_digital_footprint,
     )
-    count = get_client(ctx).count(**kwargs)
+    count = call_typed(get_client(ctx).count, **kwargs)
     emit(count, fmt=fmt)

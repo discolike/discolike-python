@@ -133,3 +133,46 @@ def test_match_passes_optional_filters(monkeypatch: pytest.MonkeyPatch) -> None:
     assert params.get("zip_code") == "78701"
     assert params.get("strict") == "true"
     assert params.get("local_mode") == "true"
+
+
+def test_match_local_mode_omitted_when_not_passed(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, httpx.Request] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["request"] = request
+        return httpx.Response(200, json={"domain": "acme.com"})
+
+    _install_build_client(monkeypatch, handler)
+    result = runner.invoke(app, ["match", "Acme"])
+    assert result.exit_code == 0, result.output
+    assert "local_mode" not in captured["request"].url.params
+
+
+def test_match_bulk_local_mode_omitted_when_not_passed(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    names_file = tmp_path / "names.csv"
+    names_file.write_text("name\nAcme\n")
+    captured: dict[str, httpx.Request] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["request"] = request
+        return httpx.Response(200, json={"task_id": "bm-3"})
+
+    _install_build_client(monkeypatch, handler)
+    result = runner.invoke(app, ["match", "--file", str(names_file)])
+    assert result.exit_code == 0, result.output
+    assert "local_mode" not in captured["request"].url.params
+
+
+def test_match_bulk_local_mode_sent_when_passed(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    names_file = tmp_path / "names.csv"
+    names_file.write_text("name\nAcme\n")
+    captured: dict[str, httpx.Request] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["request"] = request
+        return httpx.Response(200, json={"task_id": "bm-4"})
+
+    _install_build_client(monkeypatch, handler)
+    result = runner.invoke(app, ["match", "--file", str(names_file), "--local-mode"])
+    assert result.exit_code == 0, result.output
+    assert captured["request"].url.params.get("local_mode") == "true"

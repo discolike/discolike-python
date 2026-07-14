@@ -121,3 +121,124 @@ async def test_async_transport_retries(no_sleep) -> None:
     response = await transport.request("GET", "/usage")
     assert response.json() == {"ok": True}
     await transport.aclose()
+
+
+def test_post_502_does_not_retry_and_raises_server_error(no_sleep) -> None:
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(502)
+
+    from discolike import ServerError
+
+    with pytest.raises(ServerError):
+        make_transport(handler).request("POST", "/discogen/process")
+    assert len(calls) == 1
+    assert no_sleep == []
+
+
+def test_post_429_is_still_retried(no_sleep) -> None:
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(429) if len(calls) < 2 else httpx.Response(200, json={"ok": True})
+
+    response = make_transport(handler).request("POST", "/discogen/process")
+    assert response.json() == {"ok": True}
+    assert len(calls) == 2
+    assert len(no_sleep) == 1
+
+
+def test_post_connect_error_is_retried_then_succeeds(no_sleep) -> None:
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        if len(calls) < 2:
+            raise httpx.ConnectError("refused")
+        return httpx.Response(200, json={"ok": True})
+
+    response = make_transport(handler).request("POST", "/discogen/process")
+    assert response.json() == {"ok": True}
+    assert len(calls) == 2
+    assert len(no_sleep) == 1
+
+
+def test_post_read_timeout_raises_immediately_without_retry(no_sleep) -> None:
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        raise httpx.ReadTimeout("timed out")
+
+    with pytest.raises(APIConnectionError):
+        make_transport(handler).request("POST", "/discogen/process")
+    assert len(calls) == 1
+    assert no_sleep == []
+
+
+def test_delete_502_is_still_retried(no_sleep) -> None:
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(502) if len(calls) < 2 else httpx.Response(200, json={"ok": True})
+
+    response = make_transport(handler).request("DELETE", "/discogen/cancel/abc")
+    assert response.json() == {"ok": True}
+    assert len(calls) == 2
+
+
+async def test_async_post_502_does_not_retry_and_raises_server_error(no_sleep) -> None:
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(502)
+
+    from discolike import ServerError
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="https://api.test/v1")
+    transport = AsyncTransport("test-key", base_url="https://api.test/v1", timeout=5.0, max_retries=2, http_client=http)
+    with pytest.raises(ServerError):
+        await transport.request("POST", "/discogen/process")
+    assert len(calls) == 1
+    assert no_sleep == []
+
+
+async def test_async_post_connect_error_is_retried_then_succeeds(no_sleep) -> None:
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        if len(calls) < 2:
+            raise httpx.ConnectError("refused")
+        return httpx.Response(200, json={"ok": True})
+
+    http = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="https://api.test/v1")
+    transport = AsyncTransport("test-key", base_url="https://api.test/v1", timeout=5.0, max_retries=2, http_client=http)
+    response = await transport.request("POST", "/discogen/process")
+    assert response.json() == {"ok": True}
+    assert len(calls) == 2
+    assert len(no_sleep) == 1
+
+
+def test_byo_http_client_without_base_url_gets_base_url_set() -> None:
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        return httpx.Response(200, json={"ok": True})
+
+    http = httpx.Client(transport=httpx.MockTransport(handler))
+    transport = Transport("test-key", base_url="https://api.test/v1", timeout=5.0, max_retries=0, http_client=http)
+    transport.request("GET", "/usage")
+    assert seen["url"] == "https://api.test/v1/usage"
+
+
+def test_byo_http_client_with_base_url_is_left_alone() -> None:
+    http = httpx.Client(base_url="https://custom.example/v2")
+    Transport("test-key", base_url="https://api.test/v1", timeout=5.0, max_retries=0, http_client=http)
+    assert str(http.base_url) == "https://custom.example/v2/"

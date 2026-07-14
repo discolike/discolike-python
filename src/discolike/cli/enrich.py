@@ -19,7 +19,7 @@ def validate_icp_command(
     file: pathlib.Path | None = typer.Option(None, "--file"),
     context_mode: str | None = typer.Option(None, "--context-mode"),
     integration_id: str | None = typer.Option(None, "--integration-id"),
-    web_search: bool = typer.Option(False, "--web-search"),
+    web_search: bool | None = typer.Option(None, "--web-search/--no-web-search"),
     search_provider_id: str | None = typer.Option(None, "--search-provider-id"),
     wait: bool = typer.Option(False, "--wait"),
     timeout: float = typer.Option(DEFAULT_WAIT_TIMEOUT_SECONDS, "--timeout"),

@@ -47,11 +47,30 @@ def test_discogen_run_posts_json_and_prints_task_hint(monkeypatch: pytest.Monkey
         "query": "Recent funding rounds",
         "domains": ["acme.com", "beta.com"],
         "web_search": True,
-        "include_x_search": False,
     }
     payload = json.loads(result.stdout)
     assert payload["task_id"] == "dg-1"
     assert payload["task_family"] == "discogen"
+
+
+def test_discogen_run_sends_include_x_search_when_passed(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"task_id": "dg-1b"})
+
+    _install_build_client(monkeypatch, handler)
+    result = runner.invoke(
+        app,
+        ["discogen", "run", "--query", "q", "--domain", "acme.com", "--include-x-search"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {
+        "query": "q",
+        "domains": ["acme.com"],
+        "include_x_search": True,
+    }
 
 
 def test_discogen_run_personas_posts_persona_ids(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -72,7 +91,26 @@ def test_discogen_run_personas_posts_persona_ids(monkeypatch: pytest.MonkeyPatch
     assert captured["body"] == {
         "query": "Career history",
         "persona_ids": [1, 2],
-        "include_x_search": False,
+    }
+
+
+def test_discogen_run_personas_sends_include_x_search_when_passed(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"task_id": "dg-2b"})
+
+    _install_build_client(monkeypatch, handler)
+    result = runner.invoke(
+        app,
+        ["discogen", "run-personas", "--query", "q", "--persona-id", "1", "--include-x-search"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {
+        "query": "q",
+        "persona_ids": [1],
+        "include_x_search": True,
     }
 
 

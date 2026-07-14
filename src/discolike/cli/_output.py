@@ -99,6 +99,13 @@ def fail(exc: DiscolikeError) -> typer.Exit:
     return typer.Exit(code=EXIT_CODES.get(type(exc), DEFAULT_EXIT_CODE))
 
 
+def call_typed(fn: Callable[..., R], **kwargs: Any) -> R:  # noqa: ANN401 -- forwarded to a typed SDK method signature
+    try:
+        return fn(**kwargs)
+    except TypeError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+
 def handle_errors(fn: Callable[P, R]) -> Callable[P, R]:
     @functools.wraps(fn)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:

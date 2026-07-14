@@ -36,10 +36,29 @@ def test_validate_icp_with_domain_options_posts_json(monkeypatch: pytest.MonkeyP
     assert captured["body"] == {
         "icp_text": "VPs of Marketing",
         "domains": ["acme.com", "beta.com"],
-        "web_search": False,
     }
     payload = json.loads(result.stdout)
     assert payload["task_id"] == "vi-1"
+
+
+def test_validate_icp_sends_web_search_when_passed(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"task_id": "vi-1b"})
+
+    _install_build_client(monkeypatch, handler)
+    result = runner.invoke(
+        app,
+        ["validate-icp", "--icp", "VPs of Marketing", "--domain", "acme.com", "--web-search"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {
+        "icp_text": "VPs of Marketing",
+        "domains": ["acme.com"],
+        "web_search": True,
+    }
 
 
 def test_validate_icp_with_file_reads_domains_and_strips_blanks(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
@@ -54,7 +73,7 @@ def test_validate_icp_with_file_reads_domains_and_strips_blanks(monkeypatch: pyt
     _install_build_client(monkeypatch, handler)
     result = runner.invoke(app, ["validate-icp", "--icp", "VPs", "--file", str(domains_file)])
     assert result.exit_code == 0, result.output
-    assert captured["body"] == {"icp_text": "VPs", "domains": ["acme.com", "beta.com"], "web_search": False}
+    assert captured["body"] == {"icp_text": "VPs", "domains": ["acme.com", "beta.com"]}
 
 
 def test_validate_icp_both_domain_and_file_exits_2(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:

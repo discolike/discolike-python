@@ -217,6 +217,8 @@ except ValidationError as err:
 | `max_retries` | `3` | |
 | `http_client` | — | Bring your own `httpx.Client` / `httpx.AsyncClient` |
 
+A provided `http_client` is mutated in place (the auth header is stamped on it, and `base_url` is set if it's unset) — use a client dedicated to DiscoLike, not one shared across other services.
+
 ## Development
 
 ```bash

@@ -5,6 +5,7 @@ import pathlib
 
 import typer
 
+from discolike.cli._output import call_typed
 from discolike.cli._output import emit
 from discolike.cli._output import handle_errors
 from discolike.cli._output import run_job
@@ -53,7 +54,7 @@ def search_command(
         max_records=max_records,
         offset=offset,
     )
-    emit(get_client(ctx).contacts.search(**kwargs), fmt=fmt)
+    emit(call_typed(get_client(ctx).contacts.search, **kwargs), fmt=fmt)
 
 
 @app.command("count")
@@ -90,7 +91,7 @@ def count_command(
         employee_range=employee_range,
         has_email=has_email,
     )
-    emit(get_client(ctx).contacts.count(**kwargs), fmt=fmt)
+    emit(call_typed(get_client(ctx).contacts.count, **kwargs), fmt=fmt)
 
 
 @app.command("lookup")
@@ -196,7 +197,7 @@ def discover_command(
         include_search_contacts=include_search_contacts,
         consensus=consensus,
     )
-    emit(get_client(ctx).contacts.discover(**kwargs), fmt=fmt)
+    emit(call_typed(get_client(ctx).contacts.discover, **kwargs), fmt=fmt)
 
 
 @app.command("generate")

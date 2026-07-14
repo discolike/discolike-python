@@ -22,7 +22,7 @@ def match_command(
     country: str | None = typer.Option(None),
     zip_code: str | None = typer.Option(None),
     strict: bool | None = typer.Option(None, "--strict/--no-strict"),
-    local_mode: bool = typer.Option(False, "--local-mode"),
+    local_mode: bool | None = typer.Option(None, "--local-mode/--no-local-mode"),
     file: pathlib.Path | None = typer.Option(None, "--file"),
     name_column: str = typer.Option(DEFAULT_NAME_COLUMN, "--name-column"),
     wait: bool = typer.Option(False, "--wait"),
