@@ -1,7 +1,8 @@
 import httpx
 import pytest
 
-from discolike import AsyncDiscolike, Discolike
+from discolike import AsyncDiscolike
+from discolike import Discolike
 
 BASE_URL = "https://api.test/v1"
 

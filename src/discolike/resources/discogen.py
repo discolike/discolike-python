@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-from discolike._jobs import FAMILY_DISCOGEN, AsyncJob, Job
+from discolike._jobs import FAMILY_DISCOGEN
+from discolike._jobs import AsyncJob
+from discolike._jobs import Job
 from discolike._models import DiscolikeModel
 from discolike._transport import drop_none
-from discolike.resources._base import AsyncAPIResource, SyncAPIResource, api_route
+from discolike.resources._base import AsyncAPIResource
+from discolike.resources._base import SyncAPIResource
+from discolike.resources._base import api_route
 
 
 class DiscogenModels(DiscolikeModel):

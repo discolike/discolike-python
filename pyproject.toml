@@ -52,8 +52,63 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.ruff]
+show-fixes = true
+exclude = [".venv"]
 line-length = 120
+respect-gitignore = true
+indent-width = 4
+target-version = "py310"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "TID252"]
+extend-ignore = [
+    "C901",  # is too complex
+    "E501",  # line too long
+    "SIM112", # capitalized env variable
+    "SIM102",  # Use a single `if` statement instead of nested `if` statements
+    "SIM117",  # Use a single `with` statement with multiple contexts instead of nested `with` statements
+    "S101",  # use of assert detected
+    "S104",  # possible binding to all interfaces
+    "PLR2004",  #  magic value comparison
+    "PLR0911",  # Too many return statements
+    "PLR0912",  #  Too many branches
+    "PLR0913",  # Too many arguments in function definition
+    "PLR0915",  # 5 Too many statements
+]
+select = [
+    "ANN",  # type annotations
+    "I",  # import
+    "A",  # flake8-builtins (shadowing)
+    "ASYNC",  # flake8-async
+    "B",  # flake8-bugbear
+    "C",  # flake8-comprehensions (C4) + mccabe complexity (C90)
+    "E",  # error
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "G",  # flake8-logging-format
+    "LOG",  # flake8-logging
+    "N",  # naming
+    "Q",  # quality
+    "S",  # flake8-bandit (security)
+    "RSE",  # flake8-raise (unnecessary parens on exceptions)
+    "RUF",  # Ruff-specific rules
+    "PIE",  # flake8-pie
+    "SIM",  # simplification
+    "TID",  # flake8-tidy-imports (banned/relative imports)
+    "UP",  # pyupgrade
+    "RET",  # flake8-return
+    "FURB",  # refurb
+    "PLR",  # pylint refactor
+    "PERF",  # perflint
+    "PT",  # flake8-pytest-style
+    "YTT",  # flake8-2020 (sys.version_info traps)
+]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+force-single-line = true
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN"]

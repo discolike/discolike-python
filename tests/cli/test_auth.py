@@ -10,7 +10,8 @@ from typer.testing import CliRunner
 
 import discolike.cli.main as cli_main
 from conftest import make_client
-from discolike._config import config_path, save_config
+from discolike._config import config_path
+from discolike._config import save_config
 from discolike.cli.main import app
 
 runner = CliRunner()

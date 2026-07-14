@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import pathlib
 from collections.abc import Callable
-from typing import Any, BinaryIO, TypeVar
+from typing import Any
+from typing import BinaryIO
+from typing import TypeVar
 
-from discolike._transport import AsyncTransport, Transport
+from discolike._transport import AsyncTransport
+from discolike._transport import Transport
 
 F = TypeVar("F", bound=Callable[..., Any])
 

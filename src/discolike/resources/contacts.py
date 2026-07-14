@@ -2,10 +2,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from discolike._jobs import FAMILY_CONTACTMATCH, FAMILY_DISCOGEN, AsyncJob, Job
+import pydantic
+
+from discolike._jobs import FAMILY_CONTACTMATCH
+from discolike._jobs import FAMILY_DISCOGEN
+from discolike._jobs import AsyncJob
+from discolike._jobs import Job
 from discolike._models import DiscolikeModel
 from discolike._transport import drop_none
-from discolike.resources._base import AsyncAPIResource, SyncAPIResource, api_route
+from discolike.resources._base import AsyncAPIResource
+from discolike.resources._base import SyncAPIResource
+from discolike.resources._base import api_route
 
 
 class Contact(DiscolikeModel):
@@ -34,13 +41,13 @@ class ContactMatchResult(DiscolikeModel):
 
 class ContactMatchResponse(DiscolikeModel):
     query: ContactMatchQuery | None = None
-    matches: list[ContactMatchResult] = []
+    matches: list[ContactMatchResult] = pydantic.Field(default_factory=list)
 
 
 class ContactsByCompany(DiscolikeModel):
     domain: str | None = None
     name: str | None = None
-    contacts: list[Contact] = []
+    contacts: list[Contact] = pydantic.Field(default_factory=list)
     email_pattern: str | None = None
 
 

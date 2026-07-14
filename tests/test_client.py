@@ -1,8 +1,10 @@
 import httpx
 import pytest
 
-from conftest import make_async_client, make_client
-from discolike import AuthenticationError, Discolike
+from conftest import make_async_client
+from conftest import make_client
+from discolike import AuthenticationError
+from discolike import Discolike
 
 
 def test_client_requires_key() -> None:

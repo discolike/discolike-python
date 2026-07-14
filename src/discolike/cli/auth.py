@@ -6,8 +6,14 @@ import sys
 
 import typer
 
-from discolike._config import ENV_API_KEY, KEYS_URL, delete_config, load_config, resolve_api_key, save_config
-from discolike.cli._output import emit, handle_errors
+from discolike._config import ENV_API_KEY
+from discolike._config import KEYS_URL
+from discolike._config import delete_config
+from discolike._config import load_config
+from discolike._config import resolve_api_key
+from discolike._config import save_config
+from discolike.cli._output import emit
+from discolike.cli._output import handle_errors
 
 app = typer.Typer(help="Manage API credentials")
 

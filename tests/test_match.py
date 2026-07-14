@@ -2,8 +2,11 @@ import io
 
 import httpx
 
-from conftest import make_async_client, make_client
-from discolike._jobs import FAMILY_BULKMATCH, AsyncJob, Job
+from conftest import make_async_client
+from conftest import make_client
+from discolike._jobs import FAMILY_BULKMATCH
+from discolike._jobs import AsyncJob
+from discolike._jobs import Job
 
 
 def test_company_sends_params_and_parses_response() -> None:

@@ -5,9 +5,13 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from discolike._exceptions import JobFailedError, JobTimeoutError
+import pydantic
+
+from discolike._exceptions import JobFailedError
+from discolike._exceptions import JobTimeoutError
 from discolike._models import DiscolikeModel
-from discolike._transport import AsyncTransport, Transport
+from discolike._transport import AsyncTransport
+from discolike._transport import Transport
 
 TERMINAL_STATUSES = frozenset({"completed", "failed", "cancelled"})
 FAMILY_DISCOGEN = "discogen"
@@ -23,7 +27,7 @@ class JobStatus(DiscolikeModel):
     progress: int | None = None
     results: Any = None
     result: Any = None
-    warnings: list[str] = []
+    warnings: list[str] = pydantic.Field(default_factory=list)
 
 
 class Job:

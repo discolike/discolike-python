@@ -1,7 +1,8 @@
 import httpx
 import pytest
 
-from conftest import make_async_client, make_client
+from conftest import make_async_client
+from conftest import make_client
 
 CASES = [
     ("data", {"domain": "acme.com"}, "/v1/bizdata"),

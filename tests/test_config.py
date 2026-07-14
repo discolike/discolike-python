@@ -3,7 +3,10 @@ import stat
 import pytest
 
 from discolike import AuthenticationError
-from discolike._config import config_path, load_config, resolve_api_key, save_config
+from discolike._config import config_path
+from discolike._config import load_config
+from discolike._config import resolve_api_key
+from discolike._config import save_config
 
 
 @pytest.fixture(autouse=True)

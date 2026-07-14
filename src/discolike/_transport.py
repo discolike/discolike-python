@@ -7,7 +7,8 @@ from typing import Any
 
 import httpx
 
-from discolike._exceptions import APIConnectionError, raise_for_status
+from discolike._exceptions import APIConnectionError
+from discolike._exceptions import raise_for_status
 from discolike._version import __version__
 
 RETRYABLE_STATUSES = frozenset({429, 502, 503, 504})
@@ -50,9 +51,9 @@ class Transport:
         path: str,
         *,
         params: Mapping[str, Any] | None = None,
-        json_body: Any = None,
-        files: Any = None,
-        data: Any = None,
+        json_body: Any = None,  # noqa: ANN401 -- forwarded verbatim to httpx.Client.request
+        files: Any = None,  # noqa: ANN401 -- forwarded verbatim to httpx.Client.request
+        data: Any = None,  # noqa: ANN401 -- forwarded verbatim to httpx.Client.request
     ) -> httpx.Response:
         clean_params = drop_none(params)
         for attempt in range(self._max_retries + 1):
@@ -96,9 +97,9 @@ class AsyncTransport:
         path: str,
         *,
         params: Mapping[str, Any] | None = None,
-        json_body: Any = None,
-        files: Any = None,
-        data: Any = None,
+        json_body: Any = None,  # noqa: ANN401 -- forwarded verbatim to httpx.Client.request
+        files: Any = None,  # noqa: ANN401 -- forwarded verbatim to httpx.Client.request
+        data: Any = None,  # noqa: ANN401 -- forwarded verbatim to httpx.Client.request
     ) -> httpx.Response:
         clean_params = drop_none(params)
         for attempt in range(self._max_retries + 1):

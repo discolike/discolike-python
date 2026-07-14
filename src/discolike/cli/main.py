@@ -26,7 +26,7 @@ def main(
 ) -> None:
     if version:
         typer.echo(__version__)
-        raise typer.Exit()
+        raise typer.Exit
     ctx.obj = {"api_key": api_key, "base_url": base_url}
 
 

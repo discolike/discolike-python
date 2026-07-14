@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from discolike._models import DiscolikeModel
-from discolike.resources._base import AsyncAPIResource, SyncAPIResource, api_route
+from discolike.resources._base import AsyncAPIResource
+from discolike.resources._base import SyncAPIResource
+from discolike.resources._base import api_route
 
 
 class Usage(DiscolikeModel):

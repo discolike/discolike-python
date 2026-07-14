@@ -3,15 +3,13 @@ from typing import cast
 import httpx
 import pytest
 
-from discolike import (
-    AuthenticationError,
-    DiscolikeError,
-    NotFoundError,
-    PlanAccessError,
-    RateLimitError,
-    ServerError,
-    ValidationError,
-)
+from discolike import AuthenticationError
+from discolike import DiscolikeError
+from discolike import NotFoundError
+from discolike import PlanAccessError
+from discolike import RateLimitError
+from discolike import ServerError
+from discolike import ValidationError
 from discolike._exceptions import raise_for_status
 
 

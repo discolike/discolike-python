@@ -4,7 +4,8 @@ import json
 
 import httpx
 
-from conftest import make_async_client, make_client
+from conftest import make_async_client
+from conftest import make_client
 
 
 def test_list_sends_params_and_parses_response() -> None:

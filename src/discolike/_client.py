@@ -4,22 +4,33 @@ from typing import Any
 
 import httpx
 
-from discolike._config import DEFAULT_BASE_URL, resolve_api_key
-from discolike._jobs import AsyncJob, Job
-from discolike._transport import AsyncTransport, Transport
-from discolike.resources.account import AccountResource, AsyncAccountResource
-from discolike.resources.companies import AsyncCompaniesResource, CompaniesResource
-from discolike.resources.contacts import AsyncContactsResource, ContactsResource
-from discolike.resources.discogen import (
-    AsyncDiscogenResource,
-    AsyncValidateResource,
-    DiscogenResource,
-    ValidateResource,
-)
-from discolike.resources.discovery import AsyncDiscoveryResource, Company, Count, DiscoveryResource
-from discolike.resources.enrich import AppendResult, AsyncEnrichResource, EnrichResource
-from discolike.resources.match import AsyncMatchResource, MatchResource
-from discolike.resources.queries import AsyncQueriesResource, QueriesResource
+from discolike._config import DEFAULT_BASE_URL
+from discolike._config import resolve_api_key
+from discolike._jobs import AsyncJob
+from discolike._jobs import Job
+from discolike._transport import AsyncTransport
+from discolike._transport import Transport
+from discolike.resources.account import AccountResource
+from discolike.resources.account import AsyncAccountResource
+from discolike.resources.companies import AsyncCompaniesResource
+from discolike.resources.companies import CompaniesResource
+from discolike.resources.contacts import AsyncContactsResource
+from discolike.resources.contacts import ContactsResource
+from discolike.resources.discogen import AsyncDiscogenResource
+from discolike.resources.discogen import AsyncValidateResource
+from discolike.resources.discogen import DiscogenResource
+from discolike.resources.discogen import ValidateResource
+from discolike.resources.discovery import AsyncDiscoveryResource
+from discolike.resources.discovery import Company
+from discolike.resources.discovery import Count
+from discolike.resources.discovery import DiscoveryResource
+from discolike.resources.enrich import AppendResult
+from discolike.resources.enrich import AsyncEnrichResource
+from discolike.resources.enrich import EnrichResource
+from discolike.resources.match import AsyncMatchResource
+from discolike.resources.match import MatchResource
+from discolike.resources.queries import AsyncQueriesResource
+from discolike.resources.queries import QueriesResource
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
 DEFAULT_MAX_RETRIES = 3
@@ -52,19 +63,19 @@ class Discolike:
         self._validate = ValidateResource(self._transport)
         self._enrich = EnrichResource(self._transport)
 
-    def discover(self, **kwargs: Any) -> list[Company]:
+    def discover(self, **kwargs: Any) -> list[Company]:  # noqa: ANN401 -- forwards to DiscoveryResource.discover's typed signature
         return self._discovery.discover(**kwargs)
 
-    def count(self, **kwargs: Any) -> Count:
+    def count(self, **kwargs: Any) -> Count:  # noqa: ANN401 -- forwards to DiscoveryResource.count's typed signature
         return self._discovery.count(**kwargs)
 
-    def validate_icp(self, **kwargs: Any) -> Job:
+    def validate_icp(self, **kwargs: Any) -> Job:  # noqa: ANN401 -- forwards to ValidateResource.icp's typed signature
         return self._validate.icp(**kwargs)
 
-    def append(self, **kwargs: Any) -> list[AppendResult] | bytes:
+    def append(self, **kwargs: Any) -> list[AppendResult] | bytes:  # noqa: ANN401 -- forwards to EnrichResource.append's typed signature
         return self._enrich.append(**kwargs)
 
-    def segment(self, **kwargs: Any) -> Job:
+    def segment(self, **kwargs: Any) -> Job:  # noqa: ANN401 -- forwards to EnrichResource.segment's typed signature
         return self._enrich.segment(**kwargs)
 
     def close(self) -> None:
@@ -104,19 +115,19 @@ class AsyncDiscolike:
         self._validate = AsyncValidateResource(self._transport)
         self._enrich = AsyncEnrichResource(self._transport)
 
-    async def discover(self, **kwargs: Any) -> list[Company]:
+    async def discover(self, **kwargs: Any) -> list[Company]:  # noqa: ANN401 -- forwards to AsyncDiscoveryResource.discover's typed signature
         return await self._discovery.discover(**kwargs)
 
-    async def count(self, **kwargs: Any) -> Count:
+    async def count(self, **kwargs: Any) -> Count:  # noqa: ANN401 -- forwards to AsyncDiscoveryResource.count's typed signature
         return await self._discovery.count(**kwargs)
 
-    async def validate_icp(self, **kwargs: Any) -> AsyncJob:
+    async def validate_icp(self, **kwargs: Any) -> AsyncJob:  # noqa: ANN401 -- forwards to AsyncValidateResource.icp's typed signature
         return await self._validate.icp(**kwargs)
 
-    async def append(self, **kwargs: Any) -> list[AppendResult] | bytes:
+    async def append(self, **kwargs: Any) -> list[AppendResult] | bytes:  # noqa: ANN401 -- forwards to AsyncEnrichResource.append's typed signature
         return await self._enrich.append(**kwargs)
 
-    async def segment(self, **kwargs: Any) -> AsyncJob:
+    async def segment(self, **kwargs: Any) -> AsyncJob:  # noqa: ANN401 -- forwards to AsyncEnrichResource.segment's typed signature
         return await self._enrich.segment(**kwargs)
 
     async def aclose(self) -> None:

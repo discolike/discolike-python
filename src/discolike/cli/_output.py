@@ -4,24 +4,26 @@ import functools
 import json
 import sys
 from collections.abc import Callable
-from typing import Any, Protocol, TypeVar
+from typing import Any
+from typing import ParamSpec
+from typing import Protocol
+from typing import TypeVar
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
-from discolike._exceptions import (
-    APIConnectionError,
-    AuthenticationError,
-    DiscolikeError,
-    NotFoundError,
-    PlanAccessError,
-    RateLimitError,
-    ValidationError,
-)
+from discolike._exceptions import APIConnectionError
+from discolike._exceptions import AuthenticationError
+from discolike._exceptions import DiscolikeError
+from discolike._exceptions import NotFoundError
+from discolike._exceptions import PlanAccessError
+from discolike._exceptions import RateLimitError
+from discolike._exceptions import ValidationError
 from discolike._models import DiscolikeModel
 
-F = TypeVar("F", bound=Callable[..., Any])
+P = ParamSpec("P")
+R = TypeVar("R")
 
 EXIT_CODES: dict[type, int] = {
     ValidationError: 2,
@@ -34,14 +36,23 @@ EXIT_CODES: dict[type, int] = {
 DEFAULT_EXIT_CODE = 1
 
 
+class _JobStatusLike(Protocol):
+    results: Any
+
+    @property
+    def progress(self) -> int | None: ...
+
+    def to_dict(self) -> dict[str, Any]: ...
+
+
 class SupportsWait(Protocol):
     task_id: str
     task_family: str
 
-    def wait(self, *, timeout: float, on_poll: Callable[[Any], None] | None = None) -> Any: ...
+    def wait(self, *, timeout: float, on_poll: Callable[[_JobStatusLike], None] | None = None) -> _JobStatusLike: ...
 
 
-def _normalize(data: Any) -> Any:
+def _normalize(data: Any) -> Any:  # noqa: ANN401 -- accepts arbitrary JSON-serializable CLI output data
     if isinstance(data, DiscolikeModel):
         return data.to_dict()
     if isinstance(data, list):
@@ -49,11 +60,11 @@ def _normalize(data: Any) -> Any:
     return data
 
 
-def _is_flat_dict(value: Any) -> bool:
+def _is_flat_dict(value: Any) -> bool:  # noqa: ANN401 -- runtime-narrowed via isinstance, not a fixed shape
     return isinstance(value, dict) and not any(isinstance(v, (dict, list)) for v in value.values())
 
 
-def _qualifies_for_table(data: Any) -> bool:
+def _qualifies_for_table(data: Any) -> bool:  # noqa: ANN401 -- runtime-narrowed via isinstance, not a fixed shape
     return isinstance(data, list) and len(data) > 0 and all(_is_flat_dict(item) for item in data)
 
 
@@ -67,7 +78,7 @@ def _render_table(rows: list[dict[str, Any]]) -> None:
     Console().print(table)
 
 
-def emit(data: Any, *, fmt: str | None = None) -> None:
+def emit(data: Any, *, fmt: str | None = None) -> None:  # noqa: ANN401 -- accepts arbitrary JSON-serializable CLI output data
     normalized = _normalize(data)
     want_table = fmt == "table" or (fmt is None and sys.stdout.isatty())
     if want_table and _qualifies_for_table(normalized):
@@ -88,15 +99,15 @@ def fail(exc: DiscolikeError) -> typer.Exit:
     return typer.Exit(code=EXIT_CODES.get(type(exc), DEFAULT_EXIT_CODE))
 
 
-def handle_errors(fn: F) -> F:
+def handle_errors(fn: Callable[P, R]) -> Callable[P, R]:
     @functools.wraps(fn)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return fn(*args, **kwargs)
         except DiscolikeError as exc:
             raise fail(exc) from exc
 
-    return wrapper  # ty: ignore[invalid-return-type]
+    return wrapper
 
 
 def run_job(job: SupportsWait, *, wait: bool, timeout: float) -> None:
@@ -110,7 +121,7 @@ def run_job(job: SupportsWait, *, wait: bool, timeout: float) -> None:
         )
         return
 
-    def _on_poll(status: Any) -> None:
+    def _on_poll(status: _JobStatusLike) -> None:
         sys.stderr.write(f"progress: {status.progress}%\n")
 
     final = job.wait(timeout=timeout, on_poll=_on_poll)

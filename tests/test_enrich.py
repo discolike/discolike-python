@@ -5,8 +5,11 @@ import io
 import httpx
 import pytest
 
-from conftest import make_async_client, make_client
-from discolike._jobs import FAMILY_SEGMENT, AsyncJob, Job
+from conftest import make_async_client
+from conftest import make_client
+from discolike._jobs import FAMILY_SEGMENT
+from discolike._jobs import AsyncJob
+from discolike._jobs import Job
 
 
 def test_append_json_response_parses_result_list() -> None:

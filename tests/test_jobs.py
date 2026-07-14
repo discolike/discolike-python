@@ -2,9 +2,13 @@ import httpx
 import pytest
 
 import discolike._jobs as jobs_module
-from discolike import JobFailedError, JobTimeoutError
-from discolike._jobs import FAMILY_DISCOGEN, AsyncJob, Job
-from discolike._transport import AsyncTransport, Transport
+from discolike import JobFailedError
+from discolike import JobTimeoutError
+from discolike._jobs import FAMILY_DISCOGEN
+from discolike._jobs import AsyncJob
+from discolike._jobs import Job
+from discolike._transport import AsyncTransport
+from discolike._transport import Transport
 
 BASE = "https://api.test/v1"
 

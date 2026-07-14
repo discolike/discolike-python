@@ -2,8 +2,11 @@ import httpx
 import pytest
 
 import discolike._transport as transport_module
-from discolike import APIConnectionError, RateLimitError
-from discolike._transport import AsyncTransport, Transport, drop_none
+from discolike import APIConnectionError
+from discolike import RateLimitError
+from discolike._transport import AsyncTransport
+from discolike._transport import Transport
+from discolike._transport import drop_none
 
 
 @pytest.fixture(autouse=True)

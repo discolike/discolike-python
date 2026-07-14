@@ -4,8 +4,12 @@ import json
 
 import httpx
 
-from conftest import make_async_client, make_client
-from discolike._jobs import FAMILY_CONTACTMATCH, FAMILY_DISCOGEN, AsyncJob, Job
+from conftest import make_async_client
+from conftest import make_client
+from discolike._jobs import FAMILY_CONTACTMATCH
+from discolike._jobs import FAMILY_DISCOGEN
+from discolike._jobs import AsyncJob
+from discolike._jobs import Job
 
 
 def test_search_builds_query_and_parses_list() -> None:

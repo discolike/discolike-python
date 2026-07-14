@@ -7,8 +7,15 @@ from collections.abc import Callable
 import pytest
 import typer
 
-from discolike import AuthenticationError, RateLimitError, ServerError, ValidationError
-from discolike.cli._output import EXIT_CODES, emit, fail, handle_errors, run_job
+from discolike import AuthenticationError
+from discolike import RateLimitError
+from discolike import ServerError
+from discolike import ValidationError
+from discolike.cli._output import EXIT_CODES
+from discolike.cli._output import emit
+from discolike.cli._output import fail
+from discolike.cli._output import handle_errors
+from discolike.cli._output import run_job
 from discolike.resources.discovery import Company
 
 

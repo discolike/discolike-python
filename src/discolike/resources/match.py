@@ -3,9 +3,14 @@ from __future__ import annotations
 import pathlib
 from typing import BinaryIO
 
-from discolike._jobs import FAMILY_BULKMATCH, AsyncJob, Job
+from discolike._jobs import FAMILY_BULKMATCH
+from discolike._jobs import AsyncJob
+from discolike._jobs import Job
 from discolike._models import DiscolikeModel
-from discolike.resources._base import AsyncAPIResource, SyncAPIResource, api_route, open_upload
+from discolike.resources._base import AsyncAPIResource
+from discolike.resources._base import SyncAPIResource
+from discolike.resources._base import api_route
+from discolike.resources._base import open_upload
 
 
 class MatchResponse(DiscolikeModel):

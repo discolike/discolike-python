@@ -1,0 +1,51 @@
+---
+default_language_version:
+    python: python3
+
+repos:
+    - repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
+      rev: 0.2.3 # or other specific tag
+      hooks:
+          - id: yamlfmt
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v6.0.0
+      hooks:
+          - id: check-toml
+          - id: check-yaml
+          - id: check-json
+          - id: check-added-large-files
+          - id: debug-statements
+          - id: end-of-file-fixer
+          - id: trailing-whitespace
+    - repo: https://github.com/asottile/pyupgrade
+      rev: v3.21.2
+      hooks:
+          - id: pyupgrade
+            args: [--py310-plus, --keep-mock]
+    - repo: https://github.com/bwhmather/ssort
+      rev: 0.16.0
+      hooks:
+          - id: ssort
+    - repo: https://github.com/astral-sh/ruff-pre-commit
+      # Ruff version.
+      rev: v0.15.14
+      hooks:
+        # Run the linter.
+          - id: ruff
+            args: [--extend-select, I, --fix]
+        # Run the formatter.
+          - id: ruff-format
+    - repo: local
+      hooks:
+          - id: foxguard
+            name: foxguard
+            entry: npx -y foxguard@0.10.0 --staged
+            language: system
+            pass_filenames: false
+            always_run: true
+          - id: foxguard-secrets
+            name: foxguard-secrets
+            entry: npx -y foxguard@0.10.0 secrets --staged
+            language: system
+            pass_filenames: false
+            always_run: true
