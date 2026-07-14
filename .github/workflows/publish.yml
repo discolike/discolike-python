@@ -5,7 +5,7 @@ on:
         types: [published]
 
 jobs:
-    publish:
+    publish-sdk:
         runs-on: ubuntu-latest
         environment: pypi
         permissions:
@@ -15,7 +15,21 @@ jobs:
             - uses: astral-sh/setup-uv@v5
               with:
                   python-version: '3.14'
-            - run: uv build --package discolike -o dist/ && uv build --package discolike-cli -o dist/
+            - run: uv build --package discolike -o dist/
+            - uses: pypa/gh-action-pypi-publish@release/v1
+              with:
+                  packages-dir: dist/
+    publish-cli:
+        runs-on: ubuntu-latest
+        environment: pypi-cli
+        permissions:
+            id-token: write
+        steps:
+            - uses: actions/checkout@v4
+            - uses: astral-sh/setup-uv@v5
+              with:
+                  python-version: '3.14'
+            - run: uv build --package discolike-cli -o dist/
             - uses: pypa/gh-action-pypi-publish@release/v1
               with:
                   packages-dir: dist/
