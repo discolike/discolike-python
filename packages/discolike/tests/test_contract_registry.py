@@ -5,7 +5,7 @@ import sys
 
 from discolike.resources._base import get_discolike_route
 
-ALLOW_UNSTAMPED = {"job"}
+ALLOW_UNSTAMPED = {"job", "batch"}
 SCRIPT_PATH = pathlib.Path(__file__).parents[3] / "scripts" / "check_contract.py"
 
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- SDK: new `email` resource — `client.email.find_batch` / `verify_batch` / `find`, with typed `ValidationOutput` / `EnumerationOutput` results and batch/job handles that poll to completion.
+
 ## 0.1.1 (2026-07-14)
 
 - SDK + CLI: new `search_providers` and `llm_providers` resources / `search-providers` and `llm-providers` command groups — BYOK provider management (14 routes).

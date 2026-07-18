@@ -24,6 +24,8 @@ from discolike.resources.discovery import AsyncDiscoveryResource
 from discolike.resources.discovery import Company
 from discolike.resources.discovery import Count
 from discolike.resources.discovery import DiscoveryResource
+from discolike.resources.email import AsyncEmailResource
+from discolike.resources.email import EmailResource
 from discolike.resources.enrich import AppendResult
 from discolike.resources.enrich import AsyncEnrichResource
 from discolike.resources.enrich import EnrichResource
@@ -62,6 +64,7 @@ class Discolike:
         self.contacts = ContactsResource(self._transport)
         self.match = MatchResource(self._transport)
         self.discogen = DiscogenResource(self._transport)
+        self.email = EmailResource(self._transport)
         self.queries = QueriesResource(self._transport)
         self.search_providers = SearchProvidersResource(self._transport)
         self.llm_providers = LLMProvidersResource(self._transport)
@@ -116,6 +119,7 @@ class AsyncDiscolike:
         self.contacts = AsyncContactsResource(self._transport)
         self.match = AsyncMatchResource(self._transport)
         self.discogen = AsyncDiscogenResource(self._transport)
+        self.email = AsyncEmailResource(self._transport)
         self.queries = AsyncQueriesResource(self._transport)
         self.search_providers = AsyncSearchProvidersResource(self._transport)
         self.llm_providers = AsyncLLMProvidersResource(self._transport)
