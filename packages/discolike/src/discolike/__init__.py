@@ -17,6 +17,11 @@ from discolike._models import DiscolikeModel
 from discolike._version import __version__
 from discolike.resources.discovery import Company
 from discolike.resources.discovery import Count
+from discolike.resources.email import EmailBatchResults
+from discolike.resources.email import EmailJobResult
+from discolike.resources.email import EnumerationMatch
+from discolike.resources.email import EnumerationOutput
+from discolike.resources.email import ValidationOutput
 
 __all__ = [
     "APIConnectionError",
@@ -28,6 +33,10 @@ __all__ = [
     "Discolike",
     "DiscolikeError",
     "DiscolikeModel",
+    "EmailBatchResults",
+    "EmailJobResult",
+    "EnumerationMatch",
+    "EnumerationOutput",
     "Job",
     "JobFailedError",
     "JobStatus",
@@ -37,5 +46,6 @@ __all__ = [
     "RateLimitError",
     "ServerError",
     "ValidationError",
+    "ValidationOutput",
     "__version__",
 ]
