@@ -107,7 +107,7 @@ def test_segment_file_branch_returns_job(tmp_path) -> None:
 def test_segment_raises_when_neither_domains_nor_file_given() -> None:
     with (
         make_client(lambda request: httpx.Response(200, json={})) as client,
-        pytest.raises(ValueError, match="exactly one of domains or file is required"),
+        pytest.raises(ValueError, match="one of domains, query_id, or file is required"),
     ):
         client.segment()
 
@@ -118,7 +118,7 @@ def test_segment_raises_when_both_domains_and_file_given(tmp_path) -> None:
 
     with (
         make_client(lambda request: httpx.Response(200, json={})) as client,
-        pytest.raises(ValueError, match="exactly one of domains or file is required"),
+        pytest.raises(ValueError, match="file cannot be combined with domains or query_id"),
     ):
         client.segment(domains=["acme.com"], file=csv_path)
 

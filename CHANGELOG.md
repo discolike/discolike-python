@@ -3,6 +3,7 @@
 ## Unreleased
 
 - SDK: new `email` resource — `client.email.find_batch` / `verify_batch` / `find`, with typed `ValidationOutput` / `EnumerationOutput` results and batch/job handles that poll to completion.
+- SDK: `append`, `segment`, and `contacts.generate` accept a `query_id` (`inclusion_query_id` on `generate`) param that resolves saved queries into domains server-side and unions them with any `file`/`domains` given (Starter+). `append.file` and `segment.domains`/`file` are now optional as long as `query_id` is provided; `contacts.generate` can run with `inclusion_query_id` alone. Not yet reflected in `scripts/check_contract.py` since the platform API hasn't deployed this change.
 
 ## 0.1.1 (2026-07-14)
 
