@@ -101,6 +101,36 @@ async def test_delete_async(make_async_client: AsyncClientFactory) -> None:
     assert result is None
 
 
+def test_save_results_posts_json_body() -> None:
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["path"] = request.url.path
+        seen["method"] = request.method
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"query_id": "q6", "action": "thin_discover", "row_count": 1})
+
+    with make_client(handler) as client:
+        result = client.queries.save_results(query_name="R", action="discover", data=[{"domain": "a.com"}], tags=["x"])
+
+    assert seen["path"] == "/v1/queries/save-results"
+    assert seen["method"] == "POST"
+    assert seen["body"] == {"query_name": "R", "action": "discover", "data": [{"domain": "a.com"}], "tags": ["x"]}
+    assert result.query_id == "q6"
+    assert result.action == "thin_discover"
+    assert result.row_count == 1
+
+
+async def test_save_results_async() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"query_id": "q7"})
+
+    async with make_async_client(handler) as client:
+        result = await client.queries.save_results(query_name="R", action="discover", data=[{"domain": "a.com"}])
+
+    assert result.query_id == "q7"
+
+
 def test_route_metadata_stamped() -> None:
     from discolike.resources._base import get_discolike_route
     from discolike.resources.queries import QueriesResource
@@ -109,3 +139,4 @@ def test_route_metadata_stamped() -> None:
     assert get_discolike_route(QueriesResource.create_exclusion_list) == ("POST", "/queries/exclusion-list", True, ())
     assert get_discolike_route(QueriesResource.update) == ("PATCH", "/queries/{query_id}", True, ())
     assert get_discolike_route(QueriesResource.delete) == ("DELETE", "/queries/{query_id}", True, ())
+    assert get_discolike_route(QueriesResource.save_results) == ("POST", "/queries/save-results", True, ())
