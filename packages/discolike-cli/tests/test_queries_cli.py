@@ -134,3 +134,21 @@ def test_queries_save_results_csv_input(monkeypatch, tmp_path):
     )
     assert result.exit_code == 0, result.output
     assert captured["body"]["data"] == [{"domain": "a.com", "score": "1"}, {"domain": "b.com", "score": "2"}]
+    assert captured["body"]["query_name"] == "R"
+    assert captured["body"]["action"] == "discover"
+
+
+def test_queries_save_results_missing_input_file_is_clean_error(monkeypatch, tmp_path):
+    def handler(request):
+        raise AssertionError("handler should not be reached for a missing --input file")
+
+    _install_build_client(monkeypatch, handler)
+    missing = tmp_path / "does-not-exist.json"
+    result = runner.invoke(
+        app,
+        ["queries", "save-results", "--input", str(missing), "--name", "R", "--action", "discover"],
+    )
+    assert result.exit_code == 2, result.output
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    assert "Traceback" not in result.output
+    assert missing.name in result.output.replace("\n", "")

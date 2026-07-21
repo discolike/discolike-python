@@ -56,7 +56,7 @@ def create_exclusion_list_command(
 @handle_errors
 def save_results_command(
     ctx: typer.Context,
-    input_path: str = typer.Option(
+    input_path: Path = typer.Option(
         ..., "--input", help="Path to a .json (list of row objects) or .csv (header row) file."
     ),
     name: str = typer.Option(..., "--name", help="Name for the saved query."),
@@ -69,12 +69,16 @@ def save_results_command(
     """Save result rows from a file as a reusable saved query."""
     from discolike_cli.main import get_client
 
-    path = Path(input_path)
-    if path.suffix.lower() == ".csv":
-        with path.open(newline="") as fh:
-            data = [dict(row) for row in csv.DictReader(fh)]
-    else:
-        data = json.loads(path.read_text())
+    try:
+        if input_path.suffix.lower() == ".csv":
+            with input_path.open(newline="") as fh:
+                data = [dict(row) for row in csv.DictReader(fh)]
+        else:
+            data = json.loads(input_path.read_text())
+    except FileNotFoundError as exc:
+        raise typer.BadParameter(f"--input file not found: {input_path}") from exc
+    except json.JSONDecodeError as exc:
+        raise typer.BadParameter(f"--input file {input_path} must contain valid JSON: {exc}") from exc
 
     emit(
         get_client(ctx).queries.save_results(
