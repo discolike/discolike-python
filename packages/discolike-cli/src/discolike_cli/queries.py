@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import csv
+import json
+from pathlib import Path
+
 import typer
 
 from discolike_cli._output import emit
@@ -43,6 +47,41 @@ def create_exclusion_list_command(
             query_name=name,
             domains=domain,
             persona_ids=persona_id,
+            tags=tag,
+        )
+    )
+
+
+@app.command("save-results")
+@handle_errors
+def save_results_command(
+    ctx: typer.Context,
+    input_path: str = typer.Option(
+        ..., "--input", help="Path to a .json (list of row objects) or .csv (header row) file."
+    ),
+    name: str = typer.Option(..., "--name", help="Name for the saved query."),
+    action: str = typer.Option(
+        ..., "--action", help="Underlying action: discover, segment, contacts, append, or match."
+    ),
+    domain_column: str = typer.Option("domain", "--domain-column", help="Column holding domains."),
+    tag: list[str] | None = typer.Option(None, "--tag", help="Tag to attach (repeatable)."),
+) -> None:
+    """Save result rows from a file as a reusable saved query."""
+    from discolike_cli.main import get_client
+
+    path = Path(input_path)
+    if path.suffix.lower() == ".csv":
+        with path.open(newline="") as fh:
+            data = [dict(row) for row in csv.DictReader(fh)]
+    else:
+        data = json.loads(path.read_text())
+
+    emit(
+        get_client(ctx).queries.save_results(
+            query_name=name,
+            action=action,
+            data=data,
+            domain_column=domain_column,
             tags=tag,
         )
     )
