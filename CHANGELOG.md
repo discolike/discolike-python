@@ -4,6 +4,7 @@
 
 - SDK: new `email` resource — `client.email.find_batch` / `verify_batch` / `find`, with typed `ValidationOutput` / `EnumerationOutput` results and batch/job handles that poll to completion.
 - SDK: `append` and `segment` accept a `query_id` param that resolves saved queries into domains server-side and unions them with any `file`/`domains` given (Starter+). `append.file` and `segment.domains`/`file` are now optional as long as `query_id` is provided. Not yet reflected in `scripts/check_contract.py` since the platform API hasn't deployed this change.
+- SDK: `match.company`/`match.bulk` (sync + async) accept an optional `min_match_confidence` param (50-100) to filter out low-confidence matches; omitted by default so the server default governs. Not yet reflected in `scripts/check_contract.py` since the platform API hasn't deployed this change.
 
 ## 0.1.1 (2026-07-14)
 
