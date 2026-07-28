@@ -53,6 +53,7 @@ class ValidationOutput(DiscolikeModel):
     attempts: int | None = None
     duration_ms: int | None = None
     error: str | None = None
+    reason: str | None = None
 
 
 class EmailJobResult(DiscolikeModel):

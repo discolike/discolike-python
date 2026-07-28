@@ -124,6 +124,7 @@ def test_verify_batch_results_polls_and_decodes_validation_output() -> None:
                             "smtp_code": 250,
                             "attempts": 1,
                             "duration_ms": 42,
+                            "reason": "deliverable",
                         },
                         "error": None,
                     }
@@ -146,6 +147,7 @@ def test_verify_batch_results_polls_and_decodes_validation_output() -> None:
     assert item.result.status == "safe"
     assert item.result.is_deliverable is True
     assert item.result.smtp_code == 250
+    assert item.result.reason == "deliverable"
 
 
 def test_find_batch_results_decodes_enumeration_output_and_failed_item() -> None:
@@ -343,6 +345,7 @@ async def test_verify_batch_async_results_decodes() -> None:
     assert isinstance(item.result, ValidationOutput)
     assert item.result.status == "risky"
     assert item.result.is_catch_all is True
+    assert item.result.reason is None
 
 
 async def test_find_async_job_wait() -> None:
