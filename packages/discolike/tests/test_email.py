@@ -386,7 +386,42 @@ def test_verify_batch_is_not_part_of_the_sdk_surface() -> None:
 
 
 def test_batch_can_still_re_attach_to_a_verify_batch() -> None:
-    """Results polling stays public, so a verify batch id must still decode."""
-    from discolike.resources.email import EmailResource
+    """`verify_batch` is gone, but results polling stays public — so a batch id
+    the DiscoLike app created is still the only way to reach a `ValidationOutput`,
+    and re-attaching to one must round-trip end to end."""
+    handler = _results_sequence(
+        [
+            {
+                "batch_id": "b-9",
+                "total": 1,
+                "completed": 1,
+                "failed": 0,
+                "results": [
+                    {
+                        "job_id": "j-9",
+                        "status": "completed",
+                        "result": {
+                            "email": "ada@acme.com",
+                            "status": "invalid",
+                            "is_deliverable": False,
+                            "is_catch_all": False,
+                            "reason": "no_mailbox",
+                        },
+                        "error": None,
+                    }
+                ],
+            }
+        ]
+    )
 
-    assert hasattr(EmailResource, "batch")
+    with make_client(handler) as client:
+        batch = client.email.batch("b-9", kind="verify")
+        results = batch.results(timeout=60.0, poll_interval=1.0)
+
+    assert isinstance(batch, EmailBatch)
+    assert batch.batch_id == "b-9"
+    assert batch.kind == "verify"
+    item = results.results[0]
+    assert isinstance(item.result, ValidationOutput)
+    assert item.result.status == "invalid"
+    assert item.result.reason == "no_mailbox"
