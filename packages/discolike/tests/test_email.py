@@ -70,26 +70,6 @@ def test_find_batch_posts_and_returns_batch() -> None:
     assert batch.kind == "find"
 
 
-def test_verify_batch_posts_and_returns_batch() -> None:
-    seen = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        seen["path"] = request.url.path
-        seen["method"] = request.method
-        seen["body"] = json.loads(request.content)
-        return httpx.Response(202, json={"batch_id": "b-2", "job_ids": ["j-3"], "total": 1})
-
-    with make_client(handler) as client:
-        batch = client.email.verify_batch(emails=["ada@acme.com"])
-
-    assert seen["path"] == "/v1/email/verify/batch"
-    assert seen["method"] == "POST"
-    assert seen["body"] == {"emails": ["ada@acme.com"]}
-    assert isinstance(batch, EmailBatch)
-    assert batch.batch_id == "b-2"
-    assert batch.kind == "verify"
-
-
 def test_verify_batch_results_polls_and_decodes_validation_output() -> None:
     handler = _results_sequence(
         [
@@ -392,6 +372,21 @@ def test_route_metadata_stamped() -> None:
 
     assert get_discolike_route(EmailResource.find) == ("POST", "/email/find", True, ())
     assert get_discolike_route(EmailResource.find_batch) == ("POST", "/email/find/batch", True, ("contacts",))
-    assert get_discolike_route(EmailResource.verify_batch) == ("POST", "/email/verify/batch", True, ())
     assert get_discolike_route(EmailResource.job) is None
     assert get_discolike_route(EmailResource.batch) is None
+
+
+def test_verify_batch_is_not_part_of_the_sdk_surface() -> None:
+    """Submission of arbitrary addresses is app-internal; the SDK must not offer it."""
+    from discolike.resources.email import AsyncEmailResource
+    from discolike.resources.email import EmailResource
+
+    assert not hasattr(EmailResource, "verify_batch")
+    assert not hasattr(AsyncEmailResource, "verify_batch")
+
+
+def test_batch_can_still_re_attach_to_a_verify_batch() -> None:
+    """Results polling stays public, so a verify batch id must still decode."""
+    from discolike.resources.email import EmailResource
+
+    assert hasattr(EmailResource, "batch")
