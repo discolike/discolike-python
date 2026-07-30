@@ -8,17 +8,12 @@ import httpx
 import pytest
 from typer.testing import CliRunner
 
-import discolike_cli.main as cli_main
-from conftest import make_client
 from discolike._config import config_path
 from discolike._config import save_config
 from discolike_cli.main import app
+from discolike_testkit import Handler
 
 runner = CliRunner()
-
-
-def _install_build_client(monkeypatch: pytest.MonkeyPatch, handler: Callable[[httpx.Request], httpx.Response]) -> None:
-    monkeypatch.setattr(cli_main, "build_client", lambda **kwargs: make_client(handler))
 
 
 def _usage_ok(request: httpx.Request) -> httpx.Response:
@@ -29,8 +24,8 @@ def _usage_unauthorized(request: httpx.Request) -> httpx.Response:
     return httpx.Response(401, json={"detail": "invalid key"})
 
 
-def test_login_with_api_key_option_verifies_and_saves(monkeypatch: pytest.MonkeyPatch) -> None:
-    _install_build_client(monkeypatch, _usage_ok)
+def test_login_with_api_key_option_verifies_and_saves(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_usage_ok)
     result = runner.invoke(app, ["auth", "login", "--api-key", "dk-1"])
     assert result.exit_code == 0, result.output
     assert json.loads(config_path().read_text())["api_key"] == "dk-1"
@@ -40,15 +35,15 @@ def test_login_with_api_key_option_verifies_and_saves(monkeypatch: pytest.Monkey
     assert payload["logged_in"] is True
 
 
-def test_login_prompts_for_key_when_not_given(monkeypatch: pytest.MonkeyPatch) -> None:
-    _install_build_client(monkeypatch, _usage_ok)
+def test_login_prompts_for_key_when_not_given(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_usage_ok)
     result = runner.invoke(app, ["auth", "login"], input="dk-2\n")
     assert result.exit_code == 0, result.output
     assert json.loads(config_path().read_text())["api_key"] == "dk-2"
 
 
-def test_login_failed_verify_exits_3_and_writes_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
-    _install_build_client(monkeypatch, _usage_unauthorized)
+def test_login_failed_verify_exits_3_and_writes_nothing(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_usage_unauthorized)
     result = runner.invoke(app, ["auth", "login", "--api-key", "bad-key"])
     assert result.exit_code == 3
     assert not config_path().exists()
@@ -56,8 +51,10 @@ def test_login_failed_verify_exits_3_and_writes_nothing(monkeypatch: pytest.Monk
     assert payload["error"] == "AuthenticationError"
 
 
-def test_status_masks_key_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    _install_build_client(monkeypatch, _usage_ok)
+def test_status_masks_key_from_env(
+    monkeypatch: pytest.MonkeyPatch, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_ok)
     monkeypatch.setenv("DISCOLIKE_API_KEY", "dk-abcdefgh1234")
     result = runner.invoke(app, ["auth", "status"])
     assert result.exit_code == 0, result.output
@@ -67,8 +64,8 @@ def test_status_masks_key_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert payload["valid"] is True
 
 
-def test_status_masks_key_from_config(monkeypatch: pytest.MonkeyPatch) -> None:
-    _install_build_client(monkeypatch, _usage_ok)
+def test_status_masks_key_from_config(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_usage_ok)
     save_config({"auth_method": "api_key", "api_key": "dk-zzzzzzzz5678"})
     result = runner.invoke(app, ["auth", "status"])
     assert result.exit_code == 0, result.output
@@ -77,8 +74,8 @@ def test_status_masks_key_from_config(monkeypatch: pytest.MonkeyPatch) -> None:
     assert payload["api_key"] == "…5678"
 
 
-def test_status_no_key_exits_3_with_guidance(monkeypatch: pytest.MonkeyPatch) -> None:
-    _install_build_client(monkeypatch, _usage_ok)
+def test_status_no_key_exits_3_with_guidance(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_usage_ok)
     result = runner.invoke(app, ["auth", "status"])
     assert result.exit_code == 3
     payload = json.loads(result.stderr)
@@ -86,8 +83,10 @@ def test_status_no_key_exits_3_with_guidance(monkeypatch: pytest.MonkeyPatch) ->
     assert "discolike auth login" in payload["message"]
 
 
-def test_status_verify_failure_maps_through_handle_errors(monkeypatch: pytest.MonkeyPatch) -> None:
-    _install_build_client(monkeypatch, _usage_unauthorized)
+def test_status_verify_failure_maps_through_handle_errors(
+    monkeypatch: pytest.MonkeyPatch, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_unauthorized)
     monkeypatch.setenv("DISCOLIKE_API_KEY", "dk-badbadbad999")
     result = runner.invoke(app, ["auth", "status"])
     assert result.exit_code == 3
@@ -95,7 +94,7 @@ def test_status_verify_failure_maps_through_handle_errors(monkeypatch: pytest.Mo
     assert payload["error"] == "AuthenticationError"
 
 
-def test_logout_removes_config_file(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_logout_removes_config_file() -> None:
     save_config({"auth_method": "api_key", "api_key": "dk-1"})
     assert config_path().exists()
     result = runner.invoke(app, ["auth", "logout"])

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "discolike-testkit"
+version = "0.0.0"
+description = "Shared test helpers for the discolike workspace. Not published."
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = [
+  "discolike",
+  "httpx>=0.27",
+  "pytest>=8",
+]
+# Guards against an accidental `uv publish` picking this up; the publish
+# workflow builds discolike/discolike-cli by name and never sees this package.
+classifiers = ["Private :: Do Not Upload"]
+
+# Registers plugin.py with pytest on install, so the credential-isolation
+# fixture applies to every test regardless of rootdir or working directory.
+[project.entry-points.pytest11]
+discolike_testkit = "discolike_testkit.plugin"
+
+[tool.uv.sources]
+discolike = { workspace = true }

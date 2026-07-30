@@ -4,15 +4,15 @@ import json
 
 import httpx
 
-from conftest import make_async_client
-from conftest import make_client
 from discolike._jobs import FAMILY_CONTACTMATCH
 from discolike._jobs import FAMILY_DISCOGEN
 from discolike._jobs import AsyncJob
 from discolike._jobs import Job
+from discolike_testkit import AsyncClientFactory
+from discolike_testkit import ClientFactory
 
 
-def test_search_builds_query_and_parses_list() -> None:
+def test_search_builds_query_and_parses_list(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -42,7 +42,7 @@ def test_search_builds_query_and_parses_list() -> None:
     assert results[0].model_extra["extra_field"] == "kept"  # ty: ignore[not-subscriptable]
 
 
-def test_count() -> None:
+def test_count(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -62,7 +62,7 @@ def test_count() -> None:
     assert result.model_extra["count"] == 1234  # ty: ignore[not-subscriptable]
 
 
-def test_lookup() -> None:
+def test_lookup(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -83,7 +83,7 @@ def test_lookup() -> None:
     assert result.name == "Jane Doe"
 
 
-def test_match() -> None:
+def test_match(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -117,7 +117,7 @@ def test_match() -> None:
     assert result.matches[0].match_score == 95.2
 
 
-def test_bulk_match_posts_json_and_returns_job() -> None:
+def test_bulk_match_posts_json_and_returns_job(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -145,7 +145,7 @@ def test_bulk_match_posts_json_and_returns_job() -> None:
     assert job.task_id == "cm-1"
 
 
-def test_discover_posts_json_body() -> None:
+def test_discover_posts_json_body(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -182,7 +182,7 @@ def test_discover_posts_json_body() -> None:
     assert result.model_extra["total_domains"] == 1  # ty: ignore[not-subscriptable]
 
 
-def test_generate_posts_json_and_returns_job() -> None:
+def test_generate_posts_json_and_returns_job(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -210,7 +210,7 @@ def test_generate_posts_json_and_returns_job() -> None:
     assert job.task_id == "dg-1"
 
 
-async def test_search_async() -> None:
+async def test_search_async(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=[{"persona_id": 2, "domain": "b.com"}])
 
@@ -219,7 +219,7 @@ async def test_search_async() -> None:
     assert results[0].persona_id == 2
 
 
-async def test_bulk_match_async_returns_async_job() -> None:
+async def test_bulk_match_async_returns_async_job(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"task_id": "cm-2"})
 
@@ -231,7 +231,7 @@ async def test_bulk_match_async_returns_async_job() -> None:
     assert job.task_id == "cm-2"
 
 
-async def test_generate_async_returns_async_job() -> None:
+async def test_generate_async_returns_async_job(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"task_id": "dg-2"})
 

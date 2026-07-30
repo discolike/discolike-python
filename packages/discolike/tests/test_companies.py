@@ -1,8 +1,8 @@
 import httpx
 import pytest
 
-from conftest import make_async_client
-from conftest import make_client
+from discolike_testkit import AsyncClientFactory
+from discolike_testkit import ClientFactory
 
 CASES = [
     ("data", {"domain": "acme.com"}, "/v1/bizdata"),
@@ -19,7 +19,7 @@ CASES = [
 
 
 @pytest.mark.parametrize(("method", "kwargs", "path"), CASES)
-def test_companies_methods(method: str, kwargs: dict, path: str) -> None:
+def test_companies_methods(method: str, kwargs: dict, path: str, make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -37,7 +37,9 @@ def test_companies_methods(method: str, kwargs: dict, path: str) -> None:
 
 
 @pytest.mark.parametrize(("method", "kwargs", "path"), CASES)
-async def test_companies_methods_async(method: str, kwargs: dict, path: str) -> None:
+async def test_companies_methods_async(
+    method: str, kwargs: dict, path: str, make_async_client: AsyncClientFactory
+) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:

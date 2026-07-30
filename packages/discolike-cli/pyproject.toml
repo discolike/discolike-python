@@ -36,10 +36,12 @@ Documentation = "https://docs.discolike.com"
 Repository = "https://github.com/Discolike/discolike-python"
 
 [tool.uv.sources]
+discolike-testkit = { workspace = true }
 discolike = { workspace = true }
 
 [dependency-groups]
 dev = [
+  "discolike-testkit",
   "pytest>=8",
   "pytest-asyncio>=0.24",
   "ruff>=0.8",

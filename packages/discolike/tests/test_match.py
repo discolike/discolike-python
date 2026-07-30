@@ -2,14 +2,14 @@ import io
 
 import httpx
 
-from conftest import make_async_client
-from conftest import make_client
 from discolike._jobs import FAMILY_BULKMATCH
 from discolike._jobs import AsyncJob
 from discolike._jobs import Job
+from discolike_testkit import AsyncClientFactory
+from discolike_testkit import ClientFactory
 
 
-def test_company_sends_params_and_parses_response() -> None:
+def test_company_sends_params_and_parses_response(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -28,7 +28,7 @@ def test_company_sends_params_and_parses_response() -> None:
     assert result.model_extra["anything"] == 1  # ty: ignore[not-subscriptable]
 
 
-def test_company_omits_min_match_confidence_when_not_set() -> None:
+def test_company_omits_min_match_confidence_when_not_set(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -41,7 +41,7 @@ def test_company_omits_min_match_confidence_when_not_set() -> None:
     assert "min_match_confidence" not in seen["params"]
 
 
-def test_bulk_posts_multipart_with_path(tmp_path) -> None:
+def test_bulk_posts_multipart_with_path(tmp_path, make_client: ClientFactory) -> None:
     csv_path = tmp_path / "companies.csv"
     csv_path.write_text("company\nAcme\n")
     seen = {}
@@ -64,7 +64,7 @@ def test_bulk_posts_multipart_with_path(tmp_path) -> None:
     assert job.task_id == "bm-1"
 
 
-def test_bulk_accepts_open_handle_without_closing_it() -> None:
+def test_bulk_accepts_open_handle_without_closing_it(make_client: ClientFactory) -> None:
     handle = io.BytesIO(b"company\nAcme\n")
     handle.name = "companies.csv"
 
@@ -78,7 +78,7 @@ def test_bulk_accepts_open_handle_without_closing_it() -> None:
     assert handle.closed is False
 
 
-async def test_async_bulk_posts_multipart(tmp_path) -> None:
+async def test_async_bulk_posts_multipart(tmp_path, make_async_client: AsyncClientFactory) -> None:
     csv_path = tmp_path / "companies.csv"
     csv_path.write_text("company\nAcme\n")
     seen = {}
