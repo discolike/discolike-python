@@ -6,6 +6,7 @@ requires-python = ">=3.10"
 members = [
     "discolike",
     "discolike-cli",
+    "discolike-testkit",
 ]
 
 [[package]]
@@ -82,6 +83,7 @@ cli = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "discolike-testkit" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
@@ -98,6 +100,7 @@ provides-extras = ["cli"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "discolike-testkit", editable = "packages/discolike-testkit" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-asyncio", specifier = ">=0.24" },
     { name = "ruff", specifier = ">=0.8" },
@@ -116,6 +119,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "discolike-testkit" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
@@ -131,6 +135,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "discolike-testkit", editable = "packages/discolike-testkit" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-asyncio", specifier = ">=0.24" },
     { name = "ruff", specifier = ">=0.8" },
@@ -138,11 +143,28 @@ dev = [
 ]
 
 [[package]]
+name = "discolike-testkit"
+version = "0.0.0"
+source = { editable = "packages/discolike-testkit" }
+dependencies = [
+    { name = "discolike" },
+    { name = "httpx" },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "discolike", editable = "packages/discolike" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "pytest", specifier = ">=8" },
+]
+
+[[package]]
 name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [

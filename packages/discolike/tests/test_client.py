@@ -1,10 +1,10 @@
 import httpx
 import pytest
 
-from conftest import make_async_client
-from conftest import make_client
 from discolike import AuthenticationError
 from discolike import Discolike
+from discolike_testkit import AsyncClientFactory
+from discolike_testkit import ClientFactory
 
 
 def test_client_requires_key() -> None:
@@ -18,7 +18,7 @@ def test_client_reads_env_key(monkeypatch) -> None:
     client.close()
 
 
-def test_usage(monkeypatch) -> None:
+def test_usage(monkeypatch, make_client: ClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/v1/usage"
         return httpx.Response(200, json={"requests_mtd": 42, "spend_mtd": 1.5})
@@ -28,7 +28,7 @@ def test_usage(monkeypatch) -> None:
     assert usage.requests_mtd == 42
 
 
-async def test_usage_async() -> None:
+async def test_usage_async(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"requests_mtd": 7})
 

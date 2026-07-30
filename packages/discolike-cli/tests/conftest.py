@@ -1,23 +1,29 @@
+"""CLI-specific fixtures.
+
+Only fixtures live here -- pytest discovers them without an import, so this
+file is never imported by name. The workspace-wide client factories come from
+the ``discolike-testkit`` plugin.
+"""
+
+from collections.abc import Callable
+
 import httpx
 import pytest
 
-from discolike import AsyncDiscolike
+import discolike_cli.main as cli_main
 from discolike import Discolike
 
-BASE_URL = "https://api.test/v1"
+Handler = Callable[[httpx.Request], httpx.Response]
 
 
-def make_client(handler) -> Discolike:
-    http = httpx.Client(transport=httpx.MockTransport(handler), base_url=BASE_URL)
-    return Discolike(api_key="test-key", base_url=BASE_URL, http_client=http)
+@pytest.fixture
+def install_build_client(
+    monkeypatch: pytest.MonkeyPatch,
+    make_client: Callable[[Handler], Discolike],
+) -> Callable[[Handler], None]:
+    """Point the CLI's client factory at a mock transport driven by ``handler``."""
 
+    def _install(handler: Handler) -> None:
+        monkeypatch.setattr(cli_main, "build_client", lambda **kwargs: make_client(handler))
 
-def make_async_client(handler) -> AsyncDiscolike:
-    http = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url=BASE_URL)
-    return AsyncDiscolike(api_key="test-key", base_url=BASE_URL, http_client=http)
-
-
-@pytest.fixture(autouse=True)
-def no_ambient_credentials(monkeypatch, tmp_path):
-    monkeypatch.delenv("DISCOLIKE_API_KEY", raising=False)
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    return _install

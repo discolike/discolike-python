@@ -19,6 +19,6 @@ jobs:
             - run: uv sync --all-packages
             - run: uv run ruff check .
             - run: uv run ruff format --check .
-            - run: uv run ty check packages/discolike/src packages/discolike/tests packages/discolike-cli/src packages/discolike-cli/tests
+            - run: uv run ty check packages/discolike/src packages/discolike/tests packages/discolike-cli/src packages/discolike-cli/tests packages/discolike-testkit/src
             - run: uv run pytest packages/discolike/tests -q
             - run: uv run pytest packages/discolike-cli/tests -q

@@ -5,11 +5,11 @@ import json
 import httpx
 import pytest
 
-from conftest import make_async_client
-from conftest import make_client
+from discolike_testkit import AsyncClientFactory
+from discolike_testkit import ClientFactory
 
 
-def test_search_providers_list_hits_collection() -> None:
+def test_search_providers_list_hits_collection(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -25,7 +25,7 @@ def test_search_providers_list_hits_collection() -> None:
     assert result.model_extra["providers"] == [{"integration_id": "sp1"}]  # ty: ignore[not-subscriptable]
 
 
-def test_search_providers_create_posts_body_and_drops_unset() -> None:
+def test_search_providers_create_posts_body_and_drops_unset(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -53,7 +53,7 @@ def test_search_providers_create_posts_body_and_drops_unset() -> None:
     assert result.integration_id == "sp2"
 
 
-def test_search_providers_update_puts_path_and_body() -> None:
+def test_search_providers_update_puts_path_and_body(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -80,7 +80,7 @@ def test_search_providers_update_puts_path_and_body() -> None:
     assert result.integration_name == "Serper"
 
 
-def test_search_providers_delete_returns_none() -> None:
+def test_search_providers_delete_returns_none(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -96,7 +96,7 @@ def test_search_providers_delete_returns_none() -> None:
     assert result is None
 
 
-def test_search_providers_set_default_puts_default_subroute() -> None:
+def test_search_providers_set_default_puts_default_subroute(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -112,7 +112,7 @@ def test_search_providers_set_default_puts_default_subroute() -> None:
     assert result.integration_id == "sp5"
 
 
-def test_search_providers_clear_default_deletes_default_subroute() -> None:
+def test_search_providers_clear_default_deletes_default_subroute(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -128,7 +128,7 @@ def test_search_providers_clear_default_deletes_default_subroute() -> None:
     assert result.message == "Default search provider cleared successfully"
 
 
-def test_search_providers_models_hits_models_route() -> None:
+def test_search_providers_models_hits_models_route(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -144,7 +144,7 @@ def test_search_providers_models_hits_models_route() -> None:
     assert "tavily" in result.model_extra["models"]  # ty: ignore[not-subscriptable]
 
 
-def test_llm_providers_list_hits_config() -> None:
+def test_llm_providers_list_hits_config(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -160,7 +160,7 @@ def test_llm_providers_list_hits_config() -> None:
     assert result.model_extra["providers"] == []  # ty: ignore[not-subscriptable]
 
 
-def test_llm_providers_create_posts_body_and_drops_unset() -> None:
+def test_llm_providers_create_posts_body_and_drops_unset(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -188,7 +188,7 @@ def test_llm_providers_create_posts_body_and_drops_unset() -> None:
     assert result.integration_id == "llm1"
 
 
-def test_llm_providers_get_hits_config_item() -> None:
+def test_llm_providers_get_hits_config_item(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -204,7 +204,7 @@ def test_llm_providers_get_hits_config_item() -> None:
     assert result.integration_name == "Anthropic"
 
 
-def test_llm_providers_update_keeps_null_api_key_in_body() -> None:
+def test_llm_providers_update_keeps_null_api_key_in_body(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -232,7 +232,7 @@ def test_llm_providers_update_keeps_null_api_key_in_body() -> None:
     assert result.message == "updated"
 
 
-def test_llm_providers_update_sends_new_api_key() -> None:
+def test_llm_providers_update_sends_new_api_key(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -251,7 +251,7 @@ def test_llm_providers_update_sends_new_api_key() -> None:
     assert seen["body"]["api_key"] == "sk-new"
 
 
-def test_llm_providers_delete_returns_none() -> None:
+def test_llm_providers_delete_returns_none(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -267,7 +267,7 @@ def test_llm_providers_delete_returns_none() -> None:
     assert result is None
 
 
-def test_llm_providers_set_default_posts_subroute() -> None:
+def test_llm_providers_set_default_posts_subroute(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -283,7 +283,7 @@ def test_llm_providers_set_default_posts_subroute() -> None:
     assert result.integration_id == "llm5"
 
 
-def test_llm_providers_test_connection_posts_body() -> None:
+def test_llm_providers_test_connection_posts_body(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -314,7 +314,7 @@ def test_llm_providers_test_connection_posts_body() -> None:
 
 
 @pytest.mark.asyncio
-async def test_search_providers_list_async() -> None:
+async def test_search_providers_list_async(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"providers": []})
 
@@ -325,7 +325,7 @@ async def test_search_providers_list_async() -> None:
 
 
 @pytest.mark.asyncio
-async def test_search_providers_set_default_async() -> None:
+async def test_search_providers_set_default_async(make_async_client: AsyncClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -342,7 +342,7 @@ async def test_search_providers_set_default_async() -> None:
 
 
 @pytest.mark.asyncio
-async def test_llm_providers_create_async() -> None:
+async def test_llm_providers_create_async(make_async_client: AsyncClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -364,7 +364,7 @@ async def test_llm_providers_create_async() -> None:
 
 
 @pytest.mark.asyncio
-async def test_llm_providers_update_async_keeps_null_api_key() -> None:
+async def test_llm_providers_update_async_keeps_null_api_key(make_async_client: AsyncClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:

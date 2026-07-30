@@ -6,8 +6,6 @@ import httpx
 import pytest
 
 import discolike._jobs as jobs_module
-from conftest import make_async_client
-from conftest import make_client
 from discolike import JobFailedError
 from discolike.resources.email import AsyncEmailBatch
 from discolike.resources.email import AsyncEmailJob
@@ -15,6 +13,8 @@ from discolike.resources.email import EmailBatch
 from discolike.resources.email import EmailJob
 from discolike.resources.email import EnumerationOutput
 from discolike.resources.email import ValidationOutput
+from discolike_testkit import AsyncClientFactory
+from discolike_testkit import ClientFactory
 
 
 @pytest.fixture(autouse=True)
@@ -40,7 +40,7 @@ def _results_sequence(payloads):
     return handler
 
 
-def test_find_batch_posts_and_returns_batch() -> None:
+def test_find_batch_posts_and_returns_batch(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -70,7 +70,7 @@ def test_find_batch_posts_and_returns_batch() -> None:
     assert batch.kind == "find"
 
 
-def test_verify_batch_results_polls_and_decodes_validation_output() -> None:
+def test_verify_batch_results_polls_and_decodes_validation_output(make_client: ClientFactory) -> None:
     handler = _results_sequence(
         [
             {
@@ -130,7 +130,7 @@ def test_verify_batch_results_polls_and_decodes_validation_output() -> None:
     assert item.result.reason == "deliverable"
 
 
-def test_find_batch_results_decodes_enumeration_output_and_failed_item() -> None:
+def test_find_batch_results_decodes_enumeration_output_and_failed_item(make_client: ClientFactory) -> None:
     handler = _results_sequence(
         [
             {
@@ -188,7 +188,7 @@ def test_find_batch_results_decodes_enumeration_output_and_failed_item() -> None
     assert failed.error == "smtp timeout"
 
 
-def test_find_posts_and_job_wait_polls_jobs_endpoint() -> None:
+def test_find_posts_and_job_wait_polls_jobs_endpoint(make_client: ClientFactory) -> None:
     seen = {}
     state = {"i": 0}
     poll_payloads = [
@@ -241,7 +241,7 @@ def test_find_posts_and_job_wait_polls_jobs_endpoint() -> None:
     assert output.result.email == "grace@navy.mil"
 
 
-def test_find_wait_raises_on_failed_job() -> None:
+def test_find_wait_raises_on_failed_job(make_client: ClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
             return httpx.Response(202, json={"job_id": "j-x", "status": "queued"})
@@ -253,7 +253,7 @@ def test_find_wait_raises_on_failed_job() -> None:
             job.wait(timeout=60.0)
 
 
-def test_job_reattaches_without_http_call() -> None:
+def test_job_reattaches_without_http_call(make_client: ClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         pytest.fail("job()/batch() must not perform an HTTP request")
 
@@ -268,7 +268,7 @@ def test_job_reattaches_without_http_call() -> None:
     assert batch.kind == "verify"
 
 
-async def test_find_batch_async_returns_batch() -> None:
+async def test_find_batch_async_returns_batch(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(202, json={"batch_id": "b-async", "job_ids": ["j-a"], "total": 1})
 
@@ -282,7 +282,7 @@ async def test_find_batch_async_returns_batch() -> None:
     assert batch.kind == "find"
 
 
-async def test_verify_batch_async_results_decodes() -> None:
+async def test_verify_batch_async_results_decodes(make_async_client: AsyncClientFactory) -> None:
     handler = _results_sequence(
         [
             {
@@ -328,7 +328,7 @@ async def test_verify_batch_async_results_decodes() -> None:
     assert item.result.reason is None
 
 
-async def test_find_async_job_wait() -> None:
+async def test_find_async_job_wait(make_async_client: AsyncClientFactory) -> None:
     state = {"i": 0}
     poll_payloads = [
         {"job_id": "j-async", "status": "processing", "result": None, "error": None},
@@ -385,7 +385,7 @@ def test_verify_batch_is_not_part_of_the_sdk_surface() -> None:
     assert not hasattr(AsyncEmailResource, "verify_batch")
 
 
-def test_batch_can_still_re_attach_to_a_verify_batch() -> None:
+def test_batch_can_still_re_attach_to_a_verify_batch(make_client: ClientFactory) -> None:
     """`verify_batch` is gone, but results polling stays public — so a batch id
     the DiscoLike app created is still the only way to reach a `ValidationOutput`,
     and re-attaching to one must round-trip end to end."""

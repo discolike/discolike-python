@@ -7,15 +7,10 @@ import httpx
 import pytest
 from typer.testing import CliRunner
 
-import discolike_cli.main as cli_main
-from conftest import make_client
 from discolike_cli.main import app
+from discolike_testkit import Handler
 
 runner = CliRunner()
-
-
-def _install_build_client(monkeypatch: pytest.MonkeyPatch, handler: Callable[[httpx.Request], httpx.Response]) -> None:
-    monkeypatch.setattr(cli_main, "build_client", lambda **kwargs: make_client(handler))
 
 
 @pytest.mark.parametrize(
@@ -32,7 +27,7 @@ def _install_build_client(monkeypatch: pytest.MonkeyPatch, handler: Callable[[ht
     ],
 )
 def test_company_subcommands_route_to_expected_path(
-    monkeypatch: pytest.MonkeyPatch, args: list[str], expected_path: str
+    args: list[str], expected_path: str, install_build_client: Callable[[Handler], None]
 ) -> None:
     captured: dict[str, httpx.Request] = {}
 
@@ -40,7 +35,7 @@ def test_company_subcommands_route_to_expected_path(
         captured["request"] = request
         return httpx.Response(200, json={"ok": True})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(app, args)
     assert result.exit_code == 0, result.output
     request = captured["request"]
@@ -49,41 +44,41 @@ def test_company_subcommands_route_to_expected_path(
     assert json.loads(result.stdout) == {"ok": True}
 
 
-def test_company_history_passes_max_records(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_company_history_passes_max_records(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, httpx.Request] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["request"] = request
         return httpx.Response(200, json={"ok": True})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(app, ["company", "history", "acme.com", "--max-records", "10"])
     assert result.exit_code == 0, result.output
     assert captured["request"].url.params.get("max_records") == "10"
 
 
 @pytest.mark.parametrize("subcommand", ["redirects", "vendors", "subsidiaries"])
-def test_company_match_option_forwarded(monkeypatch: pytest.MonkeyPatch, subcommand: str) -> None:
+def test_company_match_option_forwarded(subcommand: str, install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, httpx.Request] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["request"] = request
         return httpx.Response(200, json={"ok": True})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(app, ["company", subcommand, "acme.com", "--match", "loose"])
     assert result.exit_code == 0, result.output
     assert captured["request"].url.params.get("match") == "loose"
 
 
-def test_company_public_links_hits_publiclink_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_company_public_links_hits_publiclink_endpoint(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, httpx.Request] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["request"] = request
         return httpx.Response(200, json={"ok": True})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(app, ["company", "public-links", "acme.com", "--source", "crunchbase"])
     assert result.exit_code == 0, result.output
     request = captured["request"]
@@ -92,33 +87,33 @@ def test_company_public_links_hits_publiclink_endpoint(monkeypatch: pytest.Monke
     assert request.url.params.get("source") == "crunchbase"
 
 
-def test_company_public_links_requires_source(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_company_public_links_requires_source(install_build_client: Callable[[Handler], None]) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"ok": True})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(app, ["company", "public-links", "acme.com"])
     assert result.exit_code == 2
 
 
-def test_company_data_format_table_falls_back_to_json_for_dict(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_company_data_format_table_falls_back_to_json_for_dict(install_build_client: Callable[[Handler], None]) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"name": "Acme", "domain": "acme.com"})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(app, ["company", "data", "acme.com", "--format", "table"])
     assert result.exit_code == 0, result.output
     assert json.loads(result.stdout) == {"name": "Acme", "domain": "acme.com"}
 
 
-def test_extract_hits_extract_endpoint_with_url(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_extract_hits_extract_endpoint_with_url(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, httpx.Request] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["request"] = request
         return httpx.Response(200, json={"text": "hello"})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(app, ["extract", "https://acme.com/about"])
     assert result.exit_code == 0, result.output
     request = captured["request"]

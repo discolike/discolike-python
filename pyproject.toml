@@ -1,6 +1,12 @@
 [tool.uv.workspace]
 members = ["packages/*"]
 
+# Mirrors the per-package [tool.pytest.ini_options]; this one governs runs from
+# the repo root, which span both packages. CI runs each package separately.
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["packages/discolike/tests", "packages/discolike-cli/tests"]
+
 [tool.ruff]
 show-fixes = true
 exclude = [".venv"]
@@ -8,7 +14,7 @@ line-length = 120
 respect-gitignore = true
 indent-width = 4
 target-version = "py310"
-src = ["packages/discolike/src", "packages/discolike/tests", "packages/discolike-cli/src", "packages/discolike-cli/tests"]
+src = ["packages/discolike/src", "packages/discolike/tests", "packages/discolike-cli/src", "packages/discolike-cli/tests", "packages/discolike-testkit/src"]
 
 [tool.ruff.lint]
 extend-ignore = [
