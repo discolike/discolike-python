@@ -107,10 +107,10 @@ def check(spec: dict, routes: list[RouteEntry]) -> list[str]:
     return mismatches
 
 
-def load_spec(*, spec_path: str | None) -> dict:
+def load_spec(*, spec_path: str | None, spec_url: str) -> dict:
     if spec_path is not None:
         return json.loads(pathlib.Path(spec_path).read_text())
-    response = httpx.get(SPEC_URL, timeout=REQUEST_TIMEOUT_SECONDS)
+    response = httpx.get(spec_url, timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
     return response.json()
 
@@ -118,9 +118,10 @@ def load_spec(*, spec_path: str | None) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Check the discolike SDK surface against the live OpenAPI spec.")
     parser.add_argument("--spec", default=None, help="Path to a local OpenAPI spec JSON file (offline mode).")
+    parser.add_argument("--spec-url", default=SPEC_URL, help="OpenAPI spec URL (defaults to the production spec).")
     args = parser.parse_args()
 
-    spec = load_spec(spec_path=args.spec)
+    spec = load_spec(spec_path=args.spec, spec_url=args.spec_url)
     routes = collect_routes()
     checked = [route for route in routes if route.openapi]
     skipped = [route for route in routes if not route.openapi]
