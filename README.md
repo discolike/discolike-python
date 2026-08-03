@@ -178,7 +178,7 @@ Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `ap
 | Surface | What it does |
 |---|---|
 | `client.discover()` / `client.count()` | Find lookalike companies by ICP text, phrases, tech stack, geo, and 40+ other filters |
-| `client.companies` | Company profiles: firmographics, scores, growth, history, redirects, vendors, subsidiaries |
+| `client.companies` | Company profiles: firmographics, scores, growth, redirects, vendors, subsidiaries |
 | `client.contacts` | Search, look up, match, and discover contacts at target companies |
 | `client.match` | Match company names (plus phone/city/state) to domains — single or bulk CSV |
 | `client.append()` | Enrich a CSV of domains with DiscoLike datasets |

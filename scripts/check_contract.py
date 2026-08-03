@@ -13,9 +13,36 @@ from types import ModuleType
 import httpx
 
 import discolike.resources
+from discolike._models import DiscolikeModel
 from discolike.resources._base import get_discolike_route
+from discolike.resources.companies import CompanyProfile
+from discolike.resources.companies import ExtractResult
+from discolike.resources.companies import Growth
+from discolike.resources.companies import PublicLink
+from discolike.resources.companies import Redirect
+from discolike.resources.companies import Score
+from discolike.resources.companies import Subsidiary
+from discolike.resources.companies import Vendor
+from discolike.resources.match import MatchResponse
+from discolike.resources.queries import SavedQueries
 
 IGNORE_PARAMS = {"file"}
+
+# SDK response model -> the OpenAPI component schema it mirrors. Anything listed here is
+# checked field-by-field against the spec, so a platform-side model change surfaces as a
+# contract failure instead of silently landing in `extra`.
+MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
+    "CompanyResult": CompanyProfile,
+    "ExtractResponse": ExtractResult,
+    "ScoreResponse": Score,
+    "GrowthResponse": Growth,
+    "RedirectResult": Redirect,
+    "VendorResult": Vendor,
+    "SubsidiaryResult": Subsidiary,
+    "PublicLinkResult": PublicLink,
+    "MatchResponse": MatchResponse,
+    "SavedQueriesListResponse": SavedQueries,
+}
 SPEC_URL = "https://api.discolike.com/v1/openapi.json"
 REQUEST_TIMEOUT_SECONDS = 30.0
 PATH_METHODS_WITH_BODY = {"POST", "PUT", "PATCH"}
@@ -107,6 +134,27 @@ def check(spec: dict, routes: list[RouteEntry]) -> list[str]:
     return mismatches
 
 
+def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = None) -> list[str]:
+    mismatches: list[str] = []
+    schemas = spec.get("components", {}).get("schemas", {})
+    for schema_name, model in (MIRRORED_SCHEMAS if mirrored is None else mirrored).items():
+        schema = schemas.get(schema_name)
+        if schema is None:
+            mismatches.append(f"{model.__name__}: schema '{schema_name}' not found in spec")
+            continue
+        spec_fields = set(schema.get("properties", {}).keys())
+        model_fields = set(model.model_fields)
+        mismatches.extend(
+            f"{model.__name__}: field '{field}' not in spec schema '{schema_name}'"
+            for field in sorted(model_fields - spec_fields)
+        )
+        mismatches.extend(
+            f"{model.__name__}: spec schema '{schema_name}' has field '{field}' the SDK does not declare"
+            for field in sorted(spec_fields - model_fields)
+        )
+    return mismatches
+
+
 def load_spec(*, spec_path: str | None, spec_url: str) -> dict:
     if spec_path is not None:
         return json.loads(pathlib.Path(spec_path).read_text())
@@ -129,9 +177,9 @@ def main() -> int:
     for route in sorted(skipped, key=lambda r: r.path):
         print(f"skipped (not in public schema): {route.http_method} {route.path}")
 
-    mismatches = check(spec, routes)
+    mismatches = check(spec, routes) + check_models(spec)
 
-    print(f"checked {len(checked)} routes, skipped {len(skipped)} routes")
+    print(f"checked {len(checked)} routes, skipped {len(skipped)} routes, {len(MIRRORED_SCHEMAS)} response models")
 
     if mismatches:
         print("MISMATCHES:")
@@ -139,7 +187,7 @@ def main() -> int:
             print(f"  {mismatch}")
         return 1
 
-    print("all routes match the spec")
+    print("all routes and response models match the spec")
     return 0
 
 

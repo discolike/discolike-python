@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pydantic
+
 from discolike._jobs import FAMILY_DISCOGEN
 from discolike._jobs import AsyncJob
 from discolike._jobs import Job
@@ -10,8 +12,13 @@ from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
 
 
+class DiscogenModelInfo(DiscolikeModel):
+    name: str | None = None
+    supports_web_search: bool | None = None
+
+
 class DiscogenModels(DiscolikeModel):
-    pass
+    models: dict[str, list[DiscogenModelInfo]] = pydantic.Field(default_factory=dict)
 
 
 class DiscogenResource(SyncAPIResource):

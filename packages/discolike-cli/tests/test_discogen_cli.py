@@ -137,12 +137,12 @@ def test_discogen_run_with_wait_polls_to_completion(install_build_client: Callab
 def test_discogen_models_hits_models_endpoint(install_build_client: Callable[[Handler], None]) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/v1/discogen/models"
-        return httpx.Response(200, json={"models": ["default"]})
+        return httpx.Response(200, json={"models": {"openai": [{"name": "gpt-5.4", "supports_web_search": False}]}})
 
     install_build_client(handler)
     result = runner.invoke(app, ["discogen", "models"])
     assert result.exit_code == 0, result.output
-    assert json.loads(result.stdout) == {"models": ["default"]}
+    assert json.loads(result.stdout) == {"models": {"openai": [{"name": "gpt-5.4", "supports_web_search": False}]}}
 
 
 def test_discogen_status_default_family_discogen(install_build_client: Callable[[Handler], None]) -> None:

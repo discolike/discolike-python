@@ -19,11 +19,6 @@ runner = CliRunner()
         (["company", "data", "acme.com"], "/v1/bizdata"),
         (["company", "score", "acme.com"], "/v1/score"),
         (["company", "growth", "acme.com"], "/v1/growth"),
-        (["company", "metrics", "acme.com"], "/v1/metrics"),
-        (["company", "history", "acme.com"], "/v1/history"),
-        (["company", "redirects", "acme.com"], "/v1/redirects"),
-        (["company", "vendors", "acme.com"], "/v1/vendors"),
-        (["company", "subsidiaries", "acme.com"], "/v1/subsidiaries"),
     ],
 )
 def test_company_subcommands_route_to_expected_path(
@@ -33,7 +28,7 @@ def test_company_subcommands_route_to_expected_path(
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"ok": True})
+        return httpx.Response(200, json={"domain": "acme.com", "ok": True})
 
     install_build_client(handler)
     result = runner.invoke(app, args)
@@ -41,20 +36,34 @@ def test_company_subcommands_route_to_expected_path(
     request = captured["request"]
     assert request.url.path == expected_path
     assert request.url.params.get("domain") == "acme.com"
-    assert json.loads(result.stdout) == {"ok": True}
+    assert json.loads(result.stdout)["ok"] is True
 
 
-def test_company_history_passes_max_records(install_build_client: Callable[[Handler], None]) -> None:
+@pytest.mark.parametrize(
+    ("args", "expected_path"),
+    [
+        (["company", "redirects", "acme.com"], "/v1/redirects"),
+        (["company", "vendors", "acme.com"], "/v1/vendors"),
+        (["company", "subsidiaries", "acme.com"], "/v1/subsidiaries"),
+    ],
+)
+def test_company_list_subcommands_route_to_expected_path(
+    args: list[str], expected_path: str, install_build_client: Callable[[Handler], None]
+) -> None:
     captured: dict[str, httpx.Request] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"ok": True})
+        return httpx.Response(200, json=[{"linked_domain": "acme.io", "ok": True}])
 
     install_build_client(handler)
-    result = runner.invoke(app, ["company", "history", "acme.com", "--max-records", "10"])
+    result = runner.invoke(app, args)
     assert result.exit_code == 0, result.output
-    assert captured["request"].url.params.get("max_records") == "10"
+    request = captured["request"]
+    assert request.url.path == expected_path
+    assert request.url.params.get("domain") == "acme.com"
+    rows = json.loads(result.stdout)
+    assert rows[0]["linked_domain"] == "acme.io"
 
 
 @pytest.mark.parametrize("subcommand", ["redirects", "vendors", "subsidiaries"])
@@ -63,7 +72,7 @@ def test_company_match_option_forwarded(subcommand: str, install_build_client: C
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"ok": True})
+        return httpx.Response(200, json=[{"linked_domain": "acme.io"}])
 
     install_build_client(handler)
     result = runner.invoke(app, ["company", subcommand, "acme.com", "--match", "loose"])
@@ -76,7 +85,7 @@ def test_company_public_links_hits_publiclink_endpoint(install_build_client: Cal
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"ok": True})
+        return httpx.Response(200, json=[{"linked_domain": "acme.io"}])
 
     install_build_client(handler)
     result = runner.invoke(app, ["company", "public-links", "acme.com", "--source", "crunchbase"])
@@ -103,7 +112,10 @@ def test_company_data_format_table_falls_back_to_json_for_dict(install_build_cli
     install_build_client(handler)
     result = runner.invoke(app, ["company", "data", "acme.com", "--format", "table"])
     assert result.exit_code == 0, result.output
-    assert json.loads(result.stdout) == {"name": "Acme", "domain": "acme.com"}
+    payload = json.loads(result.stdout)
+    assert isinstance(payload, dict)
+    assert payload["name"] == "Acme"
+    assert payload["domain"] == "acme.com"
 
 
 def test_extract_hits_extract_endpoint_with_url(install_build_client: Callable[[Handler], None]) -> None:
@@ -111,7 +123,7 @@ def test_extract_hits_extract_endpoint_with_url(install_build_client: Callable[[
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"text": "hello"})
+        return httpx.Response(200, json={"text": "hello", "language": "en"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["extract", "https://acme.com/about"])
@@ -119,4 +131,4 @@ def test_extract_hits_extract_endpoint_with_url(install_build_client: Callable[[
     request = captured["request"]
     assert request.url.path == "/v1/extract"
     assert request.url.params.get("url") == "https://acme.com/about"
-    assert json.loads(result.stdout) == {"text": "hello"}
+    assert json.loads(result.stdout) == {"text": "hello", "language": "en"}
