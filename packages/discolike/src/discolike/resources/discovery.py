@@ -4,14 +4,11 @@ from discolike._models import DiscolikeModel
 from discolike.resources._base import AsyncAPIResource
 from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
+from discolike.resources.companies import CompanyProfile
 
 
-class Company(DiscolikeModel):
-    domain: str
-    name: str | None = None
+class Company(CompanyProfile):
     similarity: float | None = None
-    score: int | None = None
-    start_date: str | None = None
 
 
 class Count(DiscolikeModel):

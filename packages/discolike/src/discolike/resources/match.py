@@ -3,6 +3,8 @@ from __future__ import annotations
 import pathlib
 from typing import BinaryIO
 
+import pydantic
+
 from discolike._jobs import FAMILY_BULKMATCH
 from discolike._jobs import AsyncJob
 from discolike._jobs import Job
@@ -11,10 +13,25 @@ from discolike.resources._base import AsyncAPIResource
 from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
 from discolike.resources._base import open_upload
+from discolike.resources.companies import CompanyProfile
+
+
+class MatchQuery(DiscolikeModel):
+    name: str | None = None
+    country: str | None = None
+    state: str | None = None
+    city: str | None = None
+    zip: str | None = None
+    phones: str | None = None
+
+
+class MatchResult(CompanyProfile):
+    match_confidence: float | None = None
 
 
 class MatchResponse(DiscolikeModel):
-    pass
+    query: MatchQuery | None = None
+    matches: list[MatchResult] = pydantic.Field(default_factory=list)
 
 
 class MatchResource(SyncAPIResource):

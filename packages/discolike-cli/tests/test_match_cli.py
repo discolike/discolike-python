@@ -18,7 +18,10 @@ def test_match_single_name_hits_match_endpoint(install_build_client: Callable[[H
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"domain": "acme.com"})
+        return httpx.Response(
+            200,
+            json={"query": {"name": "Acme"}, "matches": [{"domain": "acme.com", "match_confidence": 98.0}]},
+        )
 
     install_build_client(handler)
     result = runner.invoke(app, ["match", "Acme"])
@@ -26,7 +29,9 @@ def test_match_single_name_hits_match_endpoint(install_build_client: Callable[[H
     request = captured["request"]
     assert request.url.path == "/v1/match"
     assert request.url.params.get("name") == "Acme"
-    assert json.loads(result.stdout) == {"domain": "acme.com"}
+    payload = json.loads(result.stdout)
+    assert payload["query"]["name"] == "Acme"
+    assert payload["matches"][0]["domain"] == "acme.com"
 
 
 def test_match_bulk_file_with_wait_polls_to_completion(

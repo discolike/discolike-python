@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pydantic
+
 from discolike._models import DiscolikeModel
 from discolike._transport import drop_none
 from discolike.resources._base import AsyncAPIResource
@@ -8,7 +10,7 @@ from discolike.resources._base import api_route
 
 
 class SearchProviderList(DiscolikeModel):
-    pass
+    providers: list[SearchProviderConfig] = pydantic.Field(default_factory=list)
 
 
 class SearchProviderConfig(DiscolikeModel):
@@ -21,12 +23,18 @@ class SearchProviderResult(DiscolikeModel):
     integration_id: str | None = None
 
 
+class SearchModelInfo(DiscolikeModel):
+    name: str | None = None
+    cost_per_query: float | None = None
+
+
 class SearchModels(DiscolikeModel):
-    pass
+    models: dict[str, list[SearchModelInfo]] = pydantic.Field(default_factory=dict)
 
 
 class LLMProviderList(DiscolikeModel):
-    pass
+    providers: list[LLMProviderConfig] = pydantic.Field(default_factory=list)
+    mtime: str | None = None
 
 
 class LLMProviderConfig(DiscolikeModel):

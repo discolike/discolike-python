@@ -22,7 +22,7 @@ def test_search_providers_list_hits_collection(make_client: ClientFactory) -> No
 
     assert seen["path"] == "/v1/search-providers"
     assert seen["method"] == "GET"
-    assert result.model_extra["providers"] == [{"integration_id": "sp1"}]  # ty: ignore[not-subscriptable]
+    assert result.providers[0].integration_id == "sp1"
 
 
 def test_search_providers_create_posts_body_and_drops_unset(make_client: ClientFactory) -> None:
@@ -141,7 +141,8 @@ def test_search_providers_models_hits_models_route(make_client: ClientFactory) -
 
     assert seen["path"] == "/v1/search-providers/models"
     assert seen["method"] == "GET"
-    assert "tavily" in result.model_extra["models"]  # ty: ignore[not-subscriptable]
+    assert result.models["tavily"][0].name == "tavily/search"
+    assert result.models["tavily"][0].cost_per_query == 0.008
 
 
 def test_llm_providers_list_hits_config(make_client: ClientFactory) -> None:
@@ -157,7 +158,7 @@ def test_llm_providers_list_hits_config(make_client: ClientFactory) -> None:
 
     assert seen["path"] == "/v1/llm-providers/config"
     assert seen["method"] == "GET"
-    assert result.model_extra["providers"] == []  # ty: ignore[not-subscriptable]
+    assert result.providers == []
 
 
 def test_llm_providers_create_posts_body_and_drops_unset(make_client: ClientFactory) -> None:
@@ -321,7 +322,7 @@ async def test_search_providers_list_async(make_async_client: AsyncClientFactory
     async with make_async_client(handler) as client:
         result = await client.search_providers.list()
 
-    assert result.model_extra["providers"] == []  # ty: ignore[not-subscriptable]
+    assert result.providers == []
 
 
 @pytest.mark.asyncio

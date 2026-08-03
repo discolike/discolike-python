@@ -10,7 +10,7 @@ DOMAIN_HELP = "Company domain, e.g. stripe.com"
 MATCH_HELP = "Domain match mode, e.g. loose"
 
 app = typer.Typer(
-    help="Company profiles by domain: firmographics, scores, growth, history, redirects, vendors, subsidiaries, and public links."
+    help="Company profiles by domain: firmographics, scores, growth, redirects, vendors, subsidiaries, and public links."
 )
 
 
@@ -51,33 +51,6 @@ def growth(
     from discolike_cli.main import get_client
 
     emit(get_client(ctx).companies.growth(domain=domain), fmt=fmt)
-
-
-@app.command()
-@handle_errors
-def metrics(
-    ctx: typer.Context,
-    domain: str = typer.Argument(..., help=DOMAIN_HELP),
-    fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
-) -> None:
-    """Company metrics for a domain."""
-    from discolike_cli.main import get_client
-
-    emit(get_client(ctx).companies.metrics(domain=domain), fmt=fmt)
-
-
-@app.command()
-@handle_errors
-def history(
-    ctx: typer.Context,
-    domain: str = typer.Argument(..., help=DOMAIN_HELP),
-    max_records: int | None = typer.Option(None, "--max-records", help="Maximum number of history records to return."),
-    fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
-) -> None:
-    """Historical records for a domain."""
-    from discolike_cli.main import get_client
-
-    emit(get_client(ctx).companies.history(domain=domain, max_records=max_records), fmt=fmt)
 
 
 @app.command()
