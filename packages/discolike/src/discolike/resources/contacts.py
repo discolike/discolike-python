@@ -172,8 +172,7 @@ class ContactsResource(SyncAPIResource):
         response = self._transport.request("POST", "/contacts/bulk-match", json_body=drop_none(body))
         return Job(self._transport, task_family=FAMILY_CONTACTMATCH, task_id=response.json()["task_id"])
 
-    # jobstart_date shipped in the platform repo but is not in the deployed spec yet
-    @api_route("POST", "/contacts/discover", ignore_params=("jobstart_date",))
+    @api_route("POST", "/contacts/discover")
     def discover(
         self,
         *,
@@ -361,8 +360,7 @@ class AsyncContactsResource(AsyncAPIResource):
         response = await self._transport.request("POST", "/contacts/bulk-match", json_body=drop_none(body))
         return AsyncJob(self._transport, task_family=FAMILY_CONTACTMATCH, task_id=response.json()["task_id"])
 
-    # jobstart_date shipped in the platform repo but is not in the deployed spec yet
-    @api_route("POST", "/contacts/discover", ignore_params=("jobstart_date",))
+    @api_route("POST", "/contacts/discover")
     async def discover(
         self,
         *,

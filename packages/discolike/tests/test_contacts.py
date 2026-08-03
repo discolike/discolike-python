@@ -252,5 +252,5 @@ def test_route_metadata_stamped() -> None:
     assert get_discolike_route(ContactsResource.lookup) == ("GET", "/contacts/lookup", True, ())
     assert get_discolike_route(ContactsResource.match) == ("GET", "/contacts/match", True, ())
     assert get_discolike_route(ContactsResource.bulk_match) == ("POST", "/contacts/bulk-match", True, ())
-    assert get_discolike_route(ContactsResource.discover) == ("POST", "/contacts/discover", True, ("jobstart_date",))
+    assert get_discolike_route(ContactsResource.discover) == ("POST", "/contacts/discover", True, ())
     assert get_discolike_route(ContactsResource.generate) == ("POST", "/contacts/discover/generate", True, ())
