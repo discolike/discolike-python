@@ -60,7 +60,10 @@ class Job:
             if current.status in TERMINAL_STATUSES:
                 return current
             if time.monotonic() >= deadline:
-                raise JobTimeoutError(f"Task {self.task_id} did not finish within {timeout:.0f}s")
+                raise JobTimeoutError(
+                    f"Task {self.task_id} did not finish within {timeout:.0f}s — it is still running "
+                    f"server-side; call wait() again to resume or check status() later"
+                )
             time.sleep(poll_interval)
 
 
@@ -94,5 +97,8 @@ class AsyncJob:
             if current.status in TERMINAL_STATUSES:
                 return current
             if time.monotonic() >= deadline:
-                raise JobTimeoutError(f"Task {self.task_id} did not finish within {timeout:.0f}s")
+                raise JobTimeoutError(
+                    f"Task {self.task_id} did not finish within {timeout:.0f}s — it is still running "
+                    f"server-side; call wait() again to resume or check status() later"
+                )
             await asyncio.sleep(poll_interval)

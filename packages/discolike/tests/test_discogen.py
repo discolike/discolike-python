@@ -5,14 +5,14 @@ import json
 import httpx
 import pytest
 
-from conftest import make_async_client
-from conftest import make_client
 from discolike._jobs import FAMILY_DISCOGEN
 from discolike._jobs import AsyncJob
 from discolike._jobs import Job
+from discolike_testkit import AsyncClientFactory
+from discolike_testkit import ClientFactory
 
 
-def test_process_posts_json_and_returns_job() -> None:
+def test_process_posts_json_and_returns_job(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -40,7 +40,7 @@ def test_process_posts_json_and_returns_job() -> None:
     assert job.task_id == "dg-1"
 
 
-def test_process_drops_unset_optionals() -> None:
+def test_process_drops_unset_optionals(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -53,7 +53,7 @@ def test_process_drops_unset_optionals() -> None:
     assert seen["body"] == {"query": "q", "domains": ["a.com"]}
 
 
-def test_process_all_optionals_present() -> None:
+def test_process_all_optionals_present(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -84,7 +84,7 @@ def test_process_all_optionals_present() -> None:
     }
 
 
-def test_process_personas_posts_json_and_returns_job() -> None:
+def test_process_personas_posts_json_and_returns_job(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -107,23 +107,33 @@ def test_process_personas_posts_json_and_returns_job() -> None:
     assert job.task_id == "dg-4"
 
 
-def test_models() -> None:
+def test_models(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        return httpx.Response(200, json={"models": ["grok-4", "gpt-5.4"]})
+        return httpx.Response(
+            200,
+            json={
+                "models": {
+                    "xai": [{"name": "grok-4", "supports_web_search": True}],
+                    "openai": [{"name": "gpt-5.4", "supports_web_search": False}],
+                }
+            },
+        )
 
     with make_client(handler) as client:
         result = client.discogen.models()
 
     assert seen["path"] == "/v1/discogen/models"
     assert seen["method"] == "GET"
-    assert result.model_extra["models"] == ["grok-4", "gpt-5.4"]  # ty: ignore[not-subscriptable]
+    assert result.models["xai"][0].name == "grok-4"
+    assert result.models["xai"][0].supports_web_search is True
+    assert result.models["openai"][0].name == "gpt-5.4"
 
 
-def test_job_reattaches_without_http_call() -> None:
+def test_job_reattaches_without_http_call(make_client: ClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         pytest.fail("job() must not perform an HTTP request")
 
@@ -135,7 +145,7 @@ def test_job_reattaches_without_http_call() -> None:
     assert job.task_id == "dg-existing"
 
 
-def test_validate_icp_posts_json_and_returns_job() -> None:
+def test_validate_icp_posts_json_and_returns_job(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -161,7 +171,7 @@ def test_validate_icp_posts_json_and_returns_job() -> None:
     assert job.task_id == "val-1"
 
 
-def test_validate_icp_all_optionals_present() -> None:
+def test_validate_icp_all_optionals_present(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -188,7 +198,7 @@ def test_validate_icp_all_optionals_present() -> None:
     }
 
 
-async def test_process_async_returns_async_job() -> None:
+async def test_process_async_returns_async_job(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"task_id": "dg-async-1"})
 
@@ -200,7 +210,7 @@ async def test_process_async_returns_async_job() -> None:
     assert job.task_id == "dg-async-1"
 
 
-async def test_process_personas_async_returns_async_job() -> None:
+async def test_process_personas_async_returns_async_job(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"task_id": "dg-async-2"})
 
@@ -212,17 +222,17 @@ async def test_process_personas_async_returns_async_job() -> None:
     assert job.task_id == "dg-async-2"
 
 
-async def test_models_async() -> None:
+async def test_models_async(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"models": ["grok-4"]})
+        return httpx.Response(200, json={"models": {"xai": [{"name": "grok-4", "supports_web_search": True}]}})
 
     async with make_async_client(handler) as client:
         result = await client.discogen.models()
 
-    assert result.model_extra["models"] == ["grok-4"]  # ty: ignore[not-subscriptable]
+    assert result.models["xai"][0].name == "grok-4"
 
 
-async def test_job_async_reattaches_without_http_call() -> None:
+async def test_job_async_reattaches_without_http_call(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         pytest.fail("job() must not perform an HTTP request")
 
@@ -234,7 +244,7 @@ async def test_job_async_reattaches_without_http_call() -> None:
     assert job.task_id == "dg-existing-async"
 
 
-async def test_validate_icp_async_returns_async_job() -> None:
+async def test_validate_icp_async_returns_async_job(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"task_id": "val-async-1"})
 

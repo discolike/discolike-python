@@ -7,31 +7,26 @@ import httpx
 import pytest
 from typer.testing import CliRunner
 
-import discolike_cli.main as cli_main
-from conftest import make_client
 from discolike_cli.main import app
+from discolike_testkit import Handler
 
 runner = CliRunner()
 
 
-def _install_build_client(monkeypatch: pytest.MonkeyPatch, handler: Callable[[httpx.Request], httpx.Response]) -> None:
-    monkeypatch.setattr(cli_main, "build_client", lambda **kwargs: make_client(handler))
-
-
-def test_contacts_search_sends_options_and_param_escape_hatch(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_contacts_search_sends_options_and_param_escape_hatch(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, httpx.QueryParams] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["params"] = request.url.params
         return httpx.Response(200, json=[{"persona_id": 1, "domain": "acme.com"}])
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(
         app,
         [
             "contacts",
             "search",
-            "--icp-text",
+            "--icp-prompt",
             "VPs of Marketing",
             "--seniority",
             "vp",
@@ -50,6 +45,8 @@ def test_contacts_search_sends_options_and_param_escape_hatch(monkeypatch: pytes
             "--employee-range",
             "50-200",
             "--has-email",
+            "--jobstart-date",
+            "2025-01-01,2025-06-30",
             "--max-records",
             "10",
             "--offset",
@@ -60,7 +57,7 @@ def test_contacts_search_sends_options_and_param_escape_hatch(monkeypatch: pytes
     )
     assert result.exit_code == 0, result.output
     params = captured["params"]
-    assert params.get("icp_text") == "VPs of Marketing"
+    assert params.get("icp_prompt") == "VPs of Marketing"
     assert params.get_list("seniority") == ["vp"]
     assert params.get_list("department") == ["marketing"]
     assert params.get_list("title") == ["VP Marketing"]
@@ -70,6 +67,7 @@ def test_contacts_search_sends_options_and_param_escape_hatch(monkeypatch: pytes
     assert params.get_list("filter_country") == ["US"]
     assert params.get("employee_range") == "50-200"
     assert params.get("has_email") == "true"
+    assert params.get("jobstart_date") == "2025-01-01,2025-06-30"
     assert params.get("max_records") == "10"
     assert params.get("offset") == "5"
     assert params.get("min_connections") == "5"
@@ -78,35 +76,81 @@ def test_contacts_search_sends_options_and_param_escape_hatch(monkeypatch: pytes
     ]
 
 
-def test_contacts_search_invalid_param_kwarg_exits_2(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_contacts_search_forwards_negate_options(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx.QueryParams] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["params"] = request.url.params
+        return httpx.Response(200, json=[])
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "contacts",
+            "search",
+            "--negate-seniority",
+            "intern",
+            "--negate-department",
+            "hr",
+            "--negate-title",
+            "Assistant",
+            "--negate-person-country",
+            "FR",
+            "--negate-filter-industry",
+            "GAMBLING",
+            "--negate-filter-country",
+            "RU",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    params = captured["params"]
+    assert params.get_list("negate_seniority") == ["intern"]
+    assert params.get_list("negate_department") == ["hr"]
+    assert params.get_list("negate_title") == ["Assistant"]
+    assert params.get_list("negate_person_country") == ["FR"]
+    assert params.get_list("negate_filter_industry") == ["GAMBLING"]
+    assert params.get_list("negate_filter_country") == ["RU"]
+
+
+def test_contacts_search_icp_text_is_removed(install_build_client: Callable[[Handler], None]) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=[])
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
+    result = runner.invoke(app, ["contacts", "search", "--icp-text", "X"])
+    assert result.exit_code == 2
+
+
+def test_contacts_search_invalid_param_kwarg_exits_2(install_build_client: Callable[[Handler], None]) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[])
+
+    install_build_client(handler)
     result = runner.invoke(app, ["contacts", "search", "--param", "bogus_kwarg=1"])
     assert result.exit_code == 2
     assert "bogus_kwarg" in result.output
 
 
-def test_contacts_search_unauthorized_exits_3(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_contacts_search_unauthorized_exits_3(install_build_client: Callable[[Handler], None]) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(401, json={"detail": "invalid key"})
 
-    _install_build_client(monkeypatch, handler)
-    result = runner.invoke(app, ["contacts", "search", "--icp-text", "X"])
+    install_build_client(handler)
+    result = runner.invoke(app, ["contacts", "search", "--icp-prompt", "X"])
     assert result.exit_code == 3
     payload = json.loads(result.stderr)
     assert payload["error"] == "AuthenticationError"
 
 
-def test_contacts_count_sends_shared_subset(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_contacts_count_sends_shared_subset(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, httpx.QueryParams] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["params"] = request.url.params
         return httpx.Response(200, json={"count": 12})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(app, ["contacts", "count", "--seniority", "vp", "--param", "min_connections=5"])
     assert result.exit_code == 0, result.output
     request_path = captured["params"]
@@ -116,14 +160,14 @@ def test_contacts_count_sends_shared_subset(monkeypatch: pytest.MonkeyPatch) -> 
     assert json.loads(result.stdout) == {"count": 12}
 
 
-def test_contacts_lookup_by_persona_id(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_contacts_lookup_by_persona_id(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, httpx.Request] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["request"] = request
         return httpx.Response(200, json={"persona_id": 7, "domain": "acme.com"})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(app, ["contacts", "lookup", "--persona-id", "7", "--email", "jane@acme.com"])
     assert result.exit_code == 0, result.output
     request = captured["request"]
@@ -139,14 +183,14 @@ def test_contacts_lookup_by_persona_id(monkeypatch: pytest.MonkeyPatch) -> None:
     }
 
 
-def test_contacts_match_hits_match_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_contacts_match_hits_match_endpoint(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, httpx.Request] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["request"] = request
         return httpx.Response(200, json={"matches": []})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(
         app,
         ["contacts", "match", "Jane Doe", "--company-name", "Acme Corp", "--domain", "acme.com", "--limit", "5"],
@@ -160,7 +204,9 @@ def test_contacts_match_hits_match_endpoint(monkeypatch: pytest.MonkeyPatch) -> 
     assert request.url.params.get("limit") == "5"
 
 
-def test_contacts_bulk_match_without_wait_prints_task_hint(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_contacts_bulk_match_without_wait_prints_task_hint(
+    tmp_path, install_build_client: Callable[[Handler], None]
+) -> None:
     queries_file = tmp_path / "queries.json"
     queries_file.write_text(json.dumps([{"name": "Jane Doe"}]))
     captured: dict[str, httpx.Request] = {}
@@ -169,7 +215,7 @@ def test_contacts_bulk_match_without_wait_prints_task_hint(monkeypatch: pytest.M
         captured["request"] = request
         return httpx.Response(200, json={"task_id": "cm-1"})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(app, ["contacts", "bulk-match", "--queries-file", str(queries_file)])
     assert result.exit_code == 0, result.output
     request = captured["request"]
@@ -182,19 +228,23 @@ def test_contacts_bulk_match_without_wait_prints_task_hint(monkeypatch: pytest.M
 
 
 @pytest.mark.parametrize("content", ["not json", "{}"])
-def test_contacts_bulk_match_bad_queries_file_exits_2(monkeypatch: pytest.MonkeyPatch, tmp_path, content: str) -> None:
+def test_contacts_bulk_match_bad_queries_file_exits_2(
+    tmp_path, content: str, install_build_client: Callable[[Handler], None]
+) -> None:
     queries_file = tmp_path / "queries.json"
     queries_file.write_text(content)
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"task_id": "cm-1"})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(app, ["contacts", "bulk-match", "--queries-file", str(queries_file)])
     assert result.exit_code == 2
 
 
-def test_contacts_bulk_match_with_wait_polls_to_completion(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_contacts_bulk_match_with_wait_polls_to_completion(
+    tmp_path, install_build_client: Callable[[Handler], None]
+) -> None:
     queries_file = tmp_path / "queries.json"
     queries_file.write_text(json.dumps([{"name": "Jane Doe"}]))
     statuses = iter(
@@ -210,7 +260,7 @@ def test_contacts_bulk_match_with_wait_polls_to_completion(monkeypatch: pytest.M
         assert request.url.path == "/v1/contactmatch/status/cm-2"
         return next(statuses)
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(
         app,
         ["contacts", "bulk-match", "--queries-file", str(queries_file), "--wait", "--timeout", "5"],
@@ -220,7 +270,7 @@ def test_contacts_bulk_match_with_wait_polls_to_completion(monkeypatch: pytest.M
     assert "progress: 30%" in result.stderr
 
 
-def test_contacts_discover_posts_json_body(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_contacts_discover_posts_json_body(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -228,7 +278,7 @@ def test_contacts_discover_posts_json_body(monkeypatch: pytest.MonkeyPatch) -> N
         captured["body"] = json.loads(request.content)
         return httpx.Response(200, json={"results": {}, "total_contacts": 0})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(
         app,
         [
@@ -253,7 +303,7 @@ def test_contacts_discover_posts_json_body(monkeypatch: pytest.MonkeyPatch) -> N
     }
 
 
-def test_contacts_generate_without_wait_prints_task_hint(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_contacts_generate_without_wait_prints_task_hint(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -261,7 +311,7 @@ def test_contacts_generate_without_wait_prints_task_hint(monkeypatch: pytest.Mon
         captured["body"] = json.loads(request.content)
         return httpx.Response(200, json={"task_id": "dg-1"})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     result = runner.invoke(
         app,
         [

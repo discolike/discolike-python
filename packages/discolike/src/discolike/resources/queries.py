@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import builtins
 
+import pydantic
+
 from discolike._models import DiscolikeModel
 from discolike._transport import drop_none
 from discolike.resources._base import AsyncAPIResource
@@ -9,8 +11,21 @@ from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
 
 
+class SavedQuery(DiscolikeModel):
+    query_id: str | None = None
+    query_name: str | None = None
+    action: str | None = None
+    user_name: str | None = None
+    mtime: str | None = None
+    domains: builtins.list[str] | None = None
+    domain_count: int | None = None
+    persona_id_count: int | None = None
+    tags: builtins.list[str] = pydantic.Field(default_factory=list)
+
+
 class SavedQueries(DiscolikeModel):
-    pass
+    results: builtins.list[SavedQuery] = pydantic.Field(default_factory=list)
+    count: int | None = None
 
 
 class QueryResult(DiscolikeModel):

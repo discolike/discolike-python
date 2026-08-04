@@ -27,7 +27,7 @@ Prompts for an API key (or pass `--api-key`) and verifies it against your accoun
 ## Quickstart
 
 ```bash
-discolike discover --icp-text "managed IT services for SMBs" --country US --max-records 25
+discolike discover --icp-prompt "managed IT services for SMBs" --country US --max-records 25
 discolike match "Stripe Inc" --city "San Francisco"
 discolike match --file companies.csv --name-column company_name --wait
 discolike count --phrase-match "book a demo" --country US
@@ -35,7 +35,7 @@ discolike company data stripe.com
 discolike extract https://stripe.com/enterprise
 ```
 
-Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment` — plus `auth`, `company`, `contacts`, `discogen`, `queries`, and `account` command groups.
+Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment` — plus `auth`, `company`, `contacts`, `discogen`, `queries`, `account`, `search-providers`, and `llm-providers` command groups.
 
 ### Conventions
 

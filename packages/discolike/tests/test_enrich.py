@@ -5,14 +5,14 @@ import io
 import httpx
 import pytest
 
-from conftest import make_async_client
-from conftest import make_client
 from discolike._jobs import FAMILY_SEGMENT
 from discolike._jobs import AsyncJob
 from discolike._jobs import Job
+from discolike_testkit import AsyncClientFactory
+from discolike_testkit import ClientFactory
 
 
-def test_append_json_response_parses_result_list() -> None:
+def test_append_json_response_parses_result_list(make_client: ClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/v1/append"
         params = dict(httpx.QueryParams(request.url.query))
@@ -28,7 +28,7 @@ def test_append_json_response_parses_result_list() -> None:
     assert result[0].model_extra["extra_field"] == "kept"  # ty: ignore[not-subscriptable]
 
 
-def test_append_csv_response_returns_raw_bytes() -> None:
+def test_append_csv_response_returns_raw_bytes(make_client: ClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, content=b"col1,col2\n", headers={"Content-Type": "text/csv"})
 
@@ -38,7 +38,7 @@ def test_append_csv_response_returns_raw_bytes() -> None:
     assert result == b"col1,col2\n"
 
 
-def test_append_sends_dataset_query_params(tmp_path) -> None:
+def test_append_sends_dataset_query_params(tmp_path, make_client: ClientFactory) -> None:
     csv_path = tmp_path / "domains.csv"
     csv_path.write_text("domain\nacme.com\n")
     seen = {}
@@ -53,7 +53,7 @@ def test_append_sends_dataset_query_params(tmp_path) -> None:
     assert seen["params"].get_list("dataset") == ["bizdata", "growth"]
 
 
-async def test_append_async_json_response() -> None:
+async def test_append_async_json_response(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=[{"domain": "acme.com"}])
 
@@ -64,7 +64,7 @@ async def test_append_async_json_response() -> None:
     assert result[0].domain == "acme.com"
 
 
-def test_segment_domains_branch_comma_joins_and_returns_job() -> None:
+def test_segment_domains_branch_comma_joins_and_returns_job(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -83,7 +83,7 @@ def test_segment_domains_branch_comma_joins_and_returns_job() -> None:
     assert job.task_id == "seg-1"
 
 
-def test_segment_file_branch_returns_job(tmp_path) -> None:
+def test_segment_file_branch_returns_job(tmp_path, make_client: ClientFactory) -> None:
     csv_path = tmp_path / "domains.csv"
     csv_path.write_text("domain\nacme.com\n")
     seen = {}
@@ -104,26 +104,26 @@ def test_segment_file_branch_returns_job(tmp_path) -> None:
     assert job.task_id == "seg-2"
 
 
-def test_segment_raises_when_neither_domains_nor_file_given() -> None:
+def test_segment_raises_when_neither_domains_nor_file_given(make_client: ClientFactory) -> None:
     with (
         make_client(lambda request: httpx.Response(200, json={})) as client,
-        pytest.raises(ValueError, match="exactly one of domains or file is required"),
+        pytest.raises(ValueError, match="one of domains, query_id, or file is required"),
     ):
         client.segment()
 
 
-def test_segment_raises_when_both_domains_and_file_given(tmp_path) -> None:
+def test_segment_raises_when_both_domains_and_file_given(tmp_path, make_client: ClientFactory) -> None:
     csv_path = tmp_path / "domains.csv"
     csv_path.write_text("domain\nacme.com\n")
 
     with (
         make_client(lambda request: httpx.Response(200, json={})) as client,
-        pytest.raises(ValueError, match="exactly one of domains or file is required"),
+        pytest.raises(ValueError, match="file cannot be combined with domains or query_id"),
     ):
         client.segment(domains=["acme.com"], file=csv_path)
 
 
-def test_segment_raises_when_domain_column_given_with_domains() -> None:
+def test_segment_raises_when_domain_column_given_with_domains(make_client: ClientFactory) -> None:
     with (
         make_client(lambda request: httpx.Response(200, json={})) as client,
         pytest.raises(ValueError, match="domain_column only applies to file uploads"),
@@ -131,7 +131,7 @@ def test_segment_raises_when_domain_column_given_with_domains() -> None:
         client.segment(domains=["acme.com"], domain_column="domain")
 
 
-async def test_segment_async_domains_branch() -> None:
+async def test_segment_async_domains_branch(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"task_id": "seg-3"})
 

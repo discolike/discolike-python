@@ -4,11 +4,11 @@ import json
 
 import httpx
 
-from conftest import make_async_client
-from conftest import make_client
+from discolike_testkit import AsyncClientFactory
+from discolike_testkit import ClientFactory
 
 
-def test_list_sends_params_and_parses_response() -> None:
+def test_list_sends_params_and_parses_response(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -24,10 +24,11 @@ def test_list_sends_params_and_parses_response() -> None:
     assert seen["params"]["offset"] == "5"
     assert seen["params"]["action"] == "discover"
     assert seen["params"].get_list("tags") == ["a", "b"]
-    assert result.model_extra["count"] == 1  # ty: ignore[not-subscriptable]
+    assert result.count == 1
+    assert result.results[0].query_id == "q1"
 
 
-def test_create_exclusion_list_posts_json_body() -> None:
+def test_create_exclusion_list_posts_json_body(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -45,7 +46,7 @@ def test_create_exclusion_list_posts_json_body() -> None:
     assert result.query_id == "q2"
 
 
-def test_update_patches_path_and_body() -> None:
+def test_update_patches_path_and_body(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -63,7 +64,7 @@ def test_update_patches_path_and_body() -> None:
     assert result.query_name == "New Name"
 
 
-def test_delete_sends_delete_and_returns_none() -> None:
+def test_delete_sends_delete_and_returns_none(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -79,17 +80,18 @@ def test_delete_sends_delete_and_returns_none() -> None:
     assert result is None
 
 
-async def test_list_async() -> None:
+async def test_list_async(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"results": [], "count": 0})
 
     async with make_async_client(handler) as client:
         result = await client.queries.list()
 
-    assert result.model_extra["count"] == 0  # ty: ignore[not-subscriptable]
+    assert result.count == 0
+    assert result.results == []
 
 
-async def test_delete_async() -> None:
+async def test_delete_async(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"message": "ok"})
 

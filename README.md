@@ -147,7 +147,7 @@ The same API from your terminal, with `--help` on every command:
 
 ```bash
 discolike auth login
-discolike discover --icp-text "managed IT services for SMBs" --country US --max-records 25
+discolike discover --icp-prompt "managed IT services for SMBs" --country US --max-records 25
 discolike match "Stripe Inc" --city "San Francisco"
 discolike match --file companies.csv --name-column company_name --wait
 discolike count --phrase-match "book a demo" --country US
@@ -155,7 +155,7 @@ discolike company data stripe.com
 discolike extract https://stripe.com/enterprise
 ```
 
-Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment` — plus `auth`, `company`, `contacts`, `discogen`, `queries`, and `account` command groups.
+Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment` — plus `auth`, `company`, `contacts`, `discogen`, `queries`, `account`, `search-providers`, and `llm-providers` command groups.
 
 ### CLI conventions
 
@@ -178,13 +178,14 @@ Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `ap
 | Surface | What it does |
 |---|---|
 | `client.discover()` / `client.count()` | Find lookalike companies by ICP text, phrases, tech stack, geo, and 40+ other filters |
-| `client.companies` | Company profiles: firmographics, scores, growth, history, redirects, vendors, subsidiaries |
+| `client.companies` | Company profiles: firmographics, scores, growth, redirects, vendors, subsidiaries |
 | `client.contacts` | Search, look up, match, and discover contacts at target companies |
 | `client.match` | Match company names (plus phone/city/state) to domains — single or bulk CSV |
 | `client.append()` | Enrich a CSV of domains with DiscoLike datasets |
 | `client.segment()` | Auto-segment a list of domains |
 | `client.validate_icp()` | Validate a domain list against an ICP definition |
 | `client.queries` | Saved inclusion/exclusion lists for reusable targeting |
+| `client.search_providers` / `client.llm_providers` | Manage BYOK search and LLM provider integrations for DiscoGen |
 | `client.account` | Usage and quota |
 
 All responses are typed [Pydantic](https://docs.pydantic.dev/) models.
@@ -199,6 +200,8 @@ result = job.wait()
 ```
 
 `Job.status()` polls without blocking, `Job.cancel()` aborts, and `wait()` raises `JobFailedError` / `JobTimeoutError` on failure.
+
+`JobTimeoutError` is a client-side wait limit only — the task keeps running server-side (large DiscoGen runs can take hours), so call `wait()` again to resume or fetch `status()` later. Cancelled tasks still return results for every item that finished before cancellation. Send one job per list (up to 10,000 domains) rather than splitting into parallel jobs — concurrent DiscoGen jobs share your LLM provider key and slow each other down.
 
 ### Error handling
 

@@ -14,4 +14,13 @@ jobs:
               with:
                   python-version: '3.14'
             - run: uv sync --all-packages
-            - run: uv run python scripts/check_contract.py
+            # SDK features land on development before the platform deploys to
+            # prod, so PRs targeting development check against the dev spec.
+            - env:
+                  BASE_REF: ${{ github.base_ref }}
+              run: |
+                  if [ "$BASE_REF" = "development" ]; then
+                      uv run python scripts/check_contract.py --spec-url https://api.dev.discolike.com/v1/openapi.json
+                  else
+                      uv run python scripts/check_contract.py
+                  fi

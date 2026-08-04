@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pathlib
+from typing import Any
 from typing import BinaryIO
 
 from discolike._jobs import FAMILY_SEGMENT
@@ -24,18 +25,24 @@ class EnrichResource(SyncAPIResource):
     def append(
         self,
         *,
-        file: pathlib.Path | str | BinaryIO,
+        file: pathlib.Path | str | BinaryIO | None = None,
         dataset: list[str] | None = None,
         domain_column: str | None = None,
         csv: bool | None = None,
+        query_id: list[str] | None = None,
     ) -> list[AppendResult] | bytes:
-        params = {"dataset": dataset, "domain_column": domain_column, "csv": csv}
-        filename, fh, we_opened_it = open_upload(file)
-        try:
-            response = self._transport.request("POST", "/append", params=params, files={"file": (filename, fh)})
-        finally:
-            if we_opened_it:
-                fh.close()
+        if file is None and query_id is None:
+            raise ValueError("one of file or query_id is required")
+        params = {"dataset": dataset, "domain_column": domain_column, "csv": csv, "query_id": query_id}
+        if file is None:
+            response = self._transport.request("POST", "/append", params=params)
+        else:
+            filename, fh, we_opened_it = open_upload(file)
+            try:
+                response = self._transport.request("POST", "/append", params=params, files={"file": (filename, fh)})
+            finally:
+                if we_opened_it:
+                    fh.close()
         if JSON_CONTENT_TYPE in response.headers.get("Content-Type", ""):
             return [AppendResult.model_validate(item) for item in response.json()]
         return response.content
@@ -65,17 +72,23 @@ class EnrichResource(SyncAPIResource):
         file: pathlib.Path | str | BinaryIO | None = None,
         domain_column: str | None = None,
         max_segments: int | None = None,
+        query_id: list[str] | None = None,
     ) -> Job:
-        if (domains is None) == (file is None):
-            raise ValueError("exactly one of domains or file is required")
+        if file is not None:
+            if domains is not None or query_id is not None:
+                raise ValueError("file cannot be combined with domains or query_id")
+            return self._segment_file(file=file, domain_column=domain_column, max_segments=max_segments)
+        if domains is None and query_id is None:
+            raise ValueError("one of domains, query_id, or file is required")
+        if domain_column is not None:
+            raise ValueError("domain_column only applies to file uploads")
+        params: dict[str, Any] = {"max_segments": max_segments}
         if domains is not None:
-            if domain_column is not None:
-                raise ValueError("domain_column only applies to file uploads")
-            params = {"domains": ",".join(domains), "max_segments": max_segments}
-            response = self._transport.request("GET", "/segment", params=params)
-            return Job(self._transport, task_family=FAMILY_SEGMENT, task_id=response.json()["task_id"])
-        assert file is not None
-        return self._segment_file(file=file, domain_column=domain_column, max_segments=max_segments)
+            params["domains"] = ",".join(domains)
+        if query_id is not None:
+            params["query_id"] = ",".join(query_id)
+        response = self._transport.request("GET", "/segment", params=params)
+        return Job(self._transport, task_family=FAMILY_SEGMENT, task_id=response.json()["task_id"])
 
 
 class AsyncEnrichResource(AsyncAPIResource):
@@ -83,18 +96,26 @@ class AsyncEnrichResource(AsyncAPIResource):
     async def append(
         self,
         *,
-        file: pathlib.Path | str | BinaryIO,
+        file: pathlib.Path | str | BinaryIO | None = None,
         dataset: list[str] | None = None,
         domain_column: str | None = None,
         csv: bool | None = None,
+        query_id: list[str] | None = None,
     ) -> list[AppendResult] | bytes:
-        params = {"dataset": dataset, "domain_column": domain_column, "csv": csv}
-        filename, fh, we_opened_it = open_upload(file)
-        try:
-            response = await self._transport.request("POST", "/append", params=params, files={"file": (filename, fh)})
-        finally:
-            if we_opened_it:
-                fh.close()
+        if file is None and query_id is None:
+            raise ValueError("one of file or query_id is required")
+        params = {"dataset": dataset, "domain_column": domain_column, "csv": csv, "query_id": query_id}
+        if file is None:
+            response = await self._transport.request("POST", "/append", params=params)
+        else:
+            filename, fh, we_opened_it = open_upload(file)
+            try:
+                response = await self._transport.request(
+                    "POST", "/append", params=params, files={"file": (filename, fh)}
+                )
+            finally:
+                if we_opened_it:
+                    fh.close()
         if JSON_CONTENT_TYPE in response.headers.get("Content-Type", ""):
             return [AppendResult.model_validate(item) for item in response.json()]
         return response.content
@@ -124,14 +145,20 @@ class AsyncEnrichResource(AsyncAPIResource):
         file: pathlib.Path | str | BinaryIO | None = None,
         domain_column: str | None = None,
         max_segments: int | None = None,
+        query_id: list[str] | None = None,
     ) -> AsyncJob:
-        if (domains is None) == (file is None):
-            raise ValueError("exactly one of domains or file is required")
+        if file is not None:
+            if domains is not None or query_id is not None:
+                raise ValueError("file cannot be combined with domains or query_id")
+            return await self._segment_file(file=file, domain_column=domain_column, max_segments=max_segments)
+        if domains is None and query_id is None:
+            raise ValueError("one of domains, query_id, or file is required")
+        if domain_column is not None:
+            raise ValueError("domain_column only applies to file uploads")
+        params: dict[str, Any] = {"max_segments": max_segments}
         if domains is not None:
-            if domain_column is not None:
-                raise ValueError("domain_column only applies to file uploads")
-            params = {"domains": ",".join(domains), "max_segments": max_segments}
-            response = await self._transport.request("GET", "/segment", params=params)
-            return AsyncJob(self._transport, task_family=FAMILY_SEGMENT, task_id=response.json()["task_id"])
-        assert file is not None
-        return await self._segment_file(file=file, domain_column=domain_column, max_segments=max_segments)
+            params["domains"] = ",".join(domains)
+        if query_id is not None:
+            params["query_id"] = ",".join(query_id)
+        response = await self._transport.request("GET", "/segment", params=params)
+        return AsyncJob(self._transport, task_family=FAMILY_SEGMENT, task_id=response.json()["task_id"])

@@ -3,6 +3,8 @@ from __future__ import annotations
 import pathlib
 from typing import BinaryIO
 
+import pydantic
+
 from discolike._jobs import FAMILY_BULKMATCH
 from discolike._jobs import AsyncJob
 from discolike._jobs import Job
@@ -11,10 +13,25 @@ from discolike.resources._base import AsyncAPIResource
 from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
 from discolike.resources._base import open_upload
+from discolike.resources.companies import CompanyProfile
+
+
+class MatchQuery(DiscolikeModel):
+    name: str | None = None
+    country: str | None = None
+    state: str | None = None
+    city: str | None = None
+    zip: str | None = None
+    phones: str | None = None
+
+
+class MatchResult(CompanyProfile):
+    match_confidence: float | None = None
 
 
 class MatchResponse(DiscolikeModel):
-    pass
+    query: MatchQuery | None = None
+    matches: list[MatchResult] = pydantic.Field(default_factory=list)
 
 
 class MatchResource(SyncAPIResource):
@@ -30,6 +47,7 @@ class MatchResource(SyncAPIResource):
         zip_code: str | None = None,
         strict: bool | None = None,
         local_mode: bool | None = None,
+        min_match_confidence: int | None = None,
     ) -> MatchResponse:
         params = {k: v for k, v in locals().items() if k != "self"}
         return MatchResponse.model_validate(self._transport.request("GET", "/match", params=params).json())
@@ -47,6 +65,7 @@ class MatchResource(SyncAPIResource):
         zip_code_column: str | None = None,
         strict: bool | None = None,
         local_mode: bool | None = None,
+        min_match_confidence: int | None = None,
     ) -> Job:
         params = {
             "name_column": name_column,
@@ -58,6 +77,8 @@ class MatchResource(SyncAPIResource):
             "strict": strict,
             "local_mode": local_mode,
         }
+        if min_match_confidence is not None:
+            params["min_match_confidence"] = min_match_confidence
         filename, fh, we_opened_it = open_upload(file)
         try:
             response = self._transport.request("POST", "/bulkmatch", params=params, files={"file": (filename, fh)})
@@ -80,6 +101,7 @@ class AsyncMatchResource(AsyncAPIResource):
         zip_code: str | None = None,
         strict: bool | None = None,
         local_mode: bool | None = None,
+        min_match_confidence: int | None = None,
     ) -> MatchResponse:
         params = {k: v for k, v in locals().items() if k != "self"}
         return MatchResponse.model_validate((await self._transport.request("GET", "/match", params=params)).json())
@@ -97,6 +119,7 @@ class AsyncMatchResource(AsyncAPIResource):
         zip_code_column: str | None = None,
         strict: bool | None = None,
         local_mode: bool | None = None,
+        min_match_confidence: int | None = None,
     ) -> AsyncJob:
         params = {
             "name_column": name_column,
@@ -108,6 +131,8 @@ class AsyncMatchResource(AsyncAPIResource):
             "strict": strict,
             "local_mode": local_mode,
         }
+        if min_match_confidence is not None:
+            params["min_match_confidence"] = min_match_confidence
         filename, fh, we_opened_it = open_upload(file)
         try:
             response = await self._transport.request(

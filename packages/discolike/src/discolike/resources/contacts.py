@@ -52,7 +52,7 @@ class ContactsByCompany(DiscolikeModel):
 
 
 class ContactsResource(SyncAPIResource):
-    @api_route("GET", "/contacts", openapi=False)
+    @api_route("GET", "/contacts")
     def search(
         self,
         *,
@@ -77,6 +77,7 @@ class ContactsResource(SyncAPIResource):
         has_mobile: bool | None = None,
         has_linkedin: bool | None = None,
         min_connections: int | None = None,
+        jobstart_date: str | None = None,
         persona_id: list[int] | None = None,
         domain: list[str] | None = None,
         filter_industry: list[str] | None = None,
@@ -96,7 +97,7 @@ class ContactsResource(SyncAPIResource):
         response = self._transport.request("GET", "/contacts", params=params)
         return [Contact.model_validate(item) for item in response.json()]
 
-    @api_route("GET", "/contacts/count", openapi=False)
+    @api_route("GET", "/contacts/count")
     def count(
         self,
         *,
@@ -121,6 +122,7 @@ class ContactsResource(SyncAPIResource):
         has_mobile: bool | None = None,
         has_linkedin: bool | None = None,
         min_connections: int | None = None,
+        jobstart_date: str | None = None,
         persona_id: list[int] | None = None,
         domain: list[str] | None = None,
         filter_industry: list[str] | None = None,
@@ -136,14 +138,14 @@ class ContactsResource(SyncAPIResource):
         params = {k: v for k, v in locals().items() if k != "self"}
         return DiscolikeModel.model_validate(self._transport.request("GET", "/contacts/count", params=params).json())
 
-    @api_route("GET", "/contacts/lookup", openapi=False)
+    @api_route("GET", "/contacts/lookup")
     def lookup(
         self, *, persona_id: int | None = None, linkedin: str | None = None, email: str | None = None
     ) -> Contact:
         params = {k: v for k, v in locals().items() if k != "self"}
         return Contact.model_validate(self._transport.request("GET", "/contacts/lookup", params=params).json())
 
-    @api_route("GET", "/contacts/match", openapi=False)
+    @api_route("GET", "/contacts/match")
     def match(
         self,
         *,
@@ -158,7 +160,7 @@ class ContactsResource(SyncAPIResource):
             self._transport.request("GET", "/contacts/match", params=params).json()
         )
 
-    @api_route("POST", "/contacts/bulk-match", openapi=False)
+    @api_route("POST", "/contacts/bulk-match")
     def bulk_match(
         self,
         *,
@@ -195,6 +197,7 @@ class ContactsResource(SyncAPIResource):
         has_mobile: bool | None = None,
         has_linkedin: bool | None = None,
         min_connections: int | None = None,
+        jobstart_date: str | None = None,
         persona_id: list[int] | None = None,
         domain: list[str] | None = None,
         filter_industry: list[str] | None = None,
@@ -236,7 +239,7 @@ class ContactsResource(SyncAPIResource):
 
 
 class AsyncContactsResource(AsyncAPIResource):
-    @api_route("GET", "/contacts", openapi=False)
+    @api_route("GET", "/contacts")
     async def search(
         self,
         *,
@@ -261,6 +264,7 @@ class AsyncContactsResource(AsyncAPIResource):
         has_mobile: bool | None = None,
         has_linkedin: bool | None = None,
         min_connections: int | None = None,
+        jobstart_date: str | None = None,
         persona_id: list[int] | None = None,
         domain: list[str] | None = None,
         filter_industry: list[str] | None = None,
@@ -280,7 +284,7 @@ class AsyncContactsResource(AsyncAPIResource):
         response = await self._transport.request("GET", "/contacts", params=params)
         return [Contact.model_validate(item) for item in response.json()]
 
-    @api_route("GET", "/contacts/count", openapi=False)
+    @api_route("GET", "/contacts/count")
     async def count(
         self,
         *,
@@ -305,6 +309,7 @@ class AsyncContactsResource(AsyncAPIResource):
         has_mobile: bool | None = None,
         has_linkedin: bool | None = None,
         min_connections: int | None = None,
+        jobstart_date: str | None = None,
         persona_id: list[int] | None = None,
         domain: list[str] | None = None,
         filter_industry: list[str] | None = None,
@@ -321,7 +326,7 @@ class AsyncContactsResource(AsyncAPIResource):
         response = await self._transport.request("GET", "/contacts/count", params=params)
         return DiscolikeModel.model_validate(response.json())
 
-    @api_route("GET", "/contacts/lookup", openapi=False)
+    @api_route("GET", "/contacts/lookup")
     async def lookup(
         self, *, persona_id: int | None = None, linkedin: str | None = None, email: str | None = None
     ) -> Contact:
@@ -329,7 +334,7 @@ class AsyncContactsResource(AsyncAPIResource):
         response = await self._transport.request("GET", "/contacts/lookup", params=params)
         return Contact.model_validate(response.json())
 
-    @api_route("GET", "/contacts/match", openapi=False)
+    @api_route("GET", "/contacts/match")
     async def match(
         self,
         *,
@@ -343,7 +348,7 @@ class AsyncContactsResource(AsyncAPIResource):
         response = await self._transport.request("GET", "/contacts/match", params=params)
         return ContactMatchResponse.model_validate(response.json())
 
-    @api_route("POST", "/contacts/bulk-match", openapi=False)
+    @api_route("POST", "/contacts/bulk-match")
     async def bulk_match(
         self,
         *,
@@ -380,6 +385,7 @@ class AsyncContactsResource(AsyncAPIResource):
         has_mobile: bool | None = None,
         has_linkedin: bool | None = None,
         min_connections: int | None = None,
+        jobstart_date: str | None = None,
         persona_id: list[int] | None = None,
         domain: list[str] | None = None,
         filter_industry: list[str] | None = None,

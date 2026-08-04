@@ -60,21 +60,39 @@ def _normalize(data: Any) -> Any:  # noqa: ANN401 -- accepts arbitrary JSON-seri
     return data
 
 
-def _is_flat_dict(value: Any) -> bool:  # noqa: ANN401 -- runtime-narrowed via isinstance, not a fixed shape
-    return isinstance(value, dict) and not any(isinstance(v, (dict, list)) for v in value.values())
+TABLE_CELL_MAX_CHARS = 80
+TABLE_MAX_COLUMNS = 8
+_SCALAR_TYPES = (str, int, float, bool, type(None))
+
+
+def _scalar_columns(rows: list[dict[str, Any]]) -> list[str]:
+    columns = [column for column in rows[0] if all(isinstance(row.get(column), _SCALAR_TYPES) for row in rows)]
+    return columns[:TABLE_MAX_COLUMNS]
 
 
 def _qualifies_for_table(data: Any) -> bool:  # noqa: ANN401 -- runtime-narrowed via isinstance, not a fixed shape
-    return isinstance(data, list) and len(data) > 0 and all(_is_flat_dict(item) for item in data)
+    return (
+        isinstance(data, list)
+        and len(data) > 0
+        and all(isinstance(item, dict) for item in data)
+        and len(_scalar_columns(data)) > 0
+    )
+
+
+def _cell(value: Any) -> str:  # noqa: ANN401 -- scalar JSON value, narrowed by _scalar_columns
+    text = "" if value is None else str(value)
+    if len(text) > TABLE_CELL_MAX_CHARS:
+        return text[: TABLE_CELL_MAX_CHARS - 1] + "…"
+    return text
 
 
 def _render_table(rows: list[dict[str, Any]]) -> None:
     table = Table()
-    columns = list(rows[0].keys())
+    columns = _scalar_columns(rows)
     for column in columns:
-        table.add_column(column)
+        table.add_column(column, overflow="ellipsis", no_wrap=True)
     for row in rows:
-        table.add_row(*(str(row.get(column, "")) for column in columns))
+        table.add_row(*(_cell(row.get(column)) for column in columns))
     Console().print(table)
 
 
@@ -117,7 +135,7 @@ def handle_errors(fn: Callable[P, R]) -> Callable[P, R]:
     return wrapper
 
 
-def run_job(job: SupportsWait, *, wait: bool, timeout: float) -> None:
+def run_job(job: SupportsWait, *, wait: bool, timeout: float, fmt: str | None = None) -> None:
     if not wait:
         emit(
             {
@@ -132,4 +150,4 @@ def run_job(job: SupportsWait, *, wait: bool, timeout: float) -> None:
         sys.stderr.write(f"progress: {status.progress}%\n")
 
     final = job.wait(timeout=timeout, on_poll=_on_poll)
-    emit(final.results if final.results is not None else final.to_dict())
+    emit(final.results if final.results is not None else final.to_dict(), fmt=fmt)

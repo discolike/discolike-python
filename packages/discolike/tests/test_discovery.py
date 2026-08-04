@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import httpx
 
-from conftest import make_async_client
-from conftest import make_client
+from discolike_testkit import AsyncClientFactory
+from discolike_testkit import ClientFactory
 
 
-def test_discover_builds_query_and_parses_list() -> None:
+def test_discover_builds_query_and_parses_list(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -29,7 +29,7 @@ def test_discover_builds_query_and_parses_list() -> None:
     assert results[0].model_extra["extra_field"] == "kept"  # ty: ignore[not-subscriptable]
 
 
-def test_count() -> None:
+def test_count(make_client: ClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/v1/count"
         return httpx.Response(200, json={"count": 1234})
@@ -39,7 +39,7 @@ def test_count() -> None:
     assert result.count == 1234
 
 
-async def test_discover_async() -> None:
+async def test_discover_async(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=[{"domain": "a.com"}])
 

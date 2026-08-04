@@ -4,15 +4,15 @@ import json
 
 import httpx
 
-from conftest import make_async_client
-from conftest import make_client
 from discolike._jobs import FAMILY_CONTACTMATCH
 from discolike._jobs import FAMILY_DISCOGEN
 from discolike._jobs import AsyncJob
 from discolike._jobs import Job
+from discolike_testkit import AsyncClientFactory
+from discolike_testkit import ClientFactory
 
 
-def test_search_builds_query_and_parses_list() -> None:
+def test_search_builds_query_and_parses_list(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -25,18 +25,24 @@ def test_search_builds_query_and_parses_list() -> None:
         )
 
     with make_client(handler) as client:
-        results = client.contacts.search(seniority=["vp", "director"], domain=["acme.com"], max_records=25)
+        results = client.contacts.search(
+            seniority=["vp", "director"],
+            domain=["acme.com"],
+            jobstart_date="2025-01-01,2025-06-30",
+            max_records=25,
+        )
 
     assert seen["path"] == "/v1/contacts"
     assert seen["method"] == "GET"
     assert seen["params"].get_list("seniority") == ["vp", "director"]
     assert seen["params"]["domain"] == "acme.com"
+    assert seen["params"]["jobstart_date"] == "2025-01-01,2025-06-30"
     assert seen["params"]["max_records"] == "25"
     assert results[0].persona_id == 1
     assert results[0].model_extra["extra_field"] == "kept"  # ty: ignore[not-subscriptable]
 
 
-def test_count() -> None:
+def test_count(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -46,16 +52,17 @@ def test_count() -> None:
         return httpx.Response(200, json={"count": 1234})
 
     with make_client(handler) as client:
-        result = client.contacts.count(seniority=["vp"], has_email=True)
+        result = client.contacts.count(seniority=["vp"], has_email=True, jobstart_date="2025-01-01")
 
     assert seen["path"] == "/v1/contacts/count"
     assert seen["method"] == "GET"
     assert seen["params"]["seniority"] == "vp"
     assert seen["params"]["has_email"] == "true"
+    assert seen["params"]["jobstart_date"] == "2025-01-01"
     assert result.model_extra["count"] == 1234  # ty: ignore[not-subscriptable]
 
 
-def test_lookup() -> None:
+def test_lookup(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -76,7 +83,7 @@ def test_lookup() -> None:
     assert result.name == "Jane Doe"
 
 
-def test_match() -> None:
+def test_match(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -110,7 +117,7 @@ def test_match() -> None:
     assert result.matches[0].match_score == 95.2
 
 
-def test_bulk_match_posts_json_and_returns_job() -> None:
+def test_bulk_match_posts_json_and_returns_job(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -138,7 +145,7 @@ def test_bulk_match_posts_json_and_returns_job() -> None:
     assert job.task_id == "cm-1"
 
 
-def test_discover_posts_json_body() -> None:
+def test_discover_posts_json_body(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -155,20 +162,27 @@ def test_discover_posts_json_body() -> None:
         )
 
     with make_client(handler) as client:
-        result = client.contacts.discover(domain=["acme.com"], seniority=["vp"], results_by_company=10, consensus=2)
+        result = client.contacts.discover(
+            domain=["acme.com"],
+            seniority=["vp"],
+            jobstart_date="2025-01-01",
+            results_by_company=10,
+            consensus=2,
+        )
 
     assert seen["path"] == "/v1/contacts/discover"
     assert seen["method"] == "POST"
     assert seen["body"] == {
         "domain": ["acme.com"],
         "seniority": ["vp"],
+        "jobstart_date": "2025-01-01",
         "results_by_company": 10,
         "consensus": 2,
     }
     assert result.model_extra["total_domains"] == 1  # ty: ignore[not-subscriptable]
 
 
-def test_generate_posts_json_and_returns_job() -> None:
+def test_generate_posts_json_and_returns_job(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -196,7 +210,7 @@ def test_generate_posts_json_and_returns_job() -> None:
     assert job.task_id == "dg-1"
 
 
-async def test_search_async() -> None:
+async def test_search_async(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=[{"persona_id": 2, "domain": "b.com"}])
 
@@ -205,7 +219,7 @@ async def test_search_async() -> None:
     assert results[0].persona_id == 2
 
 
-async def test_bulk_match_async_returns_async_job() -> None:
+async def test_bulk_match_async_returns_async_job(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"task_id": "cm-2"})
 
@@ -217,7 +231,7 @@ async def test_bulk_match_async_returns_async_job() -> None:
     assert job.task_id == "cm-2"
 
 
-async def test_generate_async_returns_async_job() -> None:
+async def test_generate_async_returns_async_job(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"task_id": "dg-2"})
 
@@ -233,10 +247,10 @@ def test_route_metadata_stamped() -> None:
     from discolike.resources._base import get_discolike_route
     from discolike.resources.contacts import ContactsResource
 
-    assert get_discolike_route(ContactsResource.search) == ("GET", "/contacts", False, ())
-    assert get_discolike_route(ContactsResource.count) == ("GET", "/contacts/count", False, ())
-    assert get_discolike_route(ContactsResource.lookup) == ("GET", "/contacts/lookup", False, ())
-    assert get_discolike_route(ContactsResource.match) == ("GET", "/contacts/match", False, ())
-    assert get_discolike_route(ContactsResource.bulk_match) == ("POST", "/contacts/bulk-match", False, ())
+    assert get_discolike_route(ContactsResource.search) == ("GET", "/contacts", True, ())
+    assert get_discolike_route(ContactsResource.count) == ("GET", "/contacts/count", True, ())
+    assert get_discolike_route(ContactsResource.lookup) == ("GET", "/contacts/lookup", True, ())
+    assert get_discolike_route(ContactsResource.match) == ("GET", "/contacts/match", True, ())
+    assert get_discolike_route(ContactsResource.bulk_match) == ("POST", "/contacts/bulk-match", True, ())
     assert get_discolike_route(ContactsResource.discover) == ("POST", "/contacts/discover", True, ())
     assert get_discolike_route(ContactsResource.generate) == ("POST", "/contacts/discover/generate", True, ())
