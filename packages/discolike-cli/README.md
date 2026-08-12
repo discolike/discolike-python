@@ -1,6 +1,6 @@
 # discolike-cli
 
-Official CLI for the [DiscoLike API](https://www.discolike.com) — the `discolike` command from your terminal. Built on the [`discolike`](https://pypi.org/project/discolike/) SDK.
+Official CLI for the [DiscoLike API](https://discolike.com) — the `discolike` command from your terminal. Built on the [`discolike`](https://pypi.org/project/discolike/) SDK.
 
 ## Installation
 

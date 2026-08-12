@@ -23,7 +23,7 @@ app = typer.Typer(
     no_args_is_help=True,
     rich_markup_mode="rich",
     help=(
-        "🪩 [bold]DiscoLike[/bold] — from the entire web to your ideal target accounts.\n\n"
+        "🪩 [bold]DiscoLike[/bold] — the search engine for the business web.\n\n"
         "Discover lookalike companies, size segments, enrich domain lists, match messy "
         "company names to domains, and find the right contacts — from your terminal.\n\n"
         "Docs: https://docs.discolike.com · Keys: https://app.discolike.com/account/management/keys"

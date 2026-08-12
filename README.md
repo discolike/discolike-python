@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://www.discolike.com">
+  <a href="https://discolike.com">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="https://discolike.com/images/logo.svg">
       <img src="https://discolike.com/images/logo-dark.svg" alt="DiscoLike" width="220">
@@ -9,7 +9,7 @@
 
 <p align="center">
   <b>Official Python SDK and CLI for the DiscoLike API</b><br>
-  The clean data layer for GTM engineers — from the entire web to your ideal target accounts.
+  The search engine for the business web — find your ideal target accounts from Python or your terminal.
 </p>
 
 <p align="center">
@@ -20,21 +20,22 @@
 </p>
 
 <p align="center">
-  <a href="https://www.discolike.com">Website</a> ·
+  <a href="https://discolike.com">Website</a> ·
   <a href="https://docs.discolike.com">API Docs</a> ·
   <a href="https://app.discolike.com/account/management/keys">Get an API key</a> ·
+  <a href="https://auth.discolike.com/en/signup">Sign up</a> ·
   <a href="https://calendly.com/discolike/introductory-call">Book a demo</a> ·
-  <a href="https://www.discolike.com/blog/">Blog</a>
+  <a href="https://discolike.com/blog/">Blog</a>
 </p>
 
 ---
 
-DiscoLike indexes **70M+ business websites worldwide**, analyzed in **50 languages** — roughly **3x the coverage of LinkedIn-dependent databases**. This repo gives you that index from Python or your terminal, as two packages: discover lookalike companies, size segments, enrich domain lists, match messy company names to domains, and find the right contacts.
+DiscoLike indexes **80M+ business websites worldwide**, analyzed in **50 languages** — roughly **3x the coverage of LinkedIn-dependent databases**. This repo gives you that index from Python or your terminal, as two packages: discover lookalike companies, size segments, enrich domain lists, match messy company names to domains, and find the right contacts.
 
-> **If you're a coding agent:** the fastest integration is the hosted MCP server — `https://api.discolike.com/v1/mcp` (streamable-http, OAuth; ~36 tools). For scripting and pipelines use `pip install discolike` as a library; for the terminal use `pip install discolike-cli` or `uvx --from discolike-cli discolike`, auth via `DISCOLIKE_API_KEY`. Machine-readable API index: `https://docs.discolike.com/llms.txt`.
+> **If you're a coding agent:** the fastest integration is the hosted MCP server — `https://api.discolike.com/v1/mcp` (streamable-http, OAuth; 48 tools). For scripting and pipelines use `pip install discolike` as a library; for the terminal use `pip install discolike-cli` or `uvx --from discolike-cli discolike`, auth via `DISCOLIKE_API_KEY`. Machine-readable API index: `https://docs.discolike.com/llms.txt`.
 
 <p align="center">
-  <a href="https://www.discolike.com">
+  <a href="https://discolike.com">
     <img src="https://discolike.com/images/og-image-default.png" alt="DiscoLike — from the entire web to your ideal target accounts" width="720">
   </a>
 </p>
@@ -246,6 +247,7 @@ uv run ruff check .
 ## Support & contact
 
 - **API documentation**: [docs.discolike.com](https://docs.discolike.com)
+- **Sign up**: [auth.discolike.com/en/signup](https://auth.discolike.com/en/signup)
 - **Book a demo**: [calendly.com/discolike/introductory-call](https://calendly.com/discolike/introductory-call)
 - **LinkedIn**: [linkedin.com/company/discolike](https://www.linkedin.com/company/discolike/)
 - **Issues with this SDK**: [GitHub issues](https://github.com/Discolike/discolike-python/issues)

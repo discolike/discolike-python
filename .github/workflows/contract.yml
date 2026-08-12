@@ -5,6 +5,9 @@ on:
     schedule:
         - cron: 0 6 * * 1
 
+permissions:
+    contents: read
+
 jobs:
     check:
         runs-on: ubuntu-latest
@@ -16,11 +19,14 @@ jobs:
             - run: uv sync --all-packages
             # SDK features land on development before the platform deploys to
             # prod, so PRs targeting development check against the dev spec.
+            # DEV_SPEC_URL is a repo secret; fork PRs don't receive it and
+            # fall back to the prod spec, keeping dev infra internal-only.
             - env:
                   BASE_REF: ${{ github.base_ref }}
+                  DEV_SPEC_URL: ${{ secrets.DEV_SPEC_URL }}
               run: |
-                  if [ "$BASE_REF" = "development" ]; then
-                      uv run python scripts/check_contract.py --spec-url https://api.dev.discolike.com/v1/openapi.json
+                  if [ "$BASE_REF" = "development" ] && [ -n "$DEV_SPEC_URL" ]; then
+                      uv run python scripts/check_contract.py --spec-url "$DEV_SPEC_URL"
                   else
                       uv run python scripts/check_contract.py
                   fi

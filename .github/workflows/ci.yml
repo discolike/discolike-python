@@ -2,8 +2,11 @@
 name: ci
 on:
     push:
-        branches: [main]
+        branches: [main, development]
     pull_request:
+
+permissions:
+    contents: read
 
 jobs:
     test:
