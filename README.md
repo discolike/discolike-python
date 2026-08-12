@@ -32,7 +32,7 @@
 
 DiscoLike indexes **80M+ business websites worldwide**, analyzed in **50 languages** — roughly **3x the coverage of LinkedIn-dependent databases**. This repo gives you that index from Python or your terminal, as two packages: discover lookalike companies, size segments, enrich domain lists, match messy company names to domains, and find the right contacts.
 
-> **If you're a coding agent:** the fastest integration is the hosted MCP server — `https://api.discolike.com/v1/mcp` (streamable-http, OAuth; ~36 tools). For scripting and pipelines use `pip install discolike` as a library; for the terminal use `pip install discolike-cli` or `uvx --from discolike-cli discolike`, auth via `DISCOLIKE_API_KEY`. Machine-readable API index: `https://docs.discolike.com/llms.txt`.
+> **If you're a coding agent:** the fastest integration is the hosted MCP server — `https://api.discolike.com/v1/mcp` (streamable-http, OAuth; 48 tools). For scripting and pipelines use `pip install discolike` as a library; for the terminal use `pip install discolike-cli` or `uvx --from discolike-cli discolike`, auth via `DISCOLIKE_API_KEY`. Machine-readable API index: `https://docs.discolike.com/llms.txt`.
 
 <p align="center">
   <a href="https://discolike.com">
