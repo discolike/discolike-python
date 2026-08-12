@@ -1,6 +1,6 @@
 # discolike
 
-Official Python SDK for the [DiscoLike API](https://www.discolike.com) — discover lookalike companies, enrich domain lists, match company names to domains, and find contacts, from typed Python.
+Official Python SDK for the [DiscoLike API](https://discolike.com) — discover lookalike companies, enrich domain lists, match company names to domains, and find contacts, from typed Python.
 
 For the terminal, see [`discolike-cli`](https://pypi.org/project/discolike-cli/) (`pip install discolike-cli` or `uvx --from discolike-cli discolike`).
 
