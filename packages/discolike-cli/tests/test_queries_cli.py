@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -154,7 +155,12 @@ def test_queries_save_results_missing_input_file_is_clean_error(
     assert result.exit_code == 2, result.output
     assert result.exception is None or isinstance(result.exception, SystemExit)
     assert "Traceback" not in result.output
-    assert missing.name in result.output.replace("\n", "")
+    # Rich wraps long paths mid-filename at narrow terminal widths (CI runs at
+    # 80 cols), inserting newlines, panel borders, and ANSI codes inside the
+    # name — strip all of that before the substring check.
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+    plain = re.sub(r"[^\w.\-]", "", plain)
+    assert missing.name in plain
 
 
 def test_queries_save_results_invalid_action_rejected(
