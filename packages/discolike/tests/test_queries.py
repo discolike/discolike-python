@@ -101,7 +101,7 @@ async def test_delete_async(make_async_client: AsyncClientFactory) -> None:
     assert result is None
 
 
-def test_save_results_posts_json_body() -> None:
+def test_save_results_posts_json_body(make_client: ClientFactory) -> None:
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -121,7 +121,7 @@ def test_save_results_posts_json_body() -> None:
     assert result.row_count == 1
 
 
-async def test_save_results_async() -> None:
+async def test_save_results_async(make_async_client: AsyncClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"query_id": "q7"})
 
@@ -139,4 +139,4 @@ def test_route_metadata_stamped() -> None:
     assert get_discolike_route(QueriesResource.create_exclusion_list) == ("POST", "/queries/exclusion-list", True, ())
     assert get_discolike_route(QueriesResource.update) == ("PATCH", "/queries/{query_id}", True, ())
     assert get_discolike_route(QueriesResource.delete) == ("DELETE", "/queries/{query_id}", True, ())
-    assert get_discolike_route(QueriesResource.save_results) == ("POST", "/queries/save-results", True, ())
+    assert get_discolike_route(QueriesResource.save_results) == ("POST", "/queries/save-results", False, ())

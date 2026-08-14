@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+from enum import Enum
 from pathlib import Path
 
 import typer
@@ -12,6 +13,14 @@ from discolike_cli._output import handle_errors
 FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls back to JSON for non-tabular data)."
 
 app = typer.Typer(help="Manage saved queries and exclusion lists for reusable targeting.")
+
+
+class SaveResultsAction(str, Enum):
+    discover = "discover"
+    segment = "segment"
+    contacts = "contacts"
+    append = "append"
+    match = "match"
 
 
 @app.command("list")
@@ -60,7 +69,7 @@ def save_results_command(
         ..., "--input", help="Path to a .json (list of row objects) or .csv (header row) file."
     ),
     name: str = typer.Option(..., "--name", help="Name for the saved query."),
-    action: str = typer.Option(
+    action: SaveResultsAction = typer.Option(
         ..., "--action", help="Underlying action: discover, segment, contacts, append, or match."
     ),
     domain_column: str = typer.Option("domain", "--domain-column", help="Column holding domains."),
@@ -83,7 +92,7 @@ def save_results_command(
     emit(
         get_client(ctx).queries.save_results(
             query_name=name,
-            action=action,
+            action=action.value,
             data=data,
             domain_column=domain_column,
             tags=tag,

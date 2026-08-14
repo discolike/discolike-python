@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from pathlib import Path
 
 import httpx
 from typer.testing import CliRunner
@@ -96,7 +97,7 @@ def test_queries_delete_hits_delete_endpoint(install_build_client: Callable[[Han
     assert json.loads(result.stdout) == {"deleted": "q4"}
 
 
-def test_queries_save_results_json_input(monkeypatch, tmp_path):
+def test_queries_save_results_json_input(install_build_client: Callable[[Handler], None], tmp_path: Path) -> None:
     captured = {}
 
     def handler(request):
@@ -104,7 +105,7 @@ def test_queries_save_results_json_input(monkeypatch, tmp_path):
         captured["body"] = json.loads(request.content)
         return httpx.Response(200, json={"query_id": "q6", "row_count": 2})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     f = tmp_path / "rows.json"
     f.write_text(json.dumps([{"domain": "a.com"}, {"domain": "b.com"}]))
     result = runner.invoke(
@@ -118,14 +119,14 @@ def test_queries_save_results_json_input(monkeypatch, tmp_path):
     assert captured["body"]["action"] == "discover"
 
 
-def test_queries_save_results_csv_input(monkeypatch, tmp_path):
+def test_queries_save_results_csv_input(install_build_client: Callable[[Handler], None], tmp_path: Path) -> None:
     captured = {}
 
     def handler(request):
         captured["body"] = json.loads(request.content)
         return httpx.Response(200, json={"query_id": "q7"})
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     f = tmp_path / "rows.csv"
     f.write_text("domain,score\na.com,1\nb.com,2\n")
     result = runner.invoke(
@@ -138,11 +139,13 @@ def test_queries_save_results_csv_input(monkeypatch, tmp_path):
     assert captured["body"]["action"] == "discover"
 
 
-def test_queries_save_results_missing_input_file_is_clean_error(monkeypatch, tmp_path):
+def test_queries_save_results_missing_input_file_is_clean_error(
+    install_build_client: Callable[[Handler], None], tmp_path: Path
+) -> None:
     def handler(request):
         raise AssertionError("handler should not be reached for a missing --input file")
 
-    _install_build_client(monkeypatch, handler)
+    install_build_client(handler)
     missing = tmp_path / "does-not-exist.json"
     result = runner.invoke(
         app,
@@ -152,3 +155,20 @@ def test_queries_save_results_missing_input_file_is_clean_error(monkeypatch, tmp
     assert result.exception is None or isinstance(result.exception, SystemExit)
     assert "Traceback" not in result.output
     assert missing.name in result.output.replace("\n", "")
+
+
+def test_queries_save_results_invalid_action_rejected(
+    install_build_client: Callable[[Handler], None], tmp_path: Path
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("handler should not be reached for an invalid --action")
+
+    install_build_client(handler)
+    f = tmp_path / "rows.json"
+    f.write_text(json.dumps([{"domain": "a.com"}]))
+    result = runner.invoke(
+        app,
+        ["queries", "save-results", "--input", str(f), "--name", "R", "--action", "bogus"],
+    )
+    assert result.exit_code == 2, result.output
+    assert "Traceback" not in result.output
