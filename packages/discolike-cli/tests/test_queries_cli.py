@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
+from pathlib import Path
 
 import httpx
 from typer.testing import CliRunner
@@ -94,3 +96,85 @@ def test_queries_delete_hits_delete_endpoint(install_build_client: Callable[[Han
     result = runner.invoke(app, ["queries", "delete", "q4"])
     assert result.exit_code == 0, result.output
     assert json.loads(result.stdout) == {"deleted": "q4"}
+
+
+def test_queries_save_results_json_input(install_build_client: Callable[[Handler], None], tmp_path: Path) -> None:
+    captured = {}
+
+    def handler(request):
+        captured["path"] = request.url.path
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"query_id": "q6", "row_count": 2})
+
+    install_build_client(handler)
+    f = tmp_path / "rows.json"
+    f.write_text(json.dumps([{"domain": "a.com"}, {"domain": "b.com"}]))
+    result = runner.invoke(
+        app,
+        ["queries", "save-results", "--input", str(f), "--name", "R", "--action", "discover"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["path"] == "/v1/queries/save-results"
+    assert captured["body"]["data"] == [{"domain": "a.com"}, {"domain": "b.com"}]
+    assert captured["body"]["query_name"] == "R"
+    assert captured["body"]["action"] == "discover"
+
+
+def test_queries_save_results_csv_input(install_build_client: Callable[[Handler], None], tmp_path: Path) -> None:
+    captured = {}
+
+    def handler(request):
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"query_id": "q7"})
+
+    install_build_client(handler)
+    f = tmp_path / "rows.csv"
+    f.write_text("domain,score\na.com,1\nb.com,2\n")
+    result = runner.invoke(
+        app,
+        ["queries", "save-results", "--input", str(f), "--name", "R", "--action", "discover"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"]["data"] == [{"domain": "a.com", "score": "1"}, {"domain": "b.com", "score": "2"}]
+    assert captured["body"]["query_name"] == "R"
+    assert captured["body"]["action"] == "discover"
+
+
+def test_queries_save_results_missing_input_file_is_clean_error(
+    install_build_client: Callable[[Handler], None], tmp_path: Path
+) -> None:
+    def handler(request):
+        raise AssertionError("handler should not be reached for a missing --input file")
+
+    install_build_client(handler)
+    missing = tmp_path / "does-not-exist.json"
+    result = runner.invoke(
+        app,
+        ["queries", "save-results", "--input", str(missing), "--name", "R", "--action", "discover"],
+    )
+    assert result.exit_code == 2, result.output
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    assert "Traceback" not in result.output
+    # Rich wraps long paths mid-filename at narrow terminal widths (CI runs at
+    # 80 cols), inserting newlines, panel borders, and ANSI codes inside the
+    # name — strip all of that before the substring check.
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+    plain = re.sub(r"[^\w.\-]", "", plain)
+    assert missing.name in plain
+
+
+def test_queries_save_results_invalid_action_rejected(
+    install_build_client: Callable[[Handler], None], tmp_path: Path
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError("handler should not be reached for an invalid --action")
+
+    install_build_client(handler)
+    f = tmp_path / "rows.json"
+    f.write_text(json.dumps([{"domain": "a.com"}]))
+    result = runner.invoke(
+        app,
+        ["queries", "save-results", "--input", str(f), "--name", "R", "--action", "bogus"],
+    )
+    assert result.exit_code == 2, result.output
+    assert "Traceback" not in result.output
