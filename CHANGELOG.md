@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.2 (2026-08-17)
 
 - SDK + CLI: new `queries.save_results` (sync + async) and `discolike queries save-results` — save result rows (JSON or CSV file in the CLI) as a reusable saved query, the REST twin of the `save-mcp-query` MCP tool. The CLI validates `--action` against the allowed set; the route is marked `openapi=False` until the platform endpoint deploys, at which point `scripts/check_contract.py` picks it up.
 - SDK + CLI (breaking): removed `companies.metrics` / `companies.history` and the `company metrics` / `company history` commands. The underlying `/metrics` and `/history` API endpoints are deprecated, with removal scheduled for 2026-10-01.
