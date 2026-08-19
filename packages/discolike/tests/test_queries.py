@@ -139,4 +139,4 @@ def test_route_metadata_stamped() -> None:
     assert get_discolike_route(QueriesResource.create_exclusion_list) == ("POST", "/queries/exclusion-list", True, ())
     assert get_discolike_route(QueriesResource.update) == ("PATCH", "/queries/{query_id}", True, ())
     assert get_discolike_route(QueriesResource.delete) == ("DELETE", "/queries/{query_id}", True, ())
-    assert get_discolike_route(QueriesResource.save_results) == ("POST", "/queries/save-results", False, ())
+    assert get_discolike_route(QueriesResource.save_results) == ("POST", "/queries/save-results", True, ())
