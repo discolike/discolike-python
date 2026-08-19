@@ -25,3 +25,17 @@ jobs:
             - run: uv run ty check packages/discolike/src packages/discolike/tests packages/discolike-cli/src packages/discolike-cli/tests packages/discolike-testkit/src
             - run: uv run pytest packages/discolike/tests -q
             - run: uv run pytest packages/discolike-cli/tests -q
+
+    # 3.15 is still prerelease; non-blocking until 3.15.0 final, when it moves
+    # into the matrix above and gets a classifier.
+    test-prerelease:
+        runs-on: ubuntu-latest
+        continue-on-error: true
+        steps:
+            - uses: actions/checkout@v4
+            - uses: astral-sh/setup-uv@v5
+              with:
+                  python-version: '3.15'
+            - run: uv sync --all-packages
+            - run: uv run pytest packages/discolike/tests -q
+            - run: uv run pytest packages/discolike-cli/tests -q
