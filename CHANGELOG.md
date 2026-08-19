@@ -1,8 +1,11 @@
 # Changelog
 
-## 0.1.2 (2026-08-17)
+## 0.1.2 (2026-08-19)
 
-- SDK + CLI: new `queries.save_results` (sync + async) and `discolike queries save-results` — save result rows (JSON or CSV file in the CLI) as a reusable saved query, the REST twin of the `save-mcp-query` MCP tool. The CLI validates `--action` against the allowed set; the route is marked `openapi=False` until the platform endpoint deploys, at which point `scripts/check_contract.py` picks it up.
+- Packaging: both wheels now ship the MIT license text (`dist-info/licenses/LICENSE`) — it was absent from every release so far, since the only `LICENSE` sat at the repo root, outside either package root.
+- Packaging: `discolike-cli` ships `py.typed`, so its annotations are visible to type checkers importing `discolike_cli`. Added classifiers: `Python :: 3 :: Only`, `OS Independent`, `Typing :: Typed`, plus `Libraries :: Python Modules` (SDK) and `Environment :: Console` / `Topic :: Utilities` (CLI). Added `Changelog` and `Issues` project URLs.
+- CI: tests also run on Python 3.15 prereleases in a non-blocking job. 3.15 stays out of the supported matrix and classifiers until 3.15.0 final.
+- SDK + CLI: new `queries.save_results` (sync + async) and `discolike queries save-results` — save result rows (JSON or CSV file in the CLI) as a reusable saved query, the REST twin of the `save-mcp-query` MCP tool. The CLI validates `--action` against the allowed set.
 - SDK + CLI (breaking): removed `companies.metrics` / `companies.history` and the `company metrics` / `company history` commands. The underlying `/metrics` and `/history` API endpoints are deprecated, with removal scheduled for 2026-10-01.
 - SDK (breaking): `companies.redirects`, `companies.vendors`, `companies.subsidiaries`, and `companies.public_links` now return a `list` of typed rows (`Redirect`, `Vendor`, `Subsidiary`, `PublicLink`). These endpoints return a JSON array; the SDK was validating that array into a single model and raised `ValidationError` on every live call.
 - SDK: `discover` rows, `companies.data`, and match rows now share one typed `CompanyProfile` base mirroring the platform's `CompanyResult` — all 21 firmographic fields (`status`, `address`, `keywords`, `industry_groups`, `business_model`, `revenue_range`, `employees`, `mx_provider`, …), with nested `CompanyStatus` / `CompanyAddress`. `discovery.Company` previously declared 5 of them and `BizData` none.
