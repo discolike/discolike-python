@@ -175,18 +175,31 @@ def main() -> None:
 
     pending = [(i, row) for i, row in enumerate(rows) if i not in done]
     chunk_size = min(args.chunk_size, MAX_QUERIES_PER_CALL)
-    print(f"{len(rows)} rows total, {len(pending)} to match now (chunks of up to {chunk_size} rows)")
+
+    # Pack rows into chunks by QUERY count, not row count: a row expands to up
+    # to two queries (website domain + email domain), so chunking 500 rows at a
+    # time could send up to 1,000 queries and blow the per-call limit.
+    chunks: list[list[tuple[int, list[dict[str, Any]]]]] = []
+    current: list[tuple[int, list[dict[str, Any]]]] = []
+    query_count = 0
+    for row_id, row in pending:
+        row_queries = build_queries(row_id, row, args)
+        if current and query_count + len(row_queries) > chunk_size:
+            chunks.append(current)
+            current, query_count = [], 0
+        current.append((row_id, row_queries))
+        query_count += len(row_queries)
+    if current:
+        chunks.append(current)
+    print(f"{len(rows)} rows total, {len(pending)} to match now in {len(chunks)} chunk(s) of <= {chunk_size} queries")
 
     client = Discolike()
     failed_chunks = 0
     with checkpoint_path.open("a", encoding="utf-8") as checkpoint:
-        for start in range(0, len(pending), chunk_size):
-            chunk = pending[start : start + chunk_size]
-            queries: list[dict[str, Any]] = []
-            for row_id, row in chunk:
-                queries.extend(build_queries(row_id, row, args))
+        for index, chunk in enumerate(chunks):
+            queries = [query for _, row_queries in chunk for query in row_queries]
             row_ids = [row_id for row_id, _ in chunk]
-            label = f"chunk {start // chunk_size + 1}/{(len(pending) + chunk_size - 1) // chunk_size}"
+            label = f"chunk {index + 1}/{len(chunks)}"
             if not queries:
                 hits: dict[int, dict[str, Any] | None] = dict.fromkeys(row_ids)
             else:

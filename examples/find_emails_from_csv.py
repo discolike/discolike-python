@@ -70,6 +70,20 @@ def main() -> None:
             for item in results.results:
                 output = item.result
                 if output is None:
+                    # Failed jobs carry no EnumerationOutput (so no identity),
+                    # but must not vanish from the output: keep the status and
+                    # error so the failure is visible and countable.
+                    writer.writerow(
+                        {
+                            "first_name": "",
+                            "last_name": "",
+                            "domain": "",
+                            "email": "",
+                            "status": item.status or "failed",
+                            "is_catch_all": "",
+                            "error": item.error or "",
+                        }
+                    )
                     continue
                 match = getattr(output, "result", None)
                 email = match.email if match is not None else None
