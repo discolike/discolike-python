@@ -241,6 +241,26 @@ def test_find_posts_and_job_wait_polls_jobs_endpoint(make_client: ClientFactory)
     assert output.result.email == "grace@navy.mil"
 
 
+def test_find_sends_known_pattern_and_omits_it_when_unset(make_client: ClientFactory) -> None:
+    bodies: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        bodies.append(json.loads(request.content))
+        return httpx.Response(202, json={"job_id": "j-kp", "status": "queued"})
+
+    with make_client(handler) as client:
+        client.email.find(first_name="Grace", last_name="Hopper", domain="navy.mil", known_pattern="first.last")
+        client.email.find(first_name="Grace", last_name="Hopper", domain="navy.mil")
+
+    assert bodies[0] == {
+        "first_name": "Grace",
+        "last_name": "Hopper",
+        "domain": "navy.mil",
+        "known_pattern": "first.last",
+    }
+    assert bodies[1] == {"first_name": "Grace", "last_name": "Hopper", "domain": "navy.mil"}
+
+
 def test_find_wait_raises_on_failed_job(make_client: ClientFactory) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
@@ -370,8 +390,8 @@ def test_route_metadata_stamped() -> None:
     from discolike.resources._base import get_discolike_route
     from discolike.resources.email import EmailResource
 
-    assert get_discolike_route(EmailResource.find) == ("POST", "/email/find", False, ())
-    assert get_discolike_route(EmailResource.find_batch) == ("POST", "/email/find/batch", False, ("contacts",))
+    assert get_discolike_route(EmailResource.find) == ("POST", "/email/find", True, ())
+    assert get_discolike_route(EmailResource.find_batch) == ("POST", "/email/find/batch", True, ("contacts",))
     assert get_discolike_route(EmailResource.job) is None
     assert get_discolike_route(EmailResource.batch) is None
 
