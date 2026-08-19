@@ -13,6 +13,7 @@ from discolike_cli import company
 from discolike_cli import contacts
 from discolike_cli import discogen
 from discolike_cli import discover
+from discolike_cli import email
 from discolike_cli import enrich
 from discolike_cli import match
 from discolike_cli import providers
@@ -57,6 +58,7 @@ app.add_typer(auth.app, name="auth")
 app.add_typer(company.app, name="company")
 app.add_typer(contacts.app, name="contacts")
 app.add_typer(discogen.app, name="discogen")
+app.add_typer(email.app, name="email")
 app.add_typer(queries.app, name="queries")
 app.add_typer(account.app, name="account")
 app.add_typer(providers.search_providers_app, name="search-providers")
