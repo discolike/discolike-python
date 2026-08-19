@@ -31,6 +31,11 @@ class SavedQueries(DiscolikeModel):
 class QueryResult(DiscolikeModel):
     query_id: str | None = None
     query_name: str | None = None
+    action: str | None = None
+    domain_count: int | None = None
+    persona_id_count: int | None = None
+    row_count: int | None = None
+    tags: builtins.list[str] | None = None
 
 
 class QueriesResource(SyncAPIResource):
@@ -57,6 +62,21 @@ class QueriesResource(SyncAPIResource):
     ) -> QueryResult:
         body = {k: v for k, v in locals().items() if k != "self"}
         response = self._transport.request("POST", "/queries/exclusion-list", json_body=drop_none(body))
+        return QueryResult.model_validate(response.json())
+
+    @api_route("POST", "/queries/save-results", openapi=False)
+    def save_results(
+        self,
+        *,
+        query_name: str,
+        action: str,
+        data: builtins.list[dict],
+        query_params: dict | None = None,
+        domain_column: str | None = None,
+        tags: builtins.list[str] | None = None,
+    ) -> QueryResult:
+        body = {k: v for k, v in locals().items() if k != "self"}
+        response = self._transport.request("POST", "/queries/save-results", json_body=drop_none(body))
         return QueryResult.model_validate(response.json())
 
     @api_route("PATCH", "/queries/{query_id}")
@@ -101,6 +121,21 @@ class AsyncQueriesResource(AsyncAPIResource):
     ) -> QueryResult:
         body = {k: v for k, v in locals().items() if k != "self"}
         response = await self._transport.request("POST", "/queries/exclusion-list", json_body=drop_none(body))
+        return QueryResult.model_validate(response.json())
+
+    @api_route("POST", "/queries/save-results", openapi=False)
+    async def save_results(
+        self,
+        *,
+        query_name: str,
+        action: str,
+        data: builtins.list[dict],
+        query_params: dict | None = None,
+        domain_column: str | None = None,
+        tags: builtins.list[str] | None = None,
+    ) -> QueryResult:
+        body = {k: v for k, v in locals().items() if k != "self"}
+        response = await self._transport.request("POST", "/queries/save-results", json_body=drop_none(body))
         return QueryResult.model_validate(response.json())
 
     @api_route("PATCH", "/queries/{query_id}")

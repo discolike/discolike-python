@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import csv
+import json
+from enum import Enum
+from pathlib import Path
+
 import typer
 
 from discolike_cli._output import emit
@@ -8,6 +13,14 @@ from discolike_cli._output import handle_errors
 FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls back to JSON for non-tabular data)."
 
 app = typer.Typer(help="Manage saved queries and exclusion lists for reusable targeting.")
+
+
+class SaveResultsAction(str, Enum):
+    discover = "discover"
+    segment = "segment"
+    contacts = "contacts"
+    append = "append"
+    match = "match"
 
 
 @app.command("list")
@@ -43,6 +56,45 @@ def create_exclusion_list_command(
             query_name=name,
             domains=domain,
             persona_ids=persona_id,
+            tags=tag,
+        )
+    )
+
+
+@app.command("save-results")
+@handle_errors
+def save_results_command(
+    ctx: typer.Context,
+    input_path: Path = typer.Option(
+        ..., "--input", help="Path to a .json (list of row objects) or .csv (header row) file."
+    ),
+    name: str = typer.Option(..., "--name", help="Name for the saved query."),
+    action: SaveResultsAction = typer.Option(
+        ..., "--action", help="Underlying action: discover, segment, contacts, append, or match."
+    ),
+    domain_column: str = typer.Option("domain", "--domain-column", help="Column holding domains."),
+    tag: list[str] | None = typer.Option(None, "--tag", help="Tag to attach (repeatable)."),
+) -> None:
+    """Save result rows from a file as a reusable saved query."""
+    from discolike_cli.main import get_client
+
+    try:
+        if input_path.suffix.lower() == ".csv":
+            with input_path.open(newline="") as fh:
+                data = [dict(row) for row in csv.DictReader(fh)]
+        else:
+            data = json.loads(input_path.read_text())
+    except FileNotFoundError as exc:
+        raise typer.BadParameter(f"--input file not found: {input_path}") from exc
+    except json.JSONDecodeError as exc:
+        raise typer.BadParameter(f"--input file {input_path} must contain valid JSON: {exc}") from exc
+
+    emit(
+        get_client(ctx).queries.save_results(
+            query_name=name,
+            action=action.value,
+            data=data,
+            domain_column=domain_column,
             tags=tag,
         )
     )
