@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- CLI: new `discolike email` command group wrapping the SDK email resource — `find FIRST LAST DOMAIN [--known-pattern X]`, `find-batch` (CSV file and/or repeatable `--contact "first,last,domain"`, max 500 per batch), `results BATCH_ID [--kind find|verify]`, and `job JOB_ID`, each with `--wait/--no-wait` polling.
+- SDK: `email.find` accepts `known_pattern` (sync + async), matching the platform's `POST /email/find` body. Omitted from the request when unset.
+- SDK: email routes are no longer `openapi=False` — the platform now exposes `/email/find`, `/email/find/batch`, and the poll routes in its OpenAPI spec, so `check_contract.py` validates them like every other route.
+- Examples: new `examples/` folder with runnable end-to-end scripts — `match_crm_contacts.py` (bulk-match a CRM CSV to personas with resumable checkpointing and website+email domain keys), `find_emails_from_csv.py` (batch email finding), `discover_and_enrich.py` (discover + DiscoGen enrichment). Referenced from the README.
+
 ## 0.1.2 (2026-08-19)
 
 - Packaging: both wheels now ship the MIT license text (`dist-info/licenses/LICENSE`) — it was absent from every release so far, since the only `LICENSE` sat at the repo root, outside either package root.

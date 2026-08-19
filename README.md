@@ -142,6 +142,15 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
+## Examples
+
+The [`examples/`](examples/) folder has runnable scripts for common workflows — matching a CRM contact export to DiscoLike persona IDs (with checkpointing and resume), bulk-finding work emails from a CSV, and discovering companies by ICP then enriching them with DiscoGen. Each is stdlib-plus-SDK only:
+
+```bash
+export DISCOLIKE_API_KEY="dl_..."
+python examples/match_crm_contacts.py --help
+```
+
 ## CLI
 
 The same API from your terminal, with `--help` on every command:
