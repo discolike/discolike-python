@@ -13,6 +13,8 @@ from discolike._transport import drop_none
 from discolike.resources._base import AsyncAPIResource
 from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
+from discolike.resources.companies import CompanyProfile
+from discolike.resources.discovery import Count
 
 
 class Contact(DiscolikeModel):
@@ -44,11 +46,17 @@ class ContactMatchResponse(DiscolikeModel):
     matches: list[ContactMatchResult] = pydantic.Field(default_factory=list)
 
 
-class ContactsByCompany(DiscolikeModel):
-    domain: str | None = None
-    name: str | None = None
+class ContactsByCompany(CompanyProfile):
     contacts: list[Contact] = pydantic.Field(default_factory=list)
     email_pattern: str | None = None
+    email_pattern_confidence: float | None = None
+    email_pattern_guess: str | None = None
+
+
+class ContactsDiscoverResponse(DiscolikeModel):
+    results: dict[str, ContactsByCompany] = pydantic.Field(default_factory=dict)
+    total_contacts: int | None = None
+    total_domains: int | None = None
 
 
 class ContactsResource(SyncAPIResource):
@@ -134,9 +142,9 @@ class ContactsResource(SyncAPIResource):
         employee_range: str | None = None,
         inclusion_query_id: list[str] | None = None,
         exclusion_query_id: list[str] | None = None,
-    ) -> DiscolikeModel:
+    ) -> Count:
         params = {k: v for k, v in locals().items() if k != "self"}
-        return DiscolikeModel.model_validate(self._transport.request("GET", "/contacts/count", params=params).json())
+        return Count.model_validate(self._transport.request("GET", "/contacts/count", params=params).json())
 
     @api_route("GET", "/contacts/lookup")
     def lookup(
@@ -215,10 +223,10 @@ class ContactsResource(SyncAPIResource):
         results_by_company: int | None = None,
         include_search_contacts: bool | None = None,
         consensus: int | None = None,
-    ) -> DiscolikeModel:
+    ) -> ContactsDiscoverResponse:
         body = {k: v for k, v in locals().items() if k != "self"}
         response = self._transport.request("POST", "/contacts/discover", json_body=drop_none(body))
-        return DiscolikeModel.model_validate(response.json())
+        return ContactsDiscoverResponse.model_validate(response.json())
 
     @api_route("POST", "/contacts/discover/generate")
     def generate(
@@ -321,10 +329,10 @@ class AsyncContactsResource(AsyncAPIResource):
         employee_range: str | None = None,
         inclusion_query_id: list[str] | None = None,
         exclusion_query_id: list[str] | None = None,
-    ) -> DiscolikeModel:
+    ) -> Count:
         params = {k: v for k, v in locals().items() if k != "self"}
         response = await self._transport.request("GET", "/contacts/count", params=params)
-        return DiscolikeModel.model_validate(response.json())
+        return Count.model_validate(response.json())
 
     @api_route("GET", "/contacts/lookup")
     async def lookup(
@@ -403,10 +411,10 @@ class AsyncContactsResource(AsyncAPIResource):
         results_by_company: int | None = None,
         include_search_contacts: bool | None = None,
         consensus: int | None = None,
-    ) -> DiscolikeModel:
+    ) -> ContactsDiscoverResponse:
         body = {k: v for k, v in locals().items() if k != "self"}
         response = await self._transport.request("POST", "/contacts/discover", json_body=drop_none(body))
-        return DiscolikeModel.model_validate(response.json())
+        return ContactsDiscoverResponse.model_validate(response.json())
 
     @api_route("POST", "/contacts/discover/generate")
     async def generate(
