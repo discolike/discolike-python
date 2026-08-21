@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CLI (fix): `auth login` and `auth status` now honor the global `--base-url` and `--api-key`. Every other command routed through `get_client(ctx)`; these two built their own client, so `--base-url` was ignored and `auth status` reported `"valid": true` for a host it never contacted, while `--api-key` was ignored in favour of the environment or config key. `auth status` gains a third `source` value, `option`, for a key passed explicitly on the command line. An ambient `DISCOLIKE_API_KEY` still does not skip the `auth login` prompt — only an explicit flag does.
 - CLI: new `discolike email` command group wrapping the SDK email resource — `find FIRST LAST DOMAIN [--known-pattern X]`, `find-batch` (CSV file and/or repeatable `--contact "first,last,domain"`, max 500 per batch), `results BATCH_ID [--kind find|verify]`, and `job JOB_ID`, each with `--wait/--no-wait` polling.
 - SDK: `email.find` accepts `known_pattern` (sync + async), matching the platform's `POST /email/find` body. Omitted from the request when unset.
 - SDK: email routes are no longer `openapi=False` — the platform now exposes `/email/find`, `/email/find/batch`, and the poll routes in its OpenAPI spec, so `check_contract.py` validates them like every other route.
