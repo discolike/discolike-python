@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- SDK: `email.job(job_id)` accepts `kind="find"|"verify"` (default `"find"`), so verify jobs can be rehydrated — previously every rehydrated job decoded as a find job. `wait()` now returns `EnumerationOutput | ValidationOutput` per the handle's kind. Job and batch results also honor a server-reported `kind` field when present, so a handle rehydrated with the wrong kind still parses each result into the right model.
+
 - CLI: new `discolike email` command group wrapping the SDK email resource — `find FIRST LAST DOMAIN [--known-pattern X]`, `find-batch` (CSV file and/or repeatable `--contact "first,last,domain"`, max 500 per batch), `results BATCH_ID [--kind find|verify]`, and `job JOB_ID`, each with `--wait/--no-wait` polling.
 - SDK: `email.find` accepts `known_pattern` (sync + async), matching the platform's `POST /email/find` body. Omitted from the request when unset.
 - SDK: email routes are no longer `openapi=False` — the platform now exposes `/email/find`, `/email/find/batch`, and the poll routes in its OpenAPI spec, so `check_contract.py` validates them like every other route.

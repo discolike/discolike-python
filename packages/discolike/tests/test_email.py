@@ -279,11 +279,13 @@ def test_job_reattaches_without_http_call(make_client: ClientFactory) -> None:
 
     with make_client(handler) as client:
         job = client.email.job("j-existing")
+        verify_job = client.email.job("j-verify", kind="verify")
         batch = client.email.batch("b-existing", kind="verify")
 
     assert isinstance(job, EmailJob)
     assert job.job_id == "j-existing"
     assert job.kind == "find"
+    assert verify_job.kind == "verify"
     assert isinstance(batch, EmailBatch)
     assert batch.kind == "verify"
 
@@ -445,3 +447,38 @@ def test_batch_can_still_re_attach_to_a_verify_batch(make_client: ClientFactory)
     assert isinstance(item.result, ValidationOutput)
     assert item.result.status == "invalid"
     assert item.result.reason == "no_mailbox"
+
+
+def test_server_reported_kind_overrides_handle_kind(make_client: ClientFactory) -> None:
+    """A verify batch rehydrated with kind="find" still decodes ValidationOutput
+    when the server reports the job's kind."""
+    handler = _results_sequence(
+        [
+            {
+                "batch_id": "b-10",
+                "total": 1,
+                "completed": 1,
+                "failed": 0,
+                "results": [
+                    {
+                        "job_id": "j-10",
+                        "status": "completed",
+                        "kind": "verify",
+                        "result": {
+                            "email": "ada@acme.com",
+                            "status": "invalid",
+                            "is_deliverable": False,
+                            "is_catch_all": False,
+                            "reason": "no_mailbox",
+                        },
+                        "error": None,
+                    }
+                ],
+            }
+        ]
+    )
+
+    with make_client(handler) as client:
+        results = client.email.batch("b-10", kind="find").results(timeout=60.0, poll_interval=1.0)
+
+    assert isinstance(results.results[0].result, ValidationOutput)
