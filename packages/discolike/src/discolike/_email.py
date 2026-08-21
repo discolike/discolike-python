@@ -141,7 +141,6 @@ class EmailJob:
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
         on_poll: Callable[[EmailJobResult], None] | None = None,
     ) -> EnumerationOutput | ValidationOutput:
-        expected = _output_model(self.kind)
         deadline = time.monotonic() + timeout
         while True:
             current = self.status()
@@ -150,7 +149,7 @@ class EmailJob:
             if current.status == "failed":
                 raise JobFailedError(current.error or f"email {self.kind} job failed", payload=current.to_dict())
             if current.status in EMAIL_TERMINAL_STATUSES:
-                if not isinstance(current.result, expected):
+                if current.result is None:
                     raise JobFailedError(f"email {self.kind} job completed without a result", payload=current.to_dict())
                 return current.result
             if time.monotonic() >= deadline:
@@ -177,7 +176,6 @@ class AsyncEmailJob:
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
         on_poll: Callable[[EmailJobResult], None] | None = None,
     ) -> EnumerationOutput | ValidationOutput:
-        expected = _output_model(self.kind)
         deadline = time.monotonic() + timeout
         while True:
             current = await self.status()
@@ -186,7 +184,7 @@ class AsyncEmailJob:
             if current.status == "failed":
                 raise JobFailedError(current.error or f"email {self.kind} job failed", payload=current.to_dict())
             if current.status in EMAIL_TERMINAL_STATUSES:
-                if not isinstance(current.result, expected):
+                if current.result is None:
                     raise JobFailedError(f"email {self.kind} job completed without a result", payload=current.to_dict())
                 return current.result
             if time.monotonic() >= deadline:

@@ -482,3 +482,41 @@ def test_server_reported_kind_overrides_handle_kind(make_client: ClientFactory) 
         results = client.email.batch("b-10", kind="find").results(timeout=60.0, poll_interval=1.0)
 
     assert isinstance(results.results[0].result, ValidationOutput)
+
+
+_VERIFY_JOB_PAYLOAD = {
+    "job_id": "j-11",
+    "status": "completed",
+    "kind": "verify",
+    "result": {
+        "email": "ada@acme.com",
+        "status": "invalid",
+        "is_deliverable": False,
+        "reason": "no_mailbox",
+    },
+    "error": None,
+}
+
+
+def _verify_job_handler(request: httpx2.Request) -> httpx2.Response:
+    assert request.url.path == "/v1/email/jobs/j-11"
+    return httpx2.Response(200, json=_VERIFY_JOB_PAYLOAD)
+
+
+def test_job_wait_honors_server_reported_kind(make_client: ClientFactory) -> None:
+    """A verify job rehydrated with the default kind="find" still returns its
+    ValidationOutput. The server-reported kind picks the model, so wait() must not
+    gate the result on the handle's kind."""
+    with make_client(_verify_job_handler) as client:
+        output = client.email.job("j-11").wait(timeout=60.0, poll_interval=1.0)
+
+    assert isinstance(output, ValidationOutput)
+    assert output.reason == "no_mailbox"
+
+
+async def test_job_wait_honors_server_reported_kind_async(make_async_client: AsyncClientFactory) -> None:
+    async with make_async_client(_verify_job_handler) as client:
+        output = await client.email.job("j-11").wait(timeout=60.0, poll_interval=1.0)
+
+    assert isinstance(output, ValidationOutput)
+    assert output.reason == "no_mailbox"
