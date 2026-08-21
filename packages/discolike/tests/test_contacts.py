@@ -59,7 +59,7 @@ def test_count(make_client: ClientFactory) -> None:
     assert seen["params"]["seniority"] == "vp"
     assert seen["params"]["has_email"] == "true"
     assert seen["params"]["jobstart_date"] == "2025-01-01"
-    assert result.model_extra["count"] == 1234  # ty: ignore[not-subscriptable]
+    assert result.count == 1234
 
 
 def test_lookup(make_client: ClientFactory) -> None:
@@ -179,7 +179,9 @@ def test_discover_posts_json_body(make_client: ClientFactory) -> None:
         "results_by_company": 10,
         "consensus": 2,
     }
-    assert result.model_extra["total_domains"] == 1  # ty: ignore[not-subscriptable]
+    assert result.total_domains == 1
+    assert result.results["acme.com"].domain == "acme.com"
+    assert result.results["acme.com"].contacts == []
 
 
 def test_generate_posts_json_and_returns_job(make_client: ClientFactory) -> None:

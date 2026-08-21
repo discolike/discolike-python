@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- SDK: `contacts.count` returns a typed `Count` and `contacts.discover` a typed `ContactsDiscoverResponse` (`results` map of domain → `ContactsByCompany`, `total_contacts`, `total_domains`) — both previously returned a bare passthrough model with everything in `.extra`. `ContactsByCompany` now extends `CompanyProfile` (firmographics + nested `contacts`, `email_pattern`, `email_pattern_confidence`, `email_pattern_guess`), mirroring the platform's `DomainContactsEntry`; it was previously defined but never constructed.
+
 - CLI: new `discolike email` command group wrapping the SDK email resource — `find FIRST LAST DOMAIN [--known-pattern X]`, `find-batch` (CSV file and/or repeatable `--contact "first,last,domain"`, max 500 per batch), `results BATCH_ID [--kind find|verify]`, and `job JOB_ID`, each with `--wait/--no-wait` polling.
 - SDK: `email.find` accepts `known_pattern` (sync + async), matching the platform's `POST /email/find` body. Omitted from the request when unset.
 - SDK: email routes are no longer `openapi=False` — the platform now exposes `/email/find`, `/email/find/batch`, and the poll routes in its OpenAPI spec, so `check_contract.py` validates them like every other route.
