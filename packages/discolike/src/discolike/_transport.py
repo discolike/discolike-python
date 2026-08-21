@@ -58,12 +58,14 @@ class Transport:
         self._client.headers.update(_default_headers(api_key))
         self._max_retries = max_retries
         self._timeout_override: float | httpx.Timeout | None = None
+        self._is_view = False
 
     def with_timeout(self, timeout: float | httpx.Timeout) -> Transport:
         clone = object.__new__(Transport)
         clone._client = self._client
         clone._max_retries = self._max_retries
         clone._timeout_override = timeout
+        clone._is_view = True
         return clone
 
     def request(
@@ -100,7 +102,8 @@ class Transport:
         raise AssertionError("unreachable")
 
     def close(self) -> None:
-        self._client.close()
+        if not self._is_view:
+            self._client.close()
 
 
 class AsyncTransport:
@@ -119,12 +122,14 @@ class AsyncTransport:
         self._client.headers.update(_default_headers(api_key))
         self._max_retries = max_retries
         self._timeout_override: float | httpx.Timeout | None = None
+        self._is_view = False
 
     def with_timeout(self, timeout: float | httpx.Timeout) -> AsyncTransport:
         clone = object.__new__(AsyncTransport)
         clone._client = self._client
         clone._max_retries = self._max_retries
         clone._timeout_override = timeout
+        clone._is_view = True
         return clone
 
     async def request(
@@ -161,4 +166,5 @@ class AsyncTransport:
         raise AssertionError("unreachable")
 
     async def aclose(self) -> None:
-        await self._client.aclose()
+        if not self._is_view:
+            await self._client.aclose()
