@@ -12,7 +12,7 @@ license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [{ name = "DiscoLike", email = "support@discolike.com" }]
 dependencies = [
-  "discolike>=0.2.0",
+  "discolike==0.2.0",
   "typer>=0.12",
   "rich>=13.0",
 ]
