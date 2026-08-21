@@ -6,6 +6,7 @@ the ``discolike-testkit`` plugin.
 """
 
 from collections.abc import Callable
+from typing import Any
 
 import httpx
 import pytest
@@ -17,13 +18,24 @@ Handler = Callable[[httpx.Request], httpx.Response]
 
 
 @pytest.fixture
+def build_client_calls() -> list[dict[str, Any]]:
+    """Records the keyword arguments the CLI passes to its client factory."""
+    return []
+
+
+@pytest.fixture
 def install_build_client(
     monkeypatch: pytest.MonkeyPatch,
     make_client: Callable[[Handler], Discolike],
+    build_client_calls: list[dict[str, Any]],
 ) -> Callable[[Handler], None]:
     """Point the CLI's client factory at a mock transport driven by ``handler``."""
 
     def _install(handler: Handler) -> None:
-        monkeypatch.setattr(cli_main, "build_client", lambda **kwargs: make_client(handler))
+        def _factory(**kwargs: Any) -> Discolike:
+            build_client_calls.append(kwargs)
+            return make_client(handler)
+
+        monkeypatch.setattr(cli_main, "build_client", _factory)
 
     return _install

@@ -3,11 +3,13 @@ from __future__ import annotations
 import json
 import stat
 from collections.abc import Callable
+from typing import Any
 
 import httpx
 import pytest
 from typer.testing import CliRunner
 
+from discolike._config import ENV_API_KEY
 from discolike._config import config_path
 from discolike._config import save_config
 from discolike_cli.main import app
@@ -118,3 +120,91 @@ def test_cli_version_flag() -> None:
     assert result.exit_code == 0
     assert f"discolike-cli {version('discolike-cli')}" in result.output
     assert f"(discolike {__version__})" in result.output
+
+
+def test_status_honors_global_base_url(
+    monkeypatch: pytest.MonkeyPatch,
+    install_build_client: Callable[[Handler], None],
+    build_client_calls: list[dict[str, Any]],
+) -> None:
+    install_build_client(_usage_ok)
+    monkeypatch.setenv("DISCOLIKE_API_KEY", "dk-abcdefgh1234")
+    result = runner.invoke(app, ["--base-url", "https://other.test/v1", "auth", "status"])
+    assert result.exit_code == 0, result.output
+    assert build_client_calls == [{"api_key": "dk-abcdefgh1234", "base_url": "https://other.test/v1"}]
+
+
+def test_login_honors_global_base_url(
+    install_build_client: Callable[[Handler], None],
+    build_client_calls: list[dict[str, Any]],
+) -> None:
+    install_build_client(_usage_ok)
+    result = runner.invoke(app, ["--base-url", "https://other.test/v1", "auth", "login", "--api-key", "dk-1"])
+    assert result.exit_code == 0, result.output
+    assert build_client_calls == [{"api_key": "dk-1", "base_url": "https://other.test/v1"}]
+
+
+def test_status_verifies_explicitly_passed_api_key(
+    monkeypatch: pytest.MonkeyPatch,
+    install_build_client: Callable[[Handler], None],
+    build_client_calls: list[dict[str, Any]],
+) -> None:
+    install_build_client(_usage_ok)
+    monkeypatch.setenv("DISCOLIKE_API_KEY", "dk-fromenv0000")
+    save_config({"auth_method": "api_key", "api_key": "dk-fromconfig11"})
+    result = runner.invoke(app, ["--api-key", "dk-fromoption22", "auth", "status"])
+    assert result.exit_code == 0, result.output
+    assert build_client_calls == [{"api_key": "dk-fromoption22"}]
+    payload = json.loads(result.stdout)
+    assert payload["source"] == "option"
+    assert payload["api_key"] == "…on22"
+    assert payload["valid"] is True
+
+
+def test_status_source_is_env_when_key_comes_from_environment(
+    monkeypatch: pytest.MonkeyPatch, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_ok)
+    monkeypatch.setenv("DISCOLIKE_API_KEY", "dk-fromenv0000")
+    result = runner.invoke(app, ["auth", "status"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["source"] == "env"
+
+
+def test_status_source_is_config_when_only_config_has_key(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_usage_ok)
+    save_config({"auth_method": "api_key", "api_key": "dk-fromconfig11"})
+    result = runner.invoke(app, ["auth", "status"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["source"] == "config"
+
+
+def test_login_api_key_option_beats_global_option(
+    install_build_client: Callable[[Handler], None],
+    build_client_calls: list[dict[str, Any]],
+) -> None:
+    install_build_client(_usage_ok)
+    result = runner.invoke(app, ["--api-key", "dk-global", "auth", "login", "--api-key", "dk-local"])
+    assert result.exit_code == 0, result.output
+    assert build_client_calls == [{"api_key": "dk-local"}]
+    assert json.loads(config_path().read_text())["api_key"] == "dk-local"
+
+
+def test_login_ignores_ambient_env_key_and_still_prompts(
+    install_build_client: Callable[[Handler], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_build_client(_usage_ok)
+    monkeypatch.setenv(ENV_API_KEY, "dk-from-env")
+    result = runner.invoke(app, ["auth", "login"], input="dk-typed\n")
+    assert result.exit_code == 0, result.output
+    assert json.loads(config_path().read_text())["api_key"] == "dk-typed"
+
+
+def test_login_accepts_explicitly_passed_global_key_without_prompting(
+    install_build_client: Callable[[Handler], None],
+) -> None:
+    install_build_client(_usage_ok)
+    result = runner.invoke(app, ["--api-key", "dk-global", "auth", "login"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(config_path().read_text())["api_key"] == "dk-global"
