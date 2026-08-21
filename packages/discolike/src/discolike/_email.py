@@ -7,6 +7,7 @@ from typing import Any
 from typing import Literal
 
 import pydantic
+from typing_extensions import assert_never
 
 from discolike._exceptions import JobFailedError
 from discolike._exceptions import JobTimeoutError
@@ -71,12 +72,19 @@ class EmailBatchResults(DiscolikeModel):
     results: list[EmailJobResult] = pydantic.Field(default_factory=list)
 
 
+def _output_model(kind: EmailKind) -> type[EnumerationOutput] | type[ValidationOutput]:
+    match kind:
+        case "find":
+            return EnumerationOutput
+        case "verify":
+            return ValidationOutput
+    assert_never(kind)
+
+
 def _decode_output(kind: EmailKind, raw: dict[str, Any] | None) -> EnumerationOutput | ValidationOutput | None:
     if raw is None:
         return None
-    if kind == "find":
-        return EnumerationOutput.model_validate(raw)
-    return ValidationOutput.model_validate(raw)
+    return _output_model(kind).model_validate(raw)
 
 
 def _decode_job_result(kind: EmailKind, item: dict[str, Any]) -> EmailJobResult:
@@ -133,7 +141,7 @@ class EmailJob:
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
         on_poll: Callable[[EmailJobResult], None] | None = None,
     ) -> EnumerationOutput | ValidationOutput:
-        expected = EnumerationOutput if self.kind == "find" else ValidationOutput
+        expected = _output_model(self.kind)
         deadline = time.monotonic() + timeout
         while True:
             current = self.status()
@@ -169,7 +177,7 @@ class AsyncEmailJob:
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
         on_poll: Callable[[EmailJobResult], None] | None = None,
     ) -> EnumerationOutput | ValidationOutput:
-        expected = EnumerationOutput if self.kind == "find" else ValidationOutput
+        expected = _output_model(self.kind)
         deadline = time.monotonic() + timeout
         while True:
             current = await self.status()
