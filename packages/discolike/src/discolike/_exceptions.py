@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import httpx
+import httpx2
 
 
 class DiscolikeError(Exception):
@@ -66,7 +66,7 @@ _STATUS_MAP: dict[int, type[DiscolikeError]] = {
 }
 
 
-def _extract_message(response: httpx.Response) -> tuple[str, Any]:
+def _extract_message(response: httpx2.Response) -> tuple[str, Any]:
     try:
         payload = response.json()
     except ValueError:
@@ -85,7 +85,7 @@ def _extract_message(response: httpx.Response) -> tuple[str, Any]:
     return json.dumps(payload)[:500], payload
 
 
-def raise_for_status(response: httpx.Response) -> None:
+def raise_for_status(response: httpx2.Response) -> None:
     if response.status_code < 400:
         return
     message, payload = _extract_message(response)

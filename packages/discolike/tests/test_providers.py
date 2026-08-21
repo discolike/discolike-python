@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-import httpx
+import httpx2
 import pytest
 
 from discolike_testkit import AsyncClientFactory
@@ -12,10 +12,10 @@ from discolike_testkit import ClientFactory
 def test_search_providers_list_hits_collection(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        return httpx.Response(200, json={"providers": [{"integration_id": "sp1"}]})
+        return httpx2.Response(200, json={"providers": [{"integration_id": "sp1"}]})
 
     with make_client(handler) as client:
         result = client.search_providers.list()
@@ -28,11 +28,11 @@ def test_search_providers_list_hits_collection(make_client: ClientFactory) -> No
 def test_search_providers_create_posts_body_and_drops_unset(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"integration_id": "sp2", "integration_name": "Tavily"})
+        return httpx2.Response(200, json={"integration_id": "sp2", "integration_name": "Tavily"})
 
     with make_client(handler) as client:
         result = client.search_providers.create(
@@ -56,11 +56,11 @@ def test_search_providers_create_posts_body_and_drops_unset(make_client: ClientF
 def test_search_providers_update_puts_path_and_body(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"integration_id": "sp3", "integration_name": "Serper"})
+        return httpx2.Response(200, json={"integration_id": "sp3", "integration_name": "Serper"})
 
     with make_client(handler) as client:
         result = client.search_providers.update(
@@ -83,10 +83,10 @@ def test_search_providers_update_puts_path_and_body(make_client: ClientFactory) 
 def test_search_providers_delete_returns_none(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        return httpx.Response(200, json={"message": "Integration deleted successfully"})
+        return httpx2.Response(200, json={"message": "Integration deleted successfully"})
 
     with make_client(handler) as client:
         result = client.search_providers.delete(integration_id="sp4")
@@ -99,10 +99,10 @@ def test_search_providers_delete_returns_none(make_client: ClientFactory) -> Non
 def test_search_providers_set_default_puts_default_subroute(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        return httpx.Response(200, json={"message": "ok", "integration_id": "sp5"})
+        return httpx2.Response(200, json={"message": "ok", "integration_id": "sp5"})
 
     with make_client(handler) as client:
         result = client.search_providers.set_default(integration_id="sp5")
@@ -115,10 +115,10 @@ def test_search_providers_set_default_puts_default_subroute(make_client: ClientF
 def test_search_providers_clear_default_deletes_default_subroute(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        return httpx.Response(200, json={"message": "Default search provider cleared successfully"})
+        return httpx2.Response(200, json={"message": "Default search provider cleared successfully"})
 
     with make_client(handler) as client:
         result = client.search_providers.clear_default(integration_id="sp6")
@@ -131,10 +131,10 @@ def test_search_providers_clear_default_deletes_default_subroute(make_client: Cl
 def test_search_providers_models_hits_models_route(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        return httpx.Response(200, json={"models": {"tavily": [{"name": "tavily/search", "cost_per_query": 0.008}]}})
+        return httpx2.Response(200, json={"models": {"tavily": [{"name": "tavily/search", "cost_per_query": 0.008}]}})
 
     with make_client(handler) as client:
         result = client.search_providers.models()
@@ -148,10 +148,10 @@ def test_search_providers_models_hits_models_route(make_client: ClientFactory) -
 def test_llm_providers_list_hits_config(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        return httpx.Response(200, json={"providers": [], "mtime": None})
+        return httpx2.Response(200, json={"providers": [], "mtime": None})
 
     with make_client(handler) as client:
         result = client.llm_providers.list()
@@ -164,11 +164,11 @@ def test_llm_providers_list_hits_config(make_client: ClientFactory) -> None:
 def test_llm_providers_create_posts_body_and_drops_unset(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"message": "created", "integration_id": "llm1"})
+        return httpx2.Response(200, json={"message": "created", "integration_id": "llm1"})
 
     with make_client(handler) as client:
         result = client.llm_providers.create(
@@ -192,10 +192,10 @@ def test_llm_providers_create_posts_body_and_drops_unset(make_client: ClientFact
 def test_llm_providers_get_hits_config_item(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        return httpx.Response(200, json={"integration_id": "llm2", "integration_name": "Anthropic"})
+        return httpx2.Response(200, json={"integration_id": "llm2", "integration_name": "Anthropic"})
 
     with make_client(handler) as client:
         result = client.llm_providers.get(integration_id="llm2")
@@ -208,11 +208,11 @@ def test_llm_providers_get_hits_config_item(make_client: ClientFactory) -> None:
 def test_llm_providers_update_keeps_null_api_key_in_body(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"message": "updated"})
+        return httpx2.Response(200, json={"message": "updated"})
 
     with make_client(handler) as client:
         result = client.llm_providers.update(
@@ -236,9 +236,9 @@ def test_llm_providers_update_keeps_null_api_key_in_body(make_client: ClientFact
 def test_llm_providers_update_sends_new_api_key(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"message": "updated"})
+        return httpx2.Response(200, json={"message": "updated"})
 
     with make_client(handler) as client:
         client.llm_providers.update(
@@ -255,10 +255,10 @@ def test_llm_providers_update_sends_new_api_key(make_client: ClientFactory) -> N
 def test_llm_providers_delete_returns_none(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        return httpx.Response(200, json={"message": "Integration deleted successfully"})
+        return httpx2.Response(200, json={"message": "Integration deleted successfully"})
 
     with make_client(handler) as client:
         result = client.llm_providers.delete(integration_id="llm4")
@@ -271,10 +271,10 @@ def test_llm_providers_delete_returns_none(make_client: ClientFactory) -> None:
 def test_llm_providers_set_default_posts_subroute(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        return httpx.Response(200, json={"message": "ok", "integration_id": "llm5"})
+        return httpx2.Response(200, json={"message": "ok", "integration_id": "llm5"})
 
     with make_client(handler) as client:
         result = client.llm_providers.set_default(integration_id="llm5")
@@ -287,11 +287,11 @@ def test_llm_providers_set_default_posts_subroute(make_client: ClientFactory) ->
 def test_llm_providers_test_connection_posts_body(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"status": "success", "message": "Connection to openai successful"})
+        return httpx2.Response(200, json={"status": "success", "message": "Connection to openai successful"})
 
     with make_client(handler) as client:
         result = client.llm_providers.test_connection(
@@ -316,8 +316,8 @@ def test_llm_providers_test_connection_posts_body(make_client: ClientFactory) ->
 
 @pytest.mark.asyncio
 async def test_search_providers_list_async(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"providers": []})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"providers": []})
 
     async with make_async_client(handler) as client:
         result = await client.search_providers.list()
@@ -329,10 +329,10 @@ async def test_search_providers_list_async(make_async_client: AsyncClientFactory
 async def test_search_providers_set_default_async(make_async_client: AsyncClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        return httpx.Response(200, json={"message": "ok", "integration_id": "sp7"})
+        return httpx2.Response(200, json={"message": "ok", "integration_id": "sp7"})
 
     async with make_async_client(handler) as client:
         result = await client.search_providers.set_default(integration_id="sp7")
@@ -346,10 +346,10 @@ async def test_search_providers_set_default_async(make_async_client: AsyncClient
 async def test_llm_providers_create_async(make_async_client: AsyncClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"message": "created", "integration_id": "llm6"})
+        return httpx2.Response(200, json={"message": "created", "integration_id": "llm6"})
 
     async with make_async_client(handler) as client:
         result = await client.llm_providers.create(
@@ -368,9 +368,9 @@ async def test_llm_providers_create_async(make_async_client: AsyncClientFactory)
 async def test_llm_providers_update_async_keeps_null_api_key(make_async_client: AsyncClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"message": "updated"})
+        return httpx2.Response(200, json={"message": "updated"})
 
     async with make_async_client(handler) as client:
         await client.llm_providers.update(

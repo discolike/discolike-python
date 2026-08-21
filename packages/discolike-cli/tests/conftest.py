@@ -8,13 +8,13 @@ the ``discolike-testkit`` plugin.
 from collections.abc import Callable
 from typing import Any
 
-import httpx
+import httpx2
 import pytest
 
 import discolike_cli.main as cli_main
 from discolike import Discolike
 
-Handler = Callable[[httpx.Request], httpx.Response]
+Handler = Callable[[httpx2.Request], httpx2.Response]
 
 
 @pytest.fixture

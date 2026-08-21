@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 
-import httpx
+import httpx2
 from typer.testing import CliRunner
 
 from discolike_cli.main import app
@@ -12,22 +12,22 @@ from discolike_testkit import Handler
 runner = CliRunner()
 
 
-def _discover_ok(request: httpx.Request) -> httpx.Response:
-    return httpx.Response(200, json=[{"domain": "acme.com"}])
+def _discover_ok(request: httpx2.Request) -> httpx2.Response:
+    return httpx2.Response(200, json=[{"domain": "acme.com"}])
 
 
-def _count_ok(request: httpx.Request) -> httpx.Response:
-    return httpx.Response(200, json={"count": 42})
+def _count_ok(request: httpx2.Request) -> httpx2.Response:
+    return httpx2.Response(200, json={"count": 42})
 
 
-def _unauthorized(request: httpx.Request) -> httpx.Response:
-    return httpx.Response(401, json={"detail": "invalid key"})
+def _unauthorized(request: httpx2.Request) -> httpx2.Response:
+    return httpx2.Response(401, json={"detail": "invalid key"})
 
 
 def test_discover_sends_options_and_param_escape_hatch(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.QueryParams] = {}
+    captured: dict[str, httpx2.QueryParams] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["params"] = request.url.params
         return _discover_ok(request)
 
@@ -46,9 +46,9 @@ def test_discover_sends_options_and_param_escape_hatch(install_build_client: Cal
 
 
 def test_discover_param_with_comma_value_becomes_list(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.QueryParams] = {}
+    captured: dict[str, httpx2.QueryParams] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["params"] = request.url.params
         return _discover_ok(request)
 
@@ -71,9 +71,9 @@ def test_discover_param_removed_kwarg_exits_2(install_build_client: Callable[[Ha
 
 
 def test_discover_explicit_option_wins_over_param_duplicate(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.QueryParams] = {}
+    captured: dict[str, httpx2.QueryParams] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["params"] = request.url.params
         return _discover_ok(request)
 
@@ -84,9 +84,9 @@ def test_discover_explicit_option_wins_over_param_duplicate(install_build_client
 
 
 def test_discover_negate_option_forwarded(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.QueryParams] = {}
+    captured: dict[str, httpx2.QueryParams] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["params"] = request.url.params
         return _discover_ok(request)
 
@@ -103,9 +103,9 @@ def test_discover_icp_text_option_removed(install_build_client: Callable[[Handle
 
 
 def test_count_sends_shared_filter_subset(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.QueryParams] = {}
+    captured: dict[str, httpx2.QueryParams] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["params"] = request.url.params
         return _count_ok(request)
 

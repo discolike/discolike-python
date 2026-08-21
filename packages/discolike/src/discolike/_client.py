@@ -3,7 +3,7 @@ from __future__ import annotations
 import pathlib
 from typing import BinaryIO
 
-import httpx
+import httpx2
 
 from discolike._config import DEFAULT_BASE_URL
 from discolike._config import resolve_api_key
@@ -51,7 +51,7 @@ class Discolike:
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         max_retries: int = DEFAULT_MAX_RETRIES,
-        http_client: httpx.Client | None = None,
+        http_client: httpx2.Client | None = None,
     ) -> None:
         self._attach(
             Transport(
@@ -78,7 +78,7 @@ class Discolike:
         self._validate = ValidateResource(self._transport)
         self._enrich = EnrichResource(self._transport)
 
-    def with_options(self, *, timeout: float | httpx.Timeout) -> Discolike:
+    def with_options(self, *, timeout: float | httpx2.Timeout) -> Discolike:
         """A client view with a different request timeout, sharing this client's connection pool."""
         clone = object.__new__(Discolike)
         clone._attach(self._transport.with_timeout(timeout))
@@ -301,7 +301,7 @@ class AsyncDiscolike:
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         max_retries: int = DEFAULT_MAX_RETRIES,
-        http_client: httpx.AsyncClient | None = None,
+        http_client: httpx2.AsyncClient | None = None,
     ) -> None:
         self._attach(
             AsyncTransport(
@@ -328,7 +328,7 @@ class AsyncDiscolike:
         self._validate = AsyncValidateResource(self._transport)
         self._enrich = AsyncEnrichResource(self._transport)
 
-    def with_options(self, *, timeout: float | httpx.Timeout) -> AsyncDiscolike:
+    def with_options(self, *, timeout: float | httpx2.Timeout) -> AsyncDiscolike:
         """A client view with a different request timeout, sharing this client's connection pool."""
         clone = object.__new__(AsyncDiscolike)
         clone._attach(self._transport.with_timeout(timeout))

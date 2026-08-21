@@ -19,7 +19,7 @@ package, which would silently let real credentials into a test run.
 
 from pathlib import Path
 
-import httpx
+import httpx2
 import pytest
 
 from discolike import AsyncDiscolike
@@ -42,7 +42,7 @@ def make_client() -> ClientFactory:
     """Build a sync client whose transport is backed by ``handler``."""
 
     def _make(handler: Handler) -> Discolike:
-        http = httpx.Client(transport=httpx.MockTransport(handler), base_url=BASE_URL)
+        http = httpx2.Client(transport=httpx2.MockTransport(handler), base_url=BASE_URL)
         return Discolike(api_key="test-key", base_url=BASE_URL, http_client=http)
 
     return _make
@@ -53,7 +53,7 @@ def make_async_client() -> AsyncClientFactory:
     """Build an async client whose transport is backed by ``handler``."""
 
     def _make(handler: Handler) -> AsyncDiscolike:
-        http = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url=BASE_URL)
+        http = httpx2.AsyncClient(transport=httpx2.MockTransport(handler), base_url=BASE_URL)
         return AsyncDiscolike(api_key="test-key", base_url=BASE_URL, http_client=http)
 
     return _make

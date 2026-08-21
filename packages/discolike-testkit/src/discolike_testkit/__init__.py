@@ -9,13 +9,13 @@ the calls made through them.
 
 from collections.abc import Callable
 
-import httpx
+import httpx2
 
 from discolike import AsyncDiscolike
 from discolike import Discolike
 
 __all__ = ["AsyncClientFactory", "ClientFactory", "Handler"]
 
-Handler = Callable[[httpx.Request], httpx.Response]
+Handler = Callable[[httpx2.Request], httpx2.Response]
 ClientFactory = Callable[[Handler], Discolike]
 AsyncClientFactory = Callable[[Handler], AsyncDiscolike]

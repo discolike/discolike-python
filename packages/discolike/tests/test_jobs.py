@@ -1,4 +1,4 @@
-import httpx
+import httpx2
 import pytest
 
 import discolike._jobs as jobs_module
@@ -24,7 +24,7 @@ def no_sleep(monkeypatch):
 
 
 def make_job(handler) -> Job:
-    http = httpx.Client(transport=httpx.MockTransport(handler), base_url=BASE)
+    http = httpx2.Client(transport=httpx2.MockTransport(handler), base_url=BASE)
     transport = Transport("k", base_url=BASE, timeout=5.0, max_retries=0, http_client=http)
     return Job(transport, task_family=FAMILY_DISCOGEN, task_id="t-1")
 
@@ -32,11 +32,11 @@ def make_job(handler) -> Job:
 def _status_sequence(payloads):
     state = {"i": 0}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path == "/v1/discogen/status/t-1"
         payload = payloads[min(state["i"], len(payloads) - 1)]
         state["i"] += 1
-        return httpx.Response(200, json=payload)
+        return httpx2.Response(200, json=payload)
 
     return handler
 
@@ -76,10 +76,10 @@ def test_wait_timeout(monkeypatch) -> None:
 def test_cancel_issues_delete() -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["method"] = request.method
         seen["path"] = request.url.path
-        return httpx.Response(200, json={"status": "cancelling"})
+        return httpx2.Response(200, json={"status": "cancelling"})
 
     make_job(handler).cancel()
     assert (seen["method"], seen["path"]) == ("DELETE", "/v1/discogen/cancel/t-1")
@@ -89,7 +89,7 @@ async def test_async_job_wait() -> None:
     handler = _status_sequence(
         [{"status": "in_progress", "progress": 5}, {"status": "completed", "progress": 100, "results": []}]
     )
-    http = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url=BASE)
+    http = httpx2.AsyncClient(transport=httpx2.MockTransport(handler), base_url=BASE)
     transport = AsyncTransport("k", base_url=BASE, timeout=5.0, max_retries=0, http_client=http)
     final = await AsyncJob(transport, task_family=FAMILY_DISCOGEN, task_id="t-1").wait(timeout=60.0)
     assert final.status == "completed"

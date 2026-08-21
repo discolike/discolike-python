@@ -5,7 +5,7 @@ import stat
 from collections.abc import Callable
 from typing import Any
 
-import httpx
+import httpx2
 import pytest
 from typer.testing import CliRunner
 
@@ -18,12 +18,12 @@ from discolike_testkit import Handler
 runner = CliRunner()
 
 
-def _usage_ok(request: httpx.Request) -> httpx.Response:
-    return httpx.Response(200, json={"requests_mtd": 1, "records_mtd": 2, "spend_mtd": 3.0})
+def _usage_ok(request: httpx2.Request) -> httpx2.Response:
+    return httpx2.Response(200, json={"requests_mtd": 1, "records_mtd": 2, "spend_mtd": 3.0})
 
 
-def _usage_unauthorized(request: httpx.Request) -> httpx.Response:
-    return httpx.Response(401, json={"detail": "invalid key"})
+def _usage_unauthorized(request: httpx2.Request) -> httpx2.Response:
+    return httpx2.Response(401, json={"detail": "invalid key"})
 
 
 def test_login_with_api_key_option_verifies_and_saves(install_build_client: Callable[[Handler], None]) -> None:

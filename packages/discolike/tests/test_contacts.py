@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-import httpx
+import httpx2
 
 from discolike._jobs import FAMILY_CONTACTMATCH
 from discolike._jobs import FAMILY_DISCOGEN
@@ -15,11 +15,11 @@ from discolike_testkit import ClientFactory
 def test_search_builds_query_and_parses_list(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        seen["params"] = httpx.QueryParams(request.url.query)
-        return httpx.Response(
+        seen["params"] = httpx2.QueryParams(request.url.query)
+        return httpx2.Response(
             200,
             json=[{"persona_id": 1, "domain": "acme.com", "name": "Jane Doe", "extra_field": "kept"}],
         )
@@ -45,11 +45,11 @@ def test_search_builds_query_and_parses_list(make_client: ClientFactory) -> None
 def test_count(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        seen["params"] = httpx.QueryParams(request.url.query)
-        return httpx.Response(200, json={"count": 1234})
+        seen["params"] = httpx2.QueryParams(request.url.query)
+        return httpx2.Response(200, json={"count": 1234})
 
     with make_client(handler) as client:
         result = client.contacts.count(seniority=["vp"], has_email=True, jobstart_date="2025-01-01")
@@ -65,10 +65,10 @@ def test_count(make_client: ClientFactory) -> None:
 def test_lookup(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
-        seen["params"] = httpx.QueryParams(request.url.query)
-        return httpx.Response(
+        seen["params"] = httpx2.QueryParams(request.url.query)
+        return httpx2.Response(
             200,
             json={"persona_id": 12345678, "name": "Jane Doe", "domain": "example.com"},
         )
@@ -86,10 +86,10 @@ def test_lookup(make_client: ClientFactory) -> None:
 def test_match(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
-        seen["params"] = httpx.QueryParams(request.url.query)
-        return httpx.Response(
+        seen["params"] = httpx2.QueryParams(request.url.query)
+        return httpx2.Response(
             200,
             json={
                 "query": {"name": "Jane Doe", "company_name": "Acme Corp", "domain": None},
@@ -120,11 +120,11 @@ def test_match(make_client: ClientFactory) -> None:
 def test_bulk_match_posts_json_and_returns_job(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "cm-1"})
+        return httpx2.Response(200, json={"task_id": "cm-1"})
 
     with make_client(handler) as client:
         job = client.contacts.bulk_match(
@@ -148,11 +148,11 @@ def test_bulk_match_posts_json_and_returns_job(make_client: ClientFactory) -> No
 def test_discover_posts_json_body(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json={
                 "results": {"acme.com": {"domain": "acme.com", "contacts": []}},
@@ -187,11 +187,11 @@ def test_discover_posts_json_body(make_client: ClientFactory) -> None:
 def test_generate_posts_json_and_returns_job(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "dg-1"})
+        return httpx2.Response(200, json={"task_id": "dg-1"})
 
     with make_client(handler) as client:
         job = client.contacts.generate(
@@ -213,8 +213,8 @@ def test_generate_posts_json_and_returns_job(make_client: ClientFactory) -> None
 
 
 async def test_search_async(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=[{"persona_id": 2, "domain": "b.com"}])
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json=[{"persona_id": 2, "domain": "b.com"}])
 
     async with make_async_client(handler) as client:
         results = await client.contacts.search(domain=["b.com"])
@@ -222,8 +222,8 @@ async def test_search_async(make_async_client: AsyncClientFactory) -> None:
 
 
 async def test_bulk_match_async_returns_async_job(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"task_id": "cm-2"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"task_id": "cm-2"})
 
     async with make_async_client(handler) as client:
         job = await client.contacts.bulk_match(queries=[{"name": "Jane Doe"}])
@@ -234,8 +234,8 @@ async def test_bulk_match_async_returns_async_job(make_async_client: AsyncClient
 
 
 async def test_generate_async_returns_async_job(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"task_id": "dg-2"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"task_id": "dg-2"})
 
     async with make_async_client(handler) as client:
         job = await client.contacts.generate(icp_text="VPs", domains=["a.com"])

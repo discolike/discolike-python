@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 
-import httpx
+import httpx2
 from typer.testing import CliRunner
 
 from discolike_cli.main import app
@@ -13,9 +13,9 @@ runner = CliRunner()
 
 
 def test_account_usage_hits_usage_endpoint(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path == "/v1/usage"
-        return httpx.Response(200, json={"requests_mtd": 100, "records_mtd": 500, "spend_mtd": 12.5})
+        return httpx2.Response(200, json={"requests_mtd": 100, "records_mtd": 500, "spend_mtd": 12.5})
 
     install_build_client(handler)
     result = runner.invoke(app, ["account", "usage"])

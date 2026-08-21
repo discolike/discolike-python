@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 
-import httpx
+import httpx2
 from typer.testing import CliRunner
 
 from discolike_cli.main import app
@@ -15,10 +15,10 @@ runner = CliRunner()
 def test_validate_icp_with_domain_options_posts_json(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["path"] = request.url.path
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "vi-1"})
+        return httpx2.Response(200, json={"task_id": "vi-1"})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -38,9 +38,9 @@ def test_validate_icp_with_domain_options_posts_json(install_build_client: Calla
 def test_validate_icp_sends_web_search_when_passed(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "vi-1b"})
+        return httpx2.Response(200, json={"task_id": "vi-1b"})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -62,9 +62,9 @@ def test_validate_icp_with_file_reads_domains_and_strips_blanks(
     domains_file.write_text("acme.com\n\n  beta.com  \n")
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "vi-2"})
+        return httpx2.Response(200, json={"task_id": "vi-2"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["validate-icp", "--icp", "VPs", "--file", str(domains_file)])
@@ -76,8 +76,8 @@ def test_validate_icp_both_domain_and_file_exits_2(tmp_path, install_build_clien
     domains_file = tmp_path / "domains.txt"
     domains_file.write_text("acme.com\n")
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"task_id": "vi-3"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"task_id": "vi-3"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["validate-icp", "--icp", "VPs", "--domain", "acme.com", "--file", str(domains_file)])
@@ -85,8 +85,8 @@ def test_validate_icp_both_domain_and_file_exits_2(tmp_path, install_build_clien
 
 
 def test_validate_icp_neither_domain_nor_file_exits_2(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"task_id": "vi-4"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"task_id": "vi-4"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["validate-icp", "--icp", "VPs"])
@@ -96,14 +96,14 @@ def test_validate_icp_neither_domain_nor_file_exits_2(install_build_client: Call
 def test_validate_icp_with_wait_polls_to_completion(install_build_client: Callable[[Handler], None]) -> None:
     statuses = iter(
         [
-            httpx.Response(200, json={"status": "processing", "progress": 20}),
-            httpx.Response(200, json={"status": "completed", "progress": 100, "results": [{"domain": "acme.com"}]}),
+            httpx2.Response(200, json={"status": "processing", "progress": 20}),
+            httpx2.Response(200, json={"status": "completed", "progress": 100, "results": [{"domain": "acme.com"}]}),
         ]
     )
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.url.path == "/v1/validate/icp":
-            return httpx.Response(200, json={"task_id": "vi-5"})
+            return httpx2.Response(200, json={"task_id": "vi-5"})
         assert request.url.path == "/v1/discogen/status/vi-5"
         return next(statuses)
 
@@ -121,9 +121,9 @@ def test_append_json_response_emits_list(tmp_path, install_build_client: Callabl
     input_file = tmp_path / "domains.csv"
     input_file.write_text("domain\nacme.com\n")
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path == "/v1/append"
-        return httpx.Response(200, json=[{"domain": "acme.com"}])
+        return httpx2.Response(200, json=[{"domain": "acme.com"}])
 
     install_build_client(handler)
     result = runner.invoke(app, ["append", str(input_file), "--dataset", "bizdata"])
@@ -136,8 +136,8 @@ def test_append_csv_response_writes_output_file(tmp_path, install_build_client: 
     input_file.write_text("domain\nacme.com\n")
     output_file = tmp_path / "enriched.csv"
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, content=b"domain,industry\nacme.com,SAAS\n", headers={"Content-Type": "text/csv"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, content=b"domain,industry\nacme.com,SAAS\n", headers={"Content-Type": "text/csv"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["append", str(input_file), "--csv", "--output", str(output_file)])
@@ -152,8 +152,8 @@ def test_append_csv_response_without_output_exits_2(tmp_path, install_build_clie
     input_file = tmp_path / "domains.csv"
     input_file.write_text("domain\nacme.com\n")
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, content=b"domain\nacme.com\n", headers={"Content-Type": "text/csv"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, content=b"domain\nacme.com\n", headers={"Content-Type": "text/csv"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["append", str(input_file), "--csv"])
@@ -161,11 +161,11 @@ def test_append_csv_response_without_output_exits_2(tmp_path, install_build_clie
 
 
 def test_segment_with_domain_options_prints_task_hint(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"task_id": "seg-1"})
+        return httpx2.Response(200, json={"task_id": "seg-1"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["segment", "--domain", "acme.com", "--domain", "beta.com", "--max-segments", "3"])
@@ -182,11 +182,11 @@ def test_segment_with_domain_options_prints_task_hint(install_build_client: Call
 def test_segment_with_file_posts_upload(tmp_path, install_build_client: Callable[[Handler], None]) -> None:
     domains_file = tmp_path / "domains.csv"
     domains_file.write_text("domain\nacme.com\n")
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"task_id": "seg-2"})
+        return httpx2.Response(200, json={"task_id": "seg-2"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["segment", "--file", str(domains_file)])
@@ -201,8 +201,8 @@ def test_segment_both_domain_and_file_exits_2(tmp_path, install_build_client: Ca
     domains_file = tmp_path / "domains.csv"
     domains_file.write_text("domain\nacme.com\n")
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"task_id": "seg-3"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"task_id": "seg-3"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["segment", "--domain", "acme.com", "--file", str(domains_file)])
@@ -210,8 +210,8 @@ def test_segment_both_domain_and_file_exits_2(tmp_path, install_build_client: Ca
 
 
 def test_segment_neither_domain_nor_file_exits_2(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"task_id": "seg-4"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"task_id": "seg-4"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["segment"])

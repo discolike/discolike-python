@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-import httpx
+import httpx2
 import pytest
 
 import discolike._jobs as jobs_module
@@ -30,12 +30,12 @@ def no_sleep(monkeypatch):
 def _results_sequence(payloads):
     state = {"i": 0}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path.startswith("/v1/email/batch/")
         assert request.url.path.endswith("/results")
         payload = payloads[min(state["i"], len(payloads) - 1)]
         state["i"] += 1
-        return httpx.Response(200, json=payload)
+        return httpx2.Response(200, json=payload)
 
     return handler
 
@@ -43,11 +43,11 @@ def _results_sequence(payloads):
 def test_find_batch_posts_and_returns_batch(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(202, json={"batch_id": "b-1", "job_ids": ["j-1", "j-2"], "total": 2})
+        return httpx2.Response(202, json={"batch_id": "b-1", "job_ids": ["j-1", "j-2"], "total": 2})
 
     with make_client(handler) as client:
         batch = client.email.find_batch(
@@ -217,15 +217,15 @@ def test_find_posts_and_job_wait_polls_jobs_endpoint(make_client: ClientFactory)
         },
     ]
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.method == "POST":
             seen["path"] = request.url.path
             seen["body"] = json.loads(request.content)
-            return httpx.Response(202, json={"job_id": "j-9", "status": "queued"})
+            return httpx2.Response(202, json={"job_id": "j-9", "status": "queued"})
         assert request.url.path == "/v1/email/jobs/j-9"
         payload = poll_payloads[min(state["i"], len(poll_payloads) - 1)]
         state["i"] += 1
-        return httpx.Response(200, json=payload)
+        return httpx2.Response(200, json=payload)
 
     with make_client(handler) as client:
         job = client.email.find(first_name="Grace", last_name="Hopper", domain="navy.mil")
@@ -244,9 +244,9 @@ def test_find_posts_and_job_wait_polls_jobs_endpoint(make_client: ClientFactory)
 def test_find_sends_known_pattern_and_omits_it_when_unset(make_client: ClientFactory) -> None:
     bodies: list[dict] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         bodies.append(json.loads(request.content))
-        return httpx.Response(202, json={"job_id": "j-kp", "status": "queued"})
+        return httpx2.Response(202, json={"job_id": "j-kp", "status": "queued"})
 
     with make_client(handler) as client:
         client.email.find(first_name="Grace", last_name="Hopper", domain="navy.mil", known_pattern="first.last")
@@ -262,10 +262,10 @@ def test_find_sends_known_pattern_and_omits_it_when_unset(make_client: ClientFac
 
 
 def test_find_wait_raises_on_failed_job(make_client: ClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.method == "POST":
-            return httpx.Response(202, json={"job_id": "j-x", "status": "queued"})
-        return httpx.Response(200, json={"job_id": "j-x", "status": "failed", "result": None, "error": "boom"})
+            return httpx2.Response(202, json={"job_id": "j-x", "status": "queued"})
+        return httpx2.Response(200, json={"job_id": "j-x", "status": "failed", "result": None, "error": "boom"})
 
     with make_client(handler) as client:
         job = client.email.find(first_name="No", last_name="One", domain="void.dev")
@@ -274,7 +274,7 @@ def test_find_wait_raises_on_failed_job(make_client: ClientFactory) -> None:
 
 
 def test_job_reattaches_without_http_call(make_client: ClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         pytest.fail("job()/batch() must not perform an HTTP request")
 
     with make_client(handler) as client:
@@ -291,8 +291,8 @@ def test_job_reattaches_without_http_call(make_client: ClientFactory) -> None:
 
 
 async def test_find_batch_async_returns_batch(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(202, json={"batch_id": "b-async", "job_ids": ["j-a"], "total": 1})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(202, json={"batch_id": "b-async", "job_ids": ["j-a"], "total": 1})
 
     async with make_async_client(handler) as client:
         batch = await client.email.find_batch(
@@ -371,12 +371,12 @@ async def test_find_async_job_wait(make_async_client: AsyncClientFactory) -> Non
         },
     ]
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.method == "POST":
-            return httpx.Response(202, json={"job_id": "j-async", "status": "queued"})
+            return httpx2.Response(202, json={"job_id": "j-async", "status": "queued"})
         payload = poll_payloads[min(state["i"], len(poll_payloads) - 1)]
         state["i"] += 1
-        return httpx.Response(200, json=payload)
+        return httpx2.Response(200, json=payload)
 
     async with make_async_client(handler) as client:
         job = await client.email.find(first_name="Ada", last_name="Lovelace", domain="acme.com")

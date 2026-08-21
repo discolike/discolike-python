@@ -1,4 +1,4 @@
-import httpx
+import httpx2
 import pytest
 
 from discolike_testkit import AsyncClientFactory
@@ -23,10 +23,10 @@ LIST_CASES = [
 def test_companies_methods(method: str, kwargs: dict, path: str, make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
-        seen["params"] = dict(httpx.QueryParams(request.url.query))
-        return httpx.Response(200, json={"domain": "acme.com", "anything": 1})
+        seen["params"] = dict(httpx2.QueryParams(request.url.query))
+        return httpx2.Response(200, json={"domain": "acme.com", "anything": 1})
 
     with make_client(handler) as client:
         result = getattr(client.companies, method)(**kwargs)
@@ -43,10 +43,10 @@ async def test_companies_methods_async(
 ) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
-        seen["params"] = dict(httpx.QueryParams(request.url.query))
-        return httpx.Response(200, json={"domain": "acme.com", "anything": 1})
+        seen["params"] = dict(httpx2.QueryParams(request.url.query))
+        return httpx2.Response(200, json={"domain": "acme.com", "anything": 1})
 
     async with make_async_client(handler) as client:
         result = await getattr(client.companies, method)(**kwargs)
@@ -61,10 +61,10 @@ async def test_companies_methods_async(
 def test_companies_list_methods(method: str, kwargs: dict, path: str, make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
-        seen["params"] = dict(httpx.QueryParams(request.url.query))
-        return httpx.Response(200, json=[{"linked_domain": "acme.io", "anything": 1}])
+        seen["params"] = dict(httpx2.QueryParams(request.url.query))
+        return httpx2.Response(200, json=[{"linked_domain": "acme.io", "anything": 1}])
 
     with make_client(handler) as client:
         result = getattr(client.companies, method)(**kwargs)
@@ -81,8 +81,8 @@ def test_companies_list_methods(method: str, kwargs: dict, path: str, make_clien
 async def test_companies_list_methods_async(
     method: str, kwargs: dict, path: str, make_async_client: AsyncClientFactory
 ) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=[{"linked_domain": "acme.io"}])
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json=[{"linked_domain": "acme.io"}])
 
     async with make_async_client(handler) as client:
         result = await getattr(client.companies, method)(**kwargs)
@@ -92,8 +92,8 @@ async def test_companies_list_methods_async(
 
 
 def test_extract_parses_text_and_language(make_client: ClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"language": "en", "text": "Acme makes widgets."})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"language": "en", "text": "Acme makes widgets."})
 
     with make_client(handler) as client:
         result = client.companies.extract(domain="acme.com")

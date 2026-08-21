@@ -5,7 +5,7 @@ import pathlib
 import time
 from collections.abc import Callable
 
-import httpx
+import httpx2
 import pytest
 from typer.testing import CliRunner
 
@@ -30,11 +30,11 @@ FOUND_RESULT = {
 
 
 def test_email_find_without_wait_prints_job_hint(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"job_id": "ej-1"})
+        return httpx2.Response(200, json={"job_id": "ej-1"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["email", "find", "Jane", "Doe", "acme.com"])
@@ -50,14 +50,14 @@ def test_email_find_without_wait_prints_job_hint(install_build_client: Callable[
 def test_email_find_with_wait_polls_to_completion(install_build_client: Callable[[Handler], None]) -> None:
     statuses = iter(
         [
-            httpx.Response(200, json={"job_id": "ej-2", "status": "processing"}),
-            httpx.Response(200, json={"job_id": "ej-2", "status": "completed", "result": FOUND_RESULT}),
+            httpx2.Response(200, json={"job_id": "ej-2", "status": "processing"}),
+            httpx2.Response(200, json={"job_id": "ej-2", "status": "completed", "result": FOUND_RESULT}),
         ]
     )
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.url.path == "/v1/email/find":
-            return httpx.Response(200, json={"job_id": "ej-2"})
+            return httpx2.Response(200, json={"job_id": "ej-2"})
         assert request.url.path == "/v1/email/jobs/ej-2"
         return next(statuses)
 
@@ -75,11 +75,11 @@ def test_email_find_batch_from_csv_file(
 ) -> None:
     contacts_file = tmp_path / "contacts.csv"
     contacts_file.write_text("first_name,last_name,domain\nJane,Doe,acme.com\nJohn,Smith,beta.com\n")
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"batch_id": "eb-1"})
+        return httpx2.Response(200, json={"batch_id": "eb-1"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["email", "find-batch", "--contacts-file", str(contacts_file)])
@@ -98,11 +98,11 @@ def test_email_find_batch_from_csv_file(
 
 
 def test_email_find_batch_from_inline_contacts(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"batch_id": "eb-2"})
+        return httpx2.Response(200, json={"batch_id": "eb-2"})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -120,8 +120,8 @@ def test_email_find_batch_from_inline_contacts(install_build_client: Callable[[H
 def test_email_find_batch_with_wait_polls_results(install_build_client: Callable[[Handler], None]) -> None:
     results_pages = iter(
         [
-            httpx.Response(200, json={"batch_id": "eb-3", "total": 1, "completed": 0, "failed": 0, "results": []}),
-            httpx.Response(
+            httpx2.Response(200, json={"batch_id": "eb-3", "total": 1, "completed": 0, "failed": 0, "results": []}),
+            httpx2.Response(
                 200,
                 json={
                     "batch_id": "eb-3",
@@ -134,9 +134,9 @@ def test_email_find_batch_with_wait_polls_results(install_build_client: Callable
         ]
     )
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.url.path == "/v1/email/find/batch":
-            return httpx.Response(200, json={"batch_id": "eb-3"})
+            return httpx2.Response(200, json={"batch_id": "eb-3"})
         assert request.url.path == "/v1/email/batch/eb-3/results"
         return next(results_pages)
 
@@ -161,8 +161,8 @@ def test_email_find_batch_with_wait_polls_results(install_build_client: Callable
     ],
 )
 def test_email_find_batch_bad_contacts_exit_2(args: list[str], install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"batch_id": "eb-4"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"batch_id": "eb-4"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["email", "find-batch", *args])
@@ -175,8 +175,8 @@ def test_email_find_batch_missing_csv_columns_exits_2(
     contacts_file = tmp_path / "contacts.csv"
     contacts_file.write_text("first,last,site\nJane,Doe,acme.com\n")
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"batch_id": "eb-5"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"batch_id": "eb-5"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["email", "find-batch", "--contacts-file", str(contacts_file)])
@@ -191,8 +191,8 @@ def test_email_find_batch_over_500_contacts_exits_2(
     contacts_file = tmp_path / "contacts.csv"
     contacts_file.write_text(f"first_name,last_name,domain\n{rows}\n")
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"batch_id": "eb-6"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"batch_id": "eb-6"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["email", "find-batch", "--contacts-file", str(contacts_file)])
@@ -203,11 +203,11 @@ def test_email_find_batch_over_500_contacts_exits_2(
 def test_email_results_without_wait_returns_partial_snapshot(
     install_build_client: Callable[[Handler], None],
 ) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json={"batch_id": "eb-7", "total": 2, "completed": 1, "failed": 0, "results": [{"status": "completed"}]},
         )
@@ -224,9 +224,9 @@ def test_email_results_without_wait_returns_partial_snapshot(
 def test_email_results_verify_kind_decodes_validation_output(
     install_build_client: Callable[[Handler], None],
 ) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path == "/v1/email/batch/eb-8/results"
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json={
                 "batch_id": "eb-8",
@@ -251,8 +251,8 @@ def test_email_results_verify_kind_decodes_validation_output(
 
 
 def test_email_results_invalid_kind_exits_2(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={})
 
     install_build_client(handler)
     result = runner.invoke(app, ["email", "results", "eb-9", "--kind", "bogus"])
@@ -260,9 +260,9 @@ def test_email_results_invalid_kind_exits_2(install_build_client: Callable[[Hand
 
 
 def test_email_job_prints_current_status(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path == "/v1/email/jobs/ej-5"
-        return httpx.Response(200, json={"job_id": "ej-5", "status": "processing"})
+        return httpx2.Response(200, json={"job_id": "ej-5", "status": "processing"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["email", "job", "ej-5"])
@@ -273,8 +273,8 @@ def test_email_job_prints_current_status(install_build_client: Callable[[Handler
 
 
 def test_email_job_unauthorized_exits_3(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(401, json={"detail": "invalid key"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(401, json={"detail": "invalid key"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["email", "job", "ej-6"])
