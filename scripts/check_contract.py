@@ -10,7 +10,7 @@ import sys
 from dataclasses import dataclass
 from types import ModuleType
 
-import httpx
+import httpx2
 
 import discolike.resources
 from discolike._models import DiscolikeModel
@@ -158,7 +158,7 @@ def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = 
 def load_spec(*, spec_path: str | None, spec_url: str) -> dict:
     if spec_path is not None:
         return json.loads(pathlib.Path(spec_path).read_text())
-    response = httpx.get(spec_url, timeout=REQUEST_TIMEOUT_SECONDS)
+    response = httpx2.get(spec_url, timeout=REQUEST_TIMEOUT_SECONDS)
     response.raise_for_status()
     return response.json()
 

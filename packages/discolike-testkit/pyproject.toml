@@ -10,7 +10,7 @@ license = "MIT"
 requires-python = ">=3.10"
 dependencies = [
   "discolike",
-  "httpx>=0.27",
+  "httpx2>=2.9",
   "pytest>=8",
 ]
 # Guards against an accidental `uv publish` picking this up; the publish

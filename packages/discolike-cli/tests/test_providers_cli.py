@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 
-import httpx
+import httpx2
 from typer.testing import CliRunner
 
 from discolike_cli.main import app
@@ -13,11 +13,11 @@ runner = CliRunner()
 
 
 def test_search_providers_list_hits_collection(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"providers": []})
+        return httpx2.Response(200, json={"providers": []})
 
     install_build_client(handler)
     result = runner.invoke(app, ["search-providers", "list"])
@@ -29,11 +29,11 @@ def test_search_providers_list_hits_collection(install_build_client: Callable[[H
 def test_search_providers_create_posts_json(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["path"] = request.url.path
         captured["method"] = request.method
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"integration_id": "sp1", "integration_name": "Tavily"})
+        return httpx2.Response(200, json={"integration_id": "sp1", "integration_name": "Tavily"})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -65,10 +65,10 @@ def test_search_providers_create_posts_json(install_build_client: Callable[[Hand
 def test_search_providers_set_default_puts_subroute(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["path"] = request.url.path
         captured["method"] = request.method
-        return httpx.Response(200, json={"message": "ok", "integration_id": "sp2"})
+        return httpx2.Response(200, json={"message": "ok", "integration_id": "sp2"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["search-providers", "set-default", "sp2"])
@@ -78,10 +78,10 @@ def test_search_providers_set_default_puts_subroute(install_build_client: Callab
 
 
 def test_search_providers_delete_emits_deleted(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path == "/v1/search-providers/sp3"
         assert request.method == "DELETE"
-        return httpx.Response(200, json={"message": "ok"})
+        return httpx2.Response(200, json={"message": "ok"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["search-providers", "delete", "sp3"])
@@ -90,11 +90,11 @@ def test_search_providers_delete_emits_deleted(install_build_client: Callable[[H
 
 
 def test_search_providers_models_hits_models_route(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"models": {}})
+        return httpx2.Response(200, json={"models": {}})
 
     install_build_client(handler)
     result = runner.invoke(app, ["search-providers", "models"])
@@ -105,11 +105,11 @@ def test_search_providers_models_hits_models_route(install_build_client: Callabl
 def test_llm_providers_create_posts_json(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["path"] = request.url.path
         captured["method"] = request.method
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"message": "created", "integration_id": "llm1"})
+        return httpx2.Response(200, json={"message": "created", "integration_id": "llm1"})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -141,11 +141,11 @@ def test_llm_providers_create_posts_json(install_build_client: Callable[[Handler
 def test_llm_providers_update_keeps_null_api_key(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["path"] = request.url.path
         captured["method"] = request.method
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"message": "updated"})
+        return httpx2.Response(200, json={"message": "updated"})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -176,10 +176,10 @@ def test_llm_providers_update_keeps_null_api_key(install_build_client: Callable[
 def test_llm_providers_test_connection_posts_body(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["path"] = request.url.path
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"status": "success", "message": "ok"})
+        return httpx2.Response(200, json={"status": "success", "message": "ok"})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -206,11 +206,11 @@ def test_llm_providers_test_connection_posts_body(install_build_client: Callable
 
 
 def test_llm_providers_get_hits_config_item(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"integration_id": "llm3", "integration_name": "Anthropic"})
+        return httpx2.Response(200, json={"integration_id": "llm3", "integration_name": "Anthropic"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["llm-providers", "get", "llm3"])

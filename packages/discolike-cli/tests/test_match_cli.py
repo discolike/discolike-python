@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 
-import httpx
+import httpx2
 import pytest
 from typer.testing import CliRunner
 
@@ -14,11 +14,11 @@ runner = CliRunner()
 
 
 def test_match_single_name_hits_match_endpoint(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json={"query": {"name": "Acme"}, "matches": [{"domain": "acme.com", "match_confidence": 98.0}]},
         )
@@ -41,14 +41,14 @@ def test_match_bulk_file_with_wait_polls_to_completion(
     names_file.write_text("company\nAcme\n")
     statuses = iter(
         [
-            httpx.Response(200, json={"status": "processing", "progress": 40}),
-            httpx.Response(200, json={"status": "completed", "progress": 100, "results": [{"domain": "acme.com"}]}),
+            httpx2.Response(200, json={"status": "processing", "progress": 40}),
+            httpx2.Response(200, json={"status": "completed", "progress": 100, "results": [{"domain": "acme.com"}]}),
         ]
     )
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.url.path == "/v1/bulkmatch":
-            return httpx.Response(200, json={"task_id": "bm-1"})
+            return httpx2.Response(200, json={"task_id": "bm-1"})
         assert request.url.path == "/v1/bulkmatch/status/bm-1"
         return next(statuses)
 
@@ -68,11 +68,11 @@ def test_match_bulk_file_with_wait_format_table_renders_table(
     names_file = tmp_path / "names.csv"
     names_file.write_text("company\nAcme\n")
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.url.path == "/v1/bulkmatch":
-            return httpx.Response(200, json={"task_id": "bm-5"})
+            return httpx2.Response(200, json={"task_id": "bm-5"})
         assert request.url.path == "/v1/bulkmatch/status/bm-5"
-        return httpx.Response(200, json={"status": "completed", "progress": 100, "results": [{"domain": "acme.com"}]})
+        return httpx2.Response(200, json={"status": "completed", "progress": 100, "results": [{"domain": "acme.com"}]})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -103,9 +103,9 @@ def test_match_bulk_file_without_wait_prints_task_hint(
     names_file = tmp_path / "names.csv"
     names_file.write_text("name\nAcme\n")
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path == "/v1/bulkmatch"
-        return httpx.Response(200, json={"task_id": "bm-2"})
+        return httpx2.Response(200, json={"task_id": "bm-2"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["match", "--file", str(names_file)])
@@ -119,8 +119,8 @@ def test_match_both_name_and_file_exits_2(tmp_path, install_build_client: Callab
     names_file = tmp_path / "names.csv"
     names_file.write_text("name\nAcme\n")
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={})
 
     install_build_client(handler)
     result = runner.invoke(app, ["match", "Acme", "--file", str(names_file)])
@@ -128,8 +128,8 @@ def test_match_both_name_and_file_exits_2(tmp_path, install_build_client: Callab
 
 
 def test_match_neither_name_nor_file_exits_2(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={})
 
     install_build_client(handler)
     result = runner.invoke(app, ["match"])
@@ -137,11 +137,11 @@ def test_match_neither_name_nor_file_exits_2(install_build_client: Callable[[Han
 
 
 def test_match_passes_optional_filters(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"domain": "acme.com"})
+        return httpx2.Response(200, json={"domain": "acme.com"})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -175,11 +175,11 @@ def test_match_passes_optional_filters(install_build_client: Callable[[Handler],
 
 
 def test_match_local_mode_omitted_when_not_passed(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"domain": "acme.com"})
+        return httpx2.Response(200, json={"domain": "acme.com"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["match", "Acme"])
@@ -192,11 +192,11 @@ def test_match_bulk_local_mode_omitted_when_not_passed(
 ) -> None:
     names_file = tmp_path / "names.csv"
     names_file.write_text("name\nAcme\n")
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"task_id": "bm-3"})
+        return httpx2.Response(200, json={"task_id": "bm-3"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["match", "--file", str(names_file)])
@@ -207,11 +207,11 @@ def test_match_bulk_local_mode_omitted_when_not_passed(
 def test_match_bulk_local_mode_sent_when_passed(tmp_path, install_build_client: Callable[[Handler], None]) -> None:
     names_file = tmp_path / "names.csv"
     names_file.write_text("name\nAcme\n")
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"task_id": "bm-4"})
+        return httpx2.Response(200, json={"task_id": "bm-4"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["match", "--file", str(names_file), "--local-mode"])

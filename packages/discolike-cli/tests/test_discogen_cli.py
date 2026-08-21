@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 
-import httpx
+import httpx2
 from typer.testing import CliRunner
 
 from discolike_cli.main import app
@@ -15,10 +15,10 @@ runner = CliRunner()
 def test_discogen_run_posts_json_and_prints_task_hint(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["path"] = request.url.path
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "dg-1"})
+        return httpx2.Response(200, json={"task_id": "dg-1"})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -50,9 +50,9 @@ def test_discogen_run_posts_json_and_prints_task_hint(install_build_client: Call
 def test_discogen_run_sends_include_x_search_when_passed(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "dg-1b"})
+        return httpx2.Response(200, json={"task_id": "dg-1b"})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -70,10 +70,10 @@ def test_discogen_run_sends_include_x_search_when_passed(install_build_client: C
 def test_discogen_run_personas_posts_persona_ids(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["path"] = request.url.path
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "dg-2"})
+        return httpx2.Response(200, json={"task_id": "dg-2"})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -93,9 +93,9 @@ def test_discogen_run_personas_sends_include_x_search_when_passed(
 ) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "dg-2b"})
+        return httpx2.Response(200, json={"task_id": "dg-2b"})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -113,14 +113,14 @@ def test_discogen_run_personas_sends_include_x_search_when_passed(
 def test_discogen_run_with_wait_polls_to_completion(install_build_client: Callable[[Handler], None]) -> None:
     statuses = iter(
         [
-            httpx.Response(200, json={"status": "processing", "progress": 50}),
-            httpx.Response(200, json={"status": "completed", "progress": 100, "results": [{"summary": "ok"}]}),
+            httpx2.Response(200, json={"status": "processing", "progress": 50}),
+            httpx2.Response(200, json={"status": "completed", "progress": 100, "results": [{"summary": "ok"}]}),
         ]
     )
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.url.path == "/v1/discogen/process":
-            return httpx.Response(200, json={"task_id": "dg-3"})
+            return httpx2.Response(200, json={"task_id": "dg-3"})
         assert request.url.path == "/v1/discogen/status/dg-3"
         return next(statuses)
 
@@ -135,9 +135,9 @@ def test_discogen_run_with_wait_polls_to_completion(install_build_client: Callab
 
 
 def test_discogen_models_hits_models_endpoint(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path == "/v1/discogen/models"
-        return httpx.Response(200, json={"models": {"openai": [{"name": "gpt-5.4", "supports_web_search": False}]}})
+        return httpx2.Response(200, json={"models": {"openai": [{"name": "gpt-5.4", "supports_web_search": False}]}})
 
     install_build_client(handler)
     result = runner.invoke(app, ["discogen", "models"])
@@ -146,9 +146,9 @@ def test_discogen_models_hits_models_endpoint(install_build_client: Callable[[Ha
 
 
 def test_discogen_status_default_family_discogen(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path == "/v1/discogen/status/dg-4"
-        return httpx.Response(200, json={"status": "completed", "progress": 100})
+        return httpx2.Response(200, json={"status": "completed", "progress": 100})
 
     install_build_client(handler)
     result = runner.invoke(app, ["discogen", "status", "dg-4"])
@@ -157,9 +157,9 @@ def test_discogen_status_default_family_discogen(install_build_client: Callable[
 
 
 def test_discogen_status_with_family_segment(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path == "/v1/segment/status/seg-1"
-        return httpx.Response(200, json={"status": "processing", "progress": 10})
+        return httpx2.Response(200, json={"status": "processing", "progress": 10})
 
     install_build_client(handler)
     result = runner.invoke(app, ["discogen", "status", "seg-1", "--family", "segment"])
@@ -168,10 +168,10 @@ def test_discogen_status_with_family_segment(install_build_client: Callable[[Han
 
 
 def test_discogen_cancel_hits_cancel_endpoint(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path == "/v1/discogen/cancel/dg-5"
         assert request.method == "DELETE"
-        return httpx.Response(200, json={"ok": True})
+        return httpx2.Response(200, json={"ok": True})
 
     install_build_client(handler)
     result = runner.invoke(app, ["discogen", "cancel", "dg-5"])
@@ -180,9 +180,9 @@ def test_discogen_cancel_hits_cancel_endpoint(install_build_client: Callable[[Ha
 
 
 def test_discogen_cancel_with_family_bulkmatch(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path == "/v1/bulkmatch/cancel/bm-1"
-        return httpx.Response(200, json={"ok": True})
+        return httpx2.Response(200, json={"ok": True})
 
     install_build_client(handler)
     result = runner.invoke(app, ["discogen", "cancel", "bm-1", "--family", "bulkmatch"])
@@ -191,8 +191,8 @@ def test_discogen_cancel_with_family_bulkmatch(install_build_client: Callable[[H
 
 
 def test_discogen_status_invalid_family_exits_2(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={})
 
     install_build_client(handler)
     result = runner.invoke(app, ["discogen", "status", "dg-6", "--family", "bogus"])

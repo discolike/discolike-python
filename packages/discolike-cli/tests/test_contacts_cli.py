@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 
-import httpx
+import httpx2
 import pytest
 from typer.testing import CliRunner
 
@@ -14,11 +14,11 @@ runner = CliRunner()
 
 
 def test_contacts_search_sends_options_and_param_escape_hatch(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.QueryParams] = {}
+    captured: dict[str, httpx2.QueryParams] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["params"] = request.url.params
-        return httpx.Response(200, json=[{"persona_id": 1, "domain": "acme.com"}])
+        return httpx2.Response(200, json=[{"persona_id": 1, "domain": "acme.com"}])
 
     install_build_client(handler)
     result = runner.invoke(
@@ -77,11 +77,11 @@ def test_contacts_search_sends_options_and_param_escape_hatch(install_build_clie
 
 
 def test_contacts_search_forwards_negate_options(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.QueryParams] = {}
+    captured: dict[str, httpx2.QueryParams] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["params"] = request.url.params
-        return httpx.Response(200, json=[])
+        return httpx2.Response(200, json=[])
 
     install_build_client(handler)
     result = runner.invoke(
@@ -114,8 +114,8 @@ def test_contacts_search_forwards_negate_options(install_build_client: Callable[
 
 
 def test_contacts_search_icp_text_is_removed(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=[])
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json=[])
 
     install_build_client(handler)
     result = runner.invoke(app, ["contacts", "search", "--icp-text", "X"])
@@ -123,8 +123,8 @@ def test_contacts_search_icp_text_is_removed(install_build_client: Callable[[Han
 
 
 def test_contacts_search_invalid_param_kwarg_exits_2(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=[])
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json=[])
 
     install_build_client(handler)
     result = runner.invoke(app, ["contacts", "search", "--param", "bogus_kwarg=1"])
@@ -133,8 +133,8 @@ def test_contacts_search_invalid_param_kwarg_exits_2(install_build_client: Calla
 
 
 def test_contacts_search_unauthorized_exits_3(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(401, json={"detail": "invalid key"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(401, json={"detail": "invalid key"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["contacts", "search", "--icp-prompt", "X"])
@@ -144,11 +144,11 @@ def test_contacts_search_unauthorized_exits_3(install_build_client: Callable[[Ha
 
 
 def test_contacts_count_sends_shared_subset(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.QueryParams] = {}
+    captured: dict[str, httpx2.QueryParams] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["params"] = request.url.params
-        return httpx.Response(200, json={"count": 12})
+        return httpx2.Response(200, json={"count": 12})
 
     install_build_client(handler)
     result = runner.invoke(app, ["contacts", "count", "--seniority", "vp", "--param", "min_connections=5"])
@@ -161,11 +161,11 @@ def test_contacts_count_sends_shared_subset(install_build_client: Callable[[Hand
 
 
 def test_contacts_lookup_by_persona_id(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"persona_id": 7, "domain": "acme.com"})
+        return httpx2.Response(200, json={"persona_id": 7, "domain": "acme.com"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["contacts", "lookup", "--persona-id", "7", "--email", "jane@acme.com"])
@@ -184,11 +184,11 @@ def test_contacts_lookup_by_persona_id(install_build_client: Callable[[Handler],
 
 
 def test_contacts_match_hits_match_endpoint(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"matches": []})
+        return httpx2.Response(200, json={"matches": []})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -209,11 +209,11 @@ def test_contacts_bulk_match_without_wait_prints_task_hint(
 ) -> None:
     queries_file = tmp_path / "queries.json"
     queries_file.write_text(json.dumps([{"name": "Jane Doe"}]))
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"task_id": "cm-1"})
+        return httpx2.Response(200, json={"task_id": "cm-1"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["contacts", "bulk-match", "--queries-file", str(queries_file)])
@@ -234,8 +234,8 @@ def test_contacts_bulk_match_bad_queries_file_exits_2(
     queries_file = tmp_path / "queries.json"
     queries_file.write_text(content)
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"task_id": "cm-1"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"task_id": "cm-1"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["contacts", "bulk-match", "--queries-file", str(queries_file)])
@@ -249,14 +249,14 @@ def test_contacts_bulk_match_with_wait_polls_to_completion(
     queries_file.write_text(json.dumps([{"name": "Jane Doe"}]))
     statuses = iter(
         [
-            httpx.Response(200, json={"status": "processing", "progress": 30}),
-            httpx.Response(200, json={"status": "completed", "progress": 100, "results": [{"persona_id": 1}]}),
+            httpx2.Response(200, json={"status": "processing", "progress": 30}),
+            httpx2.Response(200, json={"status": "completed", "progress": 100, "results": [{"persona_id": 1}]}),
         ]
     )
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.url.path == "/v1/contacts/bulk-match":
-            return httpx.Response(200, json={"task_id": "cm-2"})
+            return httpx2.Response(200, json={"task_id": "cm-2"})
         assert request.url.path == "/v1/contactmatch/status/cm-2"
         return next(statuses)
 
@@ -273,10 +273,10 @@ def test_contacts_bulk_match_with_wait_polls_to_completion(
 def test_contacts_discover_posts_json_body(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["path"] = request.url.path
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"results": {}, "total_contacts": 0})
+        return httpx2.Response(200, json={"results": {}, "total_contacts": 0})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -306,10 +306,10 @@ def test_contacts_discover_posts_json_body(install_build_client: Callable[[Handl
 def test_contacts_generate_without_wait_prints_task_hint(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["path"] = request.url.path
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "dg-1"})
+        return httpx2.Response(200, json={"task_id": "dg-1"})
 
     install_build_client(handler)
     result = runner.invoke(

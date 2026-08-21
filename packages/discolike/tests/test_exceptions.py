@@ -1,6 +1,6 @@
 from typing import cast
 
-import httpx
+import httpx2
 import pytest
 
 from discolike import AuthenticationError
@@ -13,12 +13,12 @@ from discolike import ValidationError
 from discolike._exceptions import raise_for_status
 
 
-def _response(status: int, json_body: dict | None = None, headers: dict | None = None) -> httpx.Response:
-    return httpx.Response(
+def _response(status: int, json_body: dict | None = None, headers: dict | None = None) -> httpx2.Response:
+    return httpx2.Response(
         status_code=status,
         json=json_body if json_body is not None else {"detail": "boom"},
         headers=headers or {},
-        request=httpx.Request("GET", "https://api.test/v1/x"),
+        request=httpx2.Request("GET", "https://api.test/v1/x"),
     )
 
 
