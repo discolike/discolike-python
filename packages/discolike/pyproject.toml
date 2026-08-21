@@ -33,7 +33,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-cli = ["discolike-cli>=0.1.2"]
+cli = ["discolike-cli>=0.2.0"]
 
 [project.urls]
 Homepage = "https://www.discolike.com"

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-08-21)
 
 - SDK + testkit (breaking): migrated from `httpx` to [`httpx2`](https://github.com/pydantic/httpx2), Pydantic's maintained continuation of httpx, for timely security updates. `httpx` types are part of the public surface (`http_client=`, `with_options(timeout=)`, the testkit `Handler` alias), so callers must swap `import httpx` for `import httpx2` and pass `httpx2.Client` / `httpx2.AsyncClient` / `httpx2.Timeout`. Note httpx2 verifies TLS against the OS trust store via `truststore` instead of bundled `certifi` roots.
 - CLI (fix): `auth login` and `auth status` now honor the global `--base-url` and `--api-key`. Every other command routed through `get_client(ctx)`; these two built their own client, so `--base-url` was ignored and `auth status` reported `"valid": true` for a host it never contacted, while `--api-key` was ignored in favour of the environment or config key. `auth status` gains a third `source` value, `option`, for a key passed explicitly on the command line. An ambient `DISCOLIKE_API_KEY` still does not skip the `auth login` prompt — only an explicit flag does.
@@ -12,9 +12,6 @@
 - SDK: `email.find` accepts `known_pattern` (sync + async), matching the platform's `POST /email/find` body. Omitted from the request when unset.
 - SDK: email routes are no longer `openapi=False` — the platform now exposes `/email/find`, `/email/find/batch`, and the poll routes in its OpenAPI spec, so `check_contract.py` validates them like every other route.
 - Examples: new `examples/` folder with runnable end-to-end scripts — `match_crm_contacts.py` (bulk-match a CRM CSV to personas with resumable checkpointing and website+email domain keys), `find_emails_from_csv.py` (batch email finding), `discover_and_enrich.py` (discover + DiscoGen enrichment). Referenced from the README.
-
-## 0.1.2 (2026-08-19)
-
 - Packaging: both wheels now ship the MIT license text (`dist-info/licenses/LICENSE`) — it was absent from every release so far, since the only `LICENSE` sat at the repo root, outside either package root.
 - Packaging: `discolike-cli` ships `py.typed`, so its annotations are visible to type checkers importing `discolike_cli`. Added classifiers: `Python :: 3 :: Only`, `OS Independent`, `Typing :: Typed`, plus `Libraries :: Python Modules` (SDK) and `Environment :: Console` / `Topic :: Utilities` (CLI). Added `Changelog` and `Issues` project URLs.
 - CI: tests also run on Python 3.15 prereleases in a non-blocking job. 3.15 stays out of the supported matrix and classifiers until 3.15.0 final.
