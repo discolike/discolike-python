@@ -42,3 +42,33 @@ def test_route_metadata_stamped() -> None:
     from discolike.resources.account import AccountResource
 
     assert get_discolike_route(AccountResource.usage) == ("GET", "/usage", True, ())
+
+
+def test_with_options_timeout_applies_only_to_the_view(make_client: ClientFactory) -> None:
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.extensions["timeout"])
+        return httpx.Response(200, json={"balance": 1})
+
+    with make_client(handler) as client:
+        client.with_options(timeout=120.0).account.usage()
+        client.account.usage()
+
+    assert seen[0]["read"] == 120.0
+    assert seen[1]["read"] != 120.0
+
+
+async def test_with_options_timeout_async(make_async_client: AsyncClientFactory) -> None:
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.extensions["timeout"])
+        return httpx.Response(200, json={"balance": 1})
+
+    async with make_async_client(handler) as client:
+        await client.with_options(timeout=90.0).account.usage()
+        await client.account.usage()
+
+    assert seen[0]["read"] == 90.0
+    assert seen[1]["read"] != 90.0

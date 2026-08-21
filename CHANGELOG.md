@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- SDK: new `client.with_options(timeout=...)` (sync + async) — returns a lightweight client view with a per-request timeout override (float or `httpx.Timeout`), sharing the parent's connection pool. Client-level rate limiting and pagination stay out by design: the transport already retries 429 honoring `Retry-After`, and search/discover paginate via `offset`/`max_records`.
+
 - CLI: new `discolike email` command group wrapping the SDK email resource — `find FIRST LAST DOMAIN [--known-pattern X]`, `find-batch` (CSV file and/or repeatable `--contact "first,last,domain"`, max 500 per batch), `results BATCH_ID [--kind find|verify]`, and `job JOB_ID`, each with `--wait/--no-wait` polling.
 - SDK: `email.find` accepts `known_pattern` (sync + async), matching the platform's `POST /email/find` body. Omitted from the request when unset.
 - SDK: email routes are no longer `openapi=False` — the platform now exposes `/email/find`, `/email/find/batch`, and the poll routes in its OpenAPI spec, so `check_contract.py` validates them like every other route.
