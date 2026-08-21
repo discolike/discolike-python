@@ -45,8 +45,8 @@ class EmailResource(SyncAPIResource):
     def batch(self, batch_id: str, *, kind: EmailKind) -> EmailBatch:
         return EmailBatch(self._transport, batch_id=batch_id, kind=kind)
 
-    def job(self, job_id: str) -> EmailJob:
-        return EmailJob(self._transport, job_id=job_id, kind="find")
+    def job(self, job_id: str, *, kind: EmailKind = "find") -> EmailJob:
+        return EmailJob(self._transport, job_id=job_id, kind=kind)
 
 
 class AsyncEmailResource(AsyncAPIResource):
@@ -66,5 +66,5 @@ class AsyncEmailResource(AsyncAPIResource):
     def batch(self, batch_id: str, *, kind: EmailKind) -> AsyncEmailBatch:
         return AsyncEmailBatch(self._transport, batch_id=batch_id, kind=kind)
 
-    def job(self, job_id: str) -> AsyncEmailJob:
-        return AsyncEmailJob(self._transport, job_id=job_id, kind="find")
+    def job(self, job_id: str, *, kind: EmailKind = "find") -> AsyncEmailJob:
+        return AsyncEmailJob(self._transport, job_id=job_id, kind=kind)

@@ -7,6 +7,7 @@ from typing import Any
 from typing import Literal
 
 import pydantic
+from typing_extensions import assert_never
 
 from discolike._exceptions import JobFailedError
 from discolike._exceptions import JobTimeoutError
@@ -71,15 +72,25 @@ class EmailBatchResults(DiscolikeModel):
     results: list[EmailJobResult] = pydantic.Field(default_factory=list)
 
 
+def _output_model(kind: EmailKind) -> type[EnumerationOutput] | type[ValidationOutput]:
+    match kind:
+        case "find":
+            return EnumerationOutput
+        case "verify":
+            return ValidationOutput
+    assert_never(kind)
+
+
 def _decode_output(kind: EmailKind, raw: dict[str, Any] | None) -> EnumerationOutput | ValidationOutput | None:
     if raw is None:
         return None
-    if kind == "find":
-        return EnumerationOutput.model_validate(raw)
-    return ValidationOutput.model_validate(raw)
+    return _output_model(kind).model_validate(raw)
 
 
 def _decode_job_result(kind: EmailKind, item: dict[str, Any]) -> EmailJobResult:
+    server_kind = item.get("kind")
+    if server_kind in ("find", "verify"):
+        kind = server_kind
     return EmailJobResult(
         job_id=item.get("job_id"),
         status=item.get("status"),
@@ -129,17 +140,18 @@ class EmailJob:
         timeout: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
         on_poll: Callable[[EmailJobResult], None] | None = None,
-    ) -> EnumerationOutput:
+    ) -> EnumerationOutput | ValidationOutput:
+        expected = _output_model(self.kind)
         deadline = time.monotonic() + timeout
         while True:
             current = self.status()
             if on_poll is not None:
                 on_poll(current)
             if current.status == "failed":
-                raise JobFailedError(current.error or "email find job failed", payload=current.to_dict())
+                raise JobFailedError(current.error or f"email {self.kind} job failed", payload=current.to_dict())
             if current.status in EMAIL_TERMINAL_STATUSES:
-                if not isinstance(current.result, EnumerationOutput):
-                    raise JobFailedError("email find job completed without a result", payload=current.to_dict())
+                if not isinstance(current.result, expected):
+                    raise JobFailedError(f"email {self.kind} job completed without a result", payload=current.to_dict())
                 return current.result
             if time.monotonic() >= deadline:
                 raise _timeout_error("Email job", self.job_id, timeout)
@@ -164,17 +176,18 @@ class AsyncEmailJob:
         timeout: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
         on_poll: Callable[[EmailJobResult], None] | None = None,
-    ) -> EnumerationOutput:
+    ) -> EnumerationOutput | ValidationOutput:
+        expected = _output_model(self.kind)
         deadline = time.monotonic() + timeout
         while True:
             current = await self.status()
             if on_poll is not None:
                 on_poll(current)
             if current.status == "failed":
-                raise JobFailedError(current.error or "email find job failed", payload=current.to_dict())
+                raise JobFailedError(current.error or f"email {self.kind} job failed", payload=current.to_dict())
             if current.status in EMAIL_TERMINAL_STATUSES:
-                if not isinstance(current.result, EnumerationOutput):
-                    raise JobFailedError("email find job completed without a result", payload=current.to_dict())
+                if not isinstance(current.result, expected):
+                    raise JobFailedError(f"email {self.kind} job completed without a result", payload=current.to_dict())
                 return current.result
             if time.monotonic() >= deadline:
                 raise _timeout_error("Email job", self.job_id, timeout)
