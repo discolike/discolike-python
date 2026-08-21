@@ -53,13 +53,18 @@ class Discolike:
         max_retries: int = DEFAULT_MAX_RETRIES,
         http_client: httpx.Client | None = None,
     ) -> None:
-        self._transport = Transport(
-            resolve_api_key(api_key),
-            base_url=base_url,
-            timeout=timeout,
-            max_retries=max_retries,
-            http_client=http_client,
+        self._attach(
+            Transport(
+                resolve_api_key(api_key),
+                base_url=base_url,
+                timeout=timeout,
+                max_retries=max_retries,
+                http_client=http_client,
+            )
         )
+
+    def _attach(self, transport: Transport) -> None:
+        self._transport = transport
         self.account = AccountResource(self._transport)
         self.companies = CompaniesResource(self._transport)
         self.contacts = ContactsResource(self._transport)
@@ -72,6 +77,12 @@ class Discolike:
         self._discovery = DiscoveryResource(self._transport)
         self._validate = ValidateResource(self._transport)
         self._enrich = EnrichResource(self._transport)
+
+    def with_options(self, *, timeout: float | httpx.Timeout) -> Discolike:
+        """A client view with a different request timeout, sharing this client's connection pool."""
+        clone = object.__new__(Discolike)
+        clone._attach(self._transport.with_timeout(timeout))
+        return clone
 
     def discover(
         self,
@@ -292,13 +303,18 @@ class AsyncDiscolike:
         max_retries: int = DEFAULT_MAX_RETRIES,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
-        self._transport = AsyncTransport(
-            resolve_api_key(api_key),
-            base_url=base_url,
-            timeout=timeout,
-            max_retries=max_retries,
-            http_client=http_client,
+        self._attach(
+            AsyncTransport(
+                resolve_api_key(api_key),
+                base_url=base_url,
+                timeout=timeout,
+                max_retries=max_retries,
+                http_client=http_client,
+            )
         )
+
+    def _attach(self, transport: AsyncTransport) -> None:
+        self._transport = transport
         self.account = AsyncAccountResource(self._transport)
         self.companies = AsyncCompaniesResource(self._transport)
         self.contacts = AsyncContactsResource(self._transport)
@@ -311,6 +327,12 @@ class AsyncDiscolike:
         self._discovery = AsyncDiscoveryResource(self._transport)
         self._validate = AsyncValidateResource(self._transport)
         self._enrich = AsyncEnrichResource(self._transport)
+
+    def with_options(self, *, timeout: float | httpx.Timeout) -> AsyncDiscolike:
+        """A client view with a different request timeout, sharing this client's connection pool."""
+        clone = object.__new__(AsyncDiscolike)
+        clone._attach(self._transport.with_timeout(timeout))
+        return clone
 
     async def discover(
         self,

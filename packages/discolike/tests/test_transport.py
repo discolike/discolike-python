@@ -242,3 +242,19 @@ def test_byo_http_client_with_base_url_is_left_alone() -> None:
     http = httpx.Client(base_url="https://custom.example/v2")
     Transport("test-key", base_url="https://api.test/v1", timeout=5.0, max_retries=0, http_client=http)
     assert str(http.base_url) == "https://custom.example/v2/"
+
+
+def test_with_timeout_overrides_request_timeout_and_leaves_base_alone() -> None:
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.extensions["timeout"])
+        return httpx.Response(200, json={"ok": True})
+
+    http = httpx.Client(transport=httpx.MockTransport(handler), base_url="https://api.test/v1", timeout=5.0)
+    transport = Transport("test-key", base_url="https://api.test/v1", timeout=5.0, max_retries=0, http_client=http)
+    transport.with_timeout(120.0).request("GET", "/usage")
+    transport.request("GET", "/usage")
+
+    assert seen[0]["read"] == 120.0
+    assert seen[1]["read"] == 5.0
