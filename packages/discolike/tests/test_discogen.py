@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-import httpx
+import httpx2
 import pytest
 
 from discolike._jobs import FAMILY_DISCOGEN
@@ -15,11 +15,11 @@ from discolike_testkit import ClientFactory
 def test_process_posts_json_and_returns_job(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "dg-1"})
+        return httpx2.Response(200, json={"task_id": "dg-1"})
 
     with make_client(handler) as client:
         job = client.discogen.process(
@@ -43,9 +43,9 @@ def test_process_posts_json_and_returns_job(make_client: ClientFactory) -> None:
 def test_process_drops_unset_optionals(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "dg-2"})
+        return httpx2.Response(200, json={"task_id": "dg-2"})
 
     with make_client(handler) as client:
         client.discogen.process(query="q", domains=["a.com"])
@@ -56,9 +56,9 @@ def test_process_drops_unset_optionals(make_client: ClientFactory) -> None:
 def test_process_all_optionals_present(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "dg-3"})
+        return httpx2.Response(200, json={"task_id": "dg-3"})
 
     with make_client(handler) as client:
         client.discogen.process(
@@ -87,11 +87,11 @@ def test_process_all_optionals_present(make_client: ClientFactory) -> None:
 def test_process_personas_posts_json_and_returns_job(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "dg-4"})
+        return httpx2.Response(200, json={"task_id": "dg-4"})
 
     with make_client(handler) as client:
         job = client.discogen.process_personas(
@@ -110,10 +110,10 @@ def test_process_personas_posts_json_and_returns_job(make_client: ClientFactory)
 def test_models(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json={
                 "models": {
@@ -134,7 +134,7 @@ def test_models(make_client: ClientFactory) -> None:
 
 
 def test_job_reattaches_without_http_call(make_client: ClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         pytest.fail("job() must not perform an HTTP request")
 
     with make_client(handler) as client:
@@ -148,11 +148,11 @@ def test_job_reattaches_without_http_call(make_client: ClientFactory) -> None:
 def test_validate_icp_posts_json_and_returns_job(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "val-1"})
+        return httpx2.Response(200, json={"task_id": "val-1"})
 
     with make_client(handler) as client:
         job = client.validate_icp(
@@ -174,9 +174,9 @@ def test_validate_icp_posts_json_and_returns_job(make_client: ClientFactory) -> 
 def test_validate_icp_all_optionals_present(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"task_id": "val-2"})
+        return httpx2.Response(200, json={"task_id": "val-2"})
 
     with make_client(handler) as client:
         client.validate_icp(
@@ -199,8 +199,8 @@ def test_validate_icp_all_optionals_present(make_client: ClientFactory) -> None:
 
 
 async def test_process_async_returns_async_job(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"task_id": "dg-async-1"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"task_id": "dg-async-1"})
 
     async with make_async_client(handler) as client:
         job = await client.discogen.process(query="q", domains=["a.com"])
@@ -211,8 +211,8 @@ async def test_process_async_returns_async_job(make_async_client: AsyncClientFac
 
 
 async def test_process_personas_async_returns_async_job(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"task_id": "dg-async-2"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"task_id": "dg-async-2"})
 
     async with make_async_client(handler) as client:
         job = await client.discogen.process_personas(query="q", persona_ids=[1])
@@ -223,8 +223,8 @@ async def test_process_personas_async_returns_async_job(make_async_client: Async
 
 
 async def test_models_async(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"models": {"xai": [{"name": "grok-4", "supports_web_search": True}]}})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"models": {"xai": [{"name": "grok-4", "supports_web_search": True}]}})
 
     async with make_async_client(handler) as client:
         result = await client.discogen.models()
@@ -233,7 +233,7 @@ async def test_models_async(make_async_client: AsyncClientFactory) -> None:
 
 
 async def test_job_async_reattaches_without_http_call(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         pytest.fail("job() must not perform an HTTP request")
 
     async with make_async_client(handler) as client:
@@ -245,8 +245,8 @@ async def test_job_async_reattaches_without_http_call(make_async_client: AsyncCl
 
 
 async def test_validate_icp_async_returns_async_job(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"task_id": "val-async-1"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"task_id": "val-async-1"})
 
     async with make_async_client(handler) as client:
         job = await client.validate_icp(icp_text="q", domains=["a.com"])

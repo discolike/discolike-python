@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 
-import httpx
+import httpx2
 import pytest
 from typer.testing import CliRunner
 
@@ -24,11 +24,11 @@ runner = CliRunner()
 def test_company_subcommands_route_to_expected_path(
     args: list[str], expected_path: str, install_build_client: Callable[[Handler], None]
 ) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"domain": "acme.com", "ok": True})
+        return httpx2.Response(200, json={"domain": "acme.com", "ok": True})
 
     install_build_client(handler)
     result = runner.invoke(app, args)
@@ -50,11 +50,11 @@ def test_company_subcommands_route_to_expected_path(
 def test_company_list_subcommands_route_to_expected_path(
     args: list[str], expected_path: str, install_build_client: Callable[[Handler], None]
 ) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json=[{"linked_domain": "acme.io", "ok": True}])
+        return httpx2.Response(200, json=[{"linked_domain": "acme.io", "ok": True}])
 
     install_build_client(handler)
     result = runner.invoke(app, args)
@@ -68,11 +68,11 @@ def test_company_list_subcommands_route_to_expected_path(
 
 @pytest.mark.parametrize("subcommand", ["redirects", "vendors", "subsidiaries"])
 def test_company_match_option_forwarded(subcommand: str, install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json=[{"linked_domain": "acme.io"}])
+        return httpx2.Response(200, json=[{"linked_domain": "acme.io"}])
 
     install_build_client(handler)
     result = runner.invoke(app, ["company", subcommand, "acme.com", "--match", "loose"])
@@ -81,11 +81,11 @@ def test_company_match_option_forwarded(subcommand: str, install_build_client: C
 
 
 def test_company_public_links_hits_publiclink_endpoint(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json=[{"linked_domain": "acme.io"}])
+        return httpx2.Response(200, json=[{"linked_domain": "acme.io"}])
 
     install_build_client(handler)
     result = runner.invoke(app, ["company", "public-links", "acme.com", "--source", "crunchbase"])
@@ -97,8 +97,8 @@ def test_company_public_links_hits_publiclink_endpoint(install_build_client: Cal
 
 
 def test_company_public_links_requires_source(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"ok": True})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"ok": True})
 
     install_build_client(handler)
     result = runner.invoke(app, ["company", "public-links", "acme.com"])
@@ -106,8 +106,8 @@ def test_company_public_links_requires_source(install_build_client: Callable[[Ha
 
 
 def test_company_data_format_table_falls_back_to_json_for_dict(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"name": "Acme", "domain": "acme.com"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"name": "Acme", "domain": "acme.com"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["company", "data", "acme.com", "--format", "table"])
@@ -119,11 +119,11 @@ def test_company_data_format_table_falls_back_to_json_for_dict(install_build_cli
 
 
 def test_extract_hits_extract_endpoint_with_url(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"text": "hello", "language": "en"})
+        return httpx2.Response(200, json={"text": "hello", "language": "en"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["extract", "https://acme.com/about"])

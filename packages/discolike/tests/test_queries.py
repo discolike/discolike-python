@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-import httpx
+import httpx2
 
 from discolike_testkit import AsyncClientFactory
 from discolike_testkit import ClientFactory
@@ -11,10 +11,10 @@ from discolike_testkit import ClientFactory
 def test_list_sends_params_and_parses_response(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
-        seen["params"] = httpx.QueryParams(request.url.query)
-        return httpx.Response(200, json={"results": [{"query_id": "q1"}], "count": 1})
+        seen["params"] = httpx2.QueryParams(request.url.query)
+        return httpx2.Response(200, json={"results": [{"query_id": "q1"}], "count": 1})
 
     with make_client(handler) as client:
         result = client.queries.list(max_records=10, offset=5, action="discover", tags=["a", "b"])
@@ -31,11 +31,11 @@ def test_list_sends_params_and_parses_response(make_client: ClientFactory) -> No
 def test_create_exclusion_list_posts_json_body(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"query_id": "q2", "query_name": "My List", "domain_count": 2})
+        return httpx2.Response(200, json={"query_id": "q2", "query_name": "My List", "domain_count": 2})
 
     with make_client(handler) as client:
         result = client.queries.create_exclusion_list(query_name="My List", domains=["a.com", "b.com"])
@@ -49,11 +49,11 @@ def test_create_exclusion_list_posts_json_body(make_client: ClientFactory) -> No
 def test_update_patches_path_and_body(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"query_id": "q3", "query_name": "New Name"})
+        return httpx2.Response(200, json={"query_id": "q3", "query_name": "New Name"})
 
     with make_client(handler) as client:
         result = client.queries.update(query_id="q3", query_name="New Name")
@@ -67,10 +67,10 @@ def test_update_patches_path_and_body(make_client: ClientFactory) -> None:
 def test_delete_sends_delete_and_returns_none(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
-        return httpx.Response(200, json={"message": "Query deleted successfully"})
+        return httpx2.Response(200, json={"message": "Query deleted successfully"})
 
     with make_client(handler) as client:
         result = client.queries.delete(query_id="q4")
@@ -81,8 +81,8 @@ def test_delete_sends_delete_and_returns_none(make_client: ClientFactory) -> Non
 
 
 async def test_list_async(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"results": [], "count": 0})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"results": [], "count": 0})
 
     async with make_async_client(handler) as client:
         result = await client.queries.list()
@@ -92,8 +92,8 @@ async def test_list_async(make_async_client: AsyncClientFactory) -> None:
 
 
 async def test_delete_async(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"message": "ok"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"message": "ok"})
 
     async with make_async_client(handler) as client:
         result = await client.queries.delete(query_id="q5")
@@ -104,11 +104,11 @@ async def test_delete_async(make_async_client: AsyncClientFactory) -> None:
 def test_save_results_posts_json_body(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"query_id": "q6", "action": "thin_discover", "row_count": 1})
+        return httpx2.Response(200, json={"query_id": "q6", "action": "thin_discover", "row_count": 1})
 
     with make_client(handler) as client:
         result = client.queries.save_results(query_name="R", action="discover", data=[{"domain": "a.com"}], tags=["x"])
@@ -122,8 +122,8 @@ def test_save_results_posts_json_body(make_client: ClientFactory) -> None:
 
 
 async def test_save_results_async(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"query_id": "q7"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"query_id": "q7"})
 
     async with make_async_client(handler) as client:
         result = await client.queries.save_results(query_name="R", action="discover", data=[{"domain": "a.com"}])
@@ -139,4 +139,4 @@ def test_route_metadata_stamped() -> None:
     assert get_discolike_route(QueriesResource.create_exclusion_list) == ("POST", "/queries/exclusion-list", True, ())
     assert get_discolike_route(QueriesResource.update) == ("PATCH", "/queries/{query_id}", True, ())
     assert get_discolike_route(QueriesResource.delete) == ("DELETE", "/queries/{query_id}", True, ())
-    assert get_discolike_route(QueriesResource.save_results) == ("POST", "/queries/save-results", False, ())
+    assert get_discolike_route(QueriesResource.save_results) == ("POST", "/queries/save-results", True, ())

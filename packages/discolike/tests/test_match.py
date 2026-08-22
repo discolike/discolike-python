@@ -1,6 +1,6 @@
 import io
 
-import httpx
+import httpx2
 
 from discolike._jobs import FAMILY_BULKMATCH
 from discolike._jobs import AsyncJob
@@ -12,10 +12,10 @@ from discolike_testkit import ClientFactory
 def test_company_sends_params_and_parses_response(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
-        seen["params"] = dict(httpx.QueryParams(request.url.query))
-        return httpx.Response(200, json={"domain": "acme.com", "anything": 1})
+        seen["params"] = dict(httpx2.QueryParams(request.url.query))
+        return httpx2.Response(200, json={"domain": "acme.com", "anything": 1})
 
     with make_client(handler) as client:
         result = client.match.company(name="Acme Inc", city="Austin", strict=True, min_match_confidence=80)
@@ -31,9 +31,9 @@ def test_company_sends_params_and_parses_response(make_client: ClientFactory) ->
 def test_company_omits_min_match_confidence_when_not_set(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        seen["params"] = dict(httpx.QueryParams(request.url.query))
-        return httpx.Response(200, json={"domain": "acme.com"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["params"] = dict(httpx2.QueryParams(request.url.query))
+        return httpx2.Response(200, json={"domain": "acme.com"})
 
     with make_client(handler) as client:
         client.match.company(name="Acme Inc")
@@ -46,11 +46,11 @@ def test_bulk_posts_multipart_with_path(tmp_path, make_client: ClientFactory) ->
     csv_path.write_text("company\nAcme\n")
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
-        seen["params"] = dict(httpx.QueryParams(request.url.query))
+        seen["params"] = dict(httpx2.QueryParams(request.url.query))
         seen["content"] = request.content
-        return httpx.Response(200, json={"task_id": "bm-1"})
+        return httpx2.Response(200, json={"task_id": "bm-1"})
 
     with make_client(handler) as client:
         job = client.match.bulk(file=csv_path, name_column="company", min_match_confidence=80)
@@ -68,8 +68,8 @@ def test_bulk_accepts_open_handle_without_closing_it(make_client: ClientFactory)
     handle = io.BytesIO(b"company\nAcme\n")
     handle.name = "companies.csv"
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"task_id": "bm-2"})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"task_id": "bm-2"})
 
     with make_client(handler) as client:
         job = client.match.bulk(file=handle, name_column="company")
@@ -83,11 +83,11 @@ async def test_async_bulk_posts_multipart(tmp_path, make_async_client: AsyncClie
     csv_path.write_text("company\nAcme\n")
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
-        seen["params"] = dict(httpx.QueryParams(request.url.query))
+        seen["params"] = dict(httpx2.QueryParams(request.url.query))
         seen["content"] = request.content
-        return httpx.Response(200, json={"task_id": "bm-3"})
+        return httpx2.Response(200, json={"task_id": "bm-3"})
 
     async with make_async_client(handler) as client:
         job = await client.match.bulk(file=csv_path, name_column="company")

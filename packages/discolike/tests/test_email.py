@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-import httpx
+import httpx2
 import pytest
 
 import discolike._jobs as jobs_module
@@ -30,12 +30,12 @@ def no_sleep(monkeypatch):
 def _results_sequence(payloads):
     state = {"i": 0}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path.startswith("/v1/email/batch/")
         assert request.url.path.endswith("/results")
         payload = payloads[min(state["i"], len(payloads) - 1)]
         state["i"] += 1
-        return httpx.Response(200, json=payload)
+        return httpx2.Response(200, json=payload)
 
     return handler
 
@@ -43,11 +43,11 @@ def _results_sequence(payloads):
 def test_find_batch_posts_and_returns_batch(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["method"] = request.method
         seen["body"] = json.loads(request.content)
-        return httpx.Response(202, json={"batch_id": "b-1", "job_ids": ["j-1", "j-2"], "total": 2})
+        return httpx2.Response(202, json={"batch_id": "b-1", "job_ids": ["j-1", "j-2"], "total": 2})
 
     with make_client(handler) as client:
         batch = client.email.find_batch(
@@ -217,15 +217,15 @@ def test_find_posts_and_job_wait_polls_jobs_endpoint(make_client: ClientFactory)
         },
     ]
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.method == "POST":
             seen["path"] = request.url.path
             seen["body"] = json.loads(request.content)
-            return httpx.Response(202, json={"job_id": "j-9", "status": "queued"})
+            return httpx2.Response(202, json={"job_id": "j-9", "status": "queued"})
         assert request.url.path == "/v1/email/jobs/j-9"
         payload = poll_payloads[min(state["i"], len(poll_payloads) - 1)]
         state["i"] += 1
-        return httpx.Response(200, json=payload)
+        return httpx2.Response(200, json=payload)
 
     with make_client(handler) as client:
         job = client.email.find(first_name="Grace", last_name="Hopper", domain="navy.mil")
@@ -241,11 +241,31 @@ def test_find_posts_and_job_wait_polls_jobs_endpoint(make_client: ClientFactory)
     assert output.result.email == "grace@navy.mil"
 
 
+def test_find_sends_known_pattern_and_omits_it_when_unset(make_client: ClientFactory) -> None:
+    bodies: list[dict] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        bodies.append(json.loads(request.content))
+        return httpx2.Response(202, json={"job_id": "j-kp", "status": "queued"})
+
+    with make_client(handler) as client:
+        client.email.find(first_name="Grace", last_name="Hopper", domain="navy.mil", known_pattern="first.last")
+        client.email.find(first_name="Grace", last_name="Hopper", domain="navy.mil")
+
+    assert bodies[0] == {
+        "first_name": "Grace",
+        "last_name": "Hopper",
+        "domain": "navy.mil",
+        "known_pattern": "first.last",
+    }
+    assert bodies[1] == {"first_name": "Grace", "last_name": "Hopper", "domain": "navy.mil"}
+
+
 def test_find_wait_raises_on_failed_job(make_client: ClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.method == "POST":
-            return httpx.Response(202, json={"job_id": "j-x", "status": "queued"})
-        return httpx.Response(200, json={"job_id": "j-x", "status": "failed", "result": None, "error": "boom"})
+            return httpx2.Response(202, json={"job_id": "j-x", "status": "queued"})
+        return httpx2.Response(200, json={"job_id": "j-x", "status": "failed", "result": None, "error": "boom"})
 
     with make_client(handler) as client:
         job = client.email.find(first_name="No", last_name="One", domain="void.dev")
@@ -254,23 +274,25 @@ def test_find_wait_raises_on_failed_job(make_client: ClientFactory) -> None:
 
 
 def test_job_reattaches_without_http_call(make_client: ClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         pytest.fail("job()/batch() must not perform an HTTP request")
 
     with make_client(handler) as client:
         job = client.email.job("j-existing")
+        verify_job = client.email.job("j-verify", kind="verify")
         batch = client.email.batch("b-existing", kind="verify")
 
     assert isinstance(job, EmailJob)
     assert job.job_id == "j-existing"
     assert job.kind == "find"
+    assert verify_job.kind == "verify"
     assert isinstance(batch, EmailBatch)
     assert batch.kind == "verify"
 
 
 async def test_find_batch_async_returns_batch(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(202, json={"batch_id": "b-async", "job_ids": ["j-a"], "total": 1})
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(202, json={"batch_id": "b-async", "job_ids": ["j-a"], "total": 1})
 
     async with make_async_client(handler) as client:
         batch = await client.email.find_batch(
@@ -349,12 +371,12 @@ async def test_find_async_job_wait(make_async_client: AsyncClientFactory) -> Non
         },
     ]
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.method == "POST":
-            return httpx.Response(202, json={"job_id": "j-async", "status": "queued"})
+            return httpx2.Response(202, json={"job_id": "j-async", "status": "queued"})
         payload = poll_payloads[min(state["i"], len(poll_payloads) - 1)]
         state["i"] += 1
-        return httpx.Response(200, json=payload)
+        return httpx2.Response(200, json=payload)
 
     async with make_async_client(handler) as client:
         job = await client.email.find(first_name="Ada", last_name="Lovelace", domain="acme.com")
@@ -370,8 +392,8 @@ def test_route_metadata_stamped() -> None:
     from discolike.resources._base import get_discolike_route
     from discolike.resources.email import EmailResource
 
-    assert get_discolike_route(EmailResource.find) == ("POST", "/email/find", False, ())
-    assert get_discolike_route(EmailResource.find_batch) == ("POST", "/email/find/batch", False, ("contacts",))
+    assert get_discolike_route(EmailResource.find) == ("POST", "/email/find", True, ())
+    assert get_discolike_route(EmailResource.find_batch) == ("POST", "/email/find/batch", True, ("contacts",))
     assert get_discolike_route(EmailResource.job) is None
     assert get_discolike_route(EmailResource.batch) is None
 
@@ -425,3 +447,76 @@ def test_batch_can_still_re_attach_to_a_verify_batch(make_client: ClientFactory)
     assert isinstance(item.result, ValidationOutput)
     assert item.result.status == "invalid"
     assert item.result.reason == "no_mailbox"
+
+
+def test_server_reported_kind_overrides_handle_kind(make_client: ClientFactory) -> None:
+    """A verify batch rehydrated with kind="find" still decodes ValidationOutput
+    when the server reports the job's kind."""
+    handler = _results_sequence(
+        [
+            {
+                "batch_id": "b-10",
+                "total": 1,
+                "completed": 1,
+                "failed": 0,
+                "results": [
+                    {
+                        "job_id": "j-10",
+                        "status": "completed",
+                        "kind": "verify",
+                        "result": {
+                            "email": "ada@acme.com",
+                            "status": "invalid",
+                            "is_deliverable": False,
+                            "is_catch_all": False,
+                            "reason": "no_mailbox",
+                        },
+                        "error": None,
+                    }
+                ],
+            }
+        ]
+    )
+
+    with make_client(handler) as client:
+        results = client.email.batch("b-10", kind="find").results(timeout=60.0, poll_interval=1.0)
+
+    assert isinstance(results.results[0].result, ValidationOutput)
+
+
+_VERIFY_JOB_PAYLOAD = {
+    "job_id": "j-11",
+    "status": "completed",
+    "kind": "verify",
+    "result": {
+        "email": "ada@acme.com",
+        "status": "invalid",
+        "is_deliverable": False,
+        "reason": "no_mailbox",
+    },
+    "error": None,
+}
+
+
+def _verify_job_handler(request: httpx2.Request) -> httpx2.Response:
+    assert request.url.path == "/v1/email/jobs/j-11"
+    return httpx2.Response(200, json=_VERIFY_JOB_PAYLOAD)
+
+
+def test_job_wait_honors_server_reported_kind(make_client: ClientFactory) -> None:
+    """A verify job rehydrated with the default kind="find" still returns its
+    ValidationOutput. The server-reported kind picks the model, so wait() must not
+    gate the result on the handle's kind."""
+    with make_client(_verify_job_handler) as client:
+        output = client.email.job("j-11").wait(timeout=60.0, poll_interval=1.0)
+
+    assert isinstance(output, ValidationOutput)
+    assert output.reason == "no_mailbox"
+
+
+async def test_job_wait_honors_server_reported_kind_async(make_async_client: AsyncClientFactory) -> None:
+    async with make_async_client(_verify_job_handler) as client:
+        output = await client.email.job("j-11").wait(timeout=60.0, poll_interval=1.0)
+
+    assert isinstance(output, ValidationOutput)
+    assert output.reason == "no_mailbox"

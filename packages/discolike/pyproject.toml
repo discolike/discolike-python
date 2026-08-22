@@ -8,11 +8,13 @@ dynamic = ["version"]
 description = "Official Python SDK for the DiscoLike API"
 readme = "README.md"
 license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [{ name = "DiscoLike", email = "support@discolike.com" }]
 dependencies = [
-  "httpx>=0.27",
+  "httpx2>=2.9",
   "pydantic>=2.7",
+  "typing-extensions>=4.1",
 ]
 keywords = ["discolike", "sdk", "business-data", "enrichment"]
 classifiers = [
@@ -24,15 +26,21 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3 :: Only",
+  "Operating System :: OS Independent",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
 ]
 
 [project.optional-dependencies]
-cli = ["discolike-cli>=0.1.2"]
+cli = ["discolike-cli==0.2.0"]
 
 [project.urls]
 Homepage = "https://www.discolike.com"
 Documentation = "https://docs.discolike.com"
 Repository = "https://github.com/Discolike/discolike-python"
+Changelog = "https://github.com/Discolike/discolike-python/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Discolike/discolike-python/issues"
 
 [tool.uv.sources]
 discolike-testkit = { workspace = true }

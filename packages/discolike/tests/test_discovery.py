@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import httpx
+import httpx2
 
 from discolike_testkit import AsyncClientFactory
 from discolike_testkit import ClientFactory
@@ -9,10 +9,10 @@ from discolike_testkit import ClientFactory
 def test_discover_builds_query_and_parses_list(make_client: ClientFactory) -> None:
     seen = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
-        seen["params"] = httpx.QueryParams(request.url.query)
-        return httpx.Response(
+        seen["params"] = httpx2.QueryParams(request.url.query)
+        return httpx2.Response(
             200,
             json=[{"domain": "acme.com", "name": "Acme", "similarity": 87.3, "extra_field": "kept"}],
         )
@@ -30,9 +30,9 @@ def test_discover_builds_query_and_parses_list(make_client: ClientFactory) -> No
 
 
 def test_count(make_client: ClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path == "/v1/count"
-        return httpx.Response(200, json={"count": 1234})
+        return httpx2.Response(200, json={"count": 1234})
 
     with make_client(handler) as client:
         result = client.count(category=["CYBERSECURITY"])
@@ -40,8 +40,8 @@ def test_count(make_client: ClientFactory) -> None:
 
 
 async def test_discover_async(make_async_client: AsyncClientFactory) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json=[{"domain": "a.com"}])
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json=[{"domain": "a.com"}])
 
     async with make_async_client(handler) as client:
         results = await client.discover(domain=["stripe.com"])

@@ -5,7 +5,7 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 
-import httpx
+import httpx2
 from typer.testing import CliRunner
 
 from discolike_cli.main import app
@@ -15,11 +15,11 @@ runner = CliRunner()
 
 
 def test_queries_list_sends_params(install_build_client: Callable[[Handler], None]) -> None:
-    captured: dict[str, httpx.Request] = {}
+    captured: dict[str, httpx2.Request] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx.Response(200, json={"results": [{"query_id": "q1"}]})
+        return httpx2.Response(200, json={"results": [{"query_id": "q1"}]})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -38,10 +38,10 @@ def test_queries_list_sends_params(install_build_client: Callable[[Handler], Non
 def test_queries_create_exclusion_list_posts_json(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["path"] = request.url.path
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"query_id": "q2", "query_name": "My List"})
+        return httpx2.Response(200, json={"query_id": "q2", "query_name": "My List"})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -72,11 +72,11 @@ def test_queries_create_exclusion_list_posts_json(install_build_client: Callable
 def test_queries_update_patches_body(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["path"] = request.url.path
         captured["method"] = request.method
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"query_id": "q3", "query_name": "Renamed"})
+        return httpx2.Response(200, json={"query_id": "q3", "query_name": "Renamed"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["queries", "update", "q3", "--name", "Renamed", "--tag", "hot"])
@@ -87,10 +87,10 @@ def test_queries_update_patches_body(install_build_client: Callable[[Handler], N
 
 
 def test_queries_delete_hits_delete_endpoint(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.path == "/v1/queries/q4"
         assert request.method == "DELETE"
-        return httpx.Response(200, json={"message": "ok"})
+        return httpx2.Response(200, json={"message": "ok"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["queries", "delete", "q4"])
@@ -104,7 +104,7 @@ def test_queries_save_results_json_input(install_build_client: Callable[[Handler
     def handler(request):
         captured["path"] = request.url.path
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"query_id": "q6", "row_count": 2})
+        return httpx2.Response(200, json={"query_id": "q6", "row_count": 2})
 
     install_build_client(handler)
     f = tmp_path / "rows.json"
@@ -125,7 +125,7 @@ def test_queries_save_results_csv_input(install_build_client: Callable[[Handler]
 
     def handler(request):
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"query_id": "q7"})
+        return httpx2.Response(200, json={"query_id": "q7"})
 
     install_build_client(handler)
     f = tmp_path / "rows.csv"
@@ -166,7 +166,7 @@ def test_queries_save_results_missing_input_file_is_clean_error(
 def test_queries_save_results_invalid_action_rejected(
     install_build_client: Callable[[Handler], None], tmp_path: Path
 ) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         raise AssertionError("handler should not be reached for an invalid --action")
 
     install_build_client(handler)
