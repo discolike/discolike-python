@@ -146,6 +146,6 @@ def test_route_metadata_stamped() -> None:
     from discolike.resources._base import get_discolike_route
     from discolike.resources.enrich import EnrichResource
 
-    assert get_discolike_route(EnrichResource.append) == ("POST", "/append", True, ())
-    assert get_discolike_route(EnrichResource.segment) == ("GET", "/segment", True, ("domain_column",))
-    assert get_discolike_route(EnrichResource._segment_file) == ("POST", "/segment", True, ())
+    assert get_discolike_route(EnrichResource.append) == ("POST", "/append", True)
+    assert get_discolike_route(EnrichResource.segment) == ("GET", "/segment", True)
+    assert get_discolike_route(EnrichResource._segment_file) == ("POST", "/segment", True)

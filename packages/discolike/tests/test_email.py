@@ -392,8 +392,8 @@ def test_route_metadata_stamped() -> None:
     from discolike.resources._base import get_discolike_route
     from discolike.resources.email import EmailResource
 
-    assert get_discolike_route(EmailResource.find) == ("POST", "/email/find", True, ())
-    assert get_discolike_route(EmailResource.find_batch) == ("POST", "/email/find/batch", True, ("contacts",))
+    assert get_discolike_route(EmailResource.find) == ("POST", "/email/find", True)
+    assert get_discolike_route(EmailResource.find_batch) == ("POST", "/email/find/batch", True)
     assert get_discolike_route(EmailResource.job) is None
     assert get_discolike_route(EmailResource.batch) is None
 

@@ -26,7 +26,7 @@ from discolike.resources.companies import Vendor
 from discolike.resources.match import MatchResponse
 from discolike.resources.queries import SavedQueries
 
-IGNORE_PARAMS = {"file"}
+IGNORE_PARAMS = {"file", "contacts", "domain_column"}
 
 # SDK response model -> the OpenAPI component schema it mirrors. Anything listed here is
 # checked field-by-field against the spec, so a platform-side model change surfaces as a
@@ -81,11 +81,11 @@ def collect_routes() -> list[RouteEntry]:
                 route = get_discolike_route(member)
                 if route is None:
                     continue
-                http_method, path, openapi, ignore_params = route
+                http_method, path, openapi = route
                 key = (http_method, path)
                 if key in seen:
                     continue
-                excluded = IGNORE_PARAMS | set(ignore_params)
+                excluded = IGNORE_PARAMS
                 params = tuple(
                     name
                     for name, param in inspect.signature(member).parameters.items()

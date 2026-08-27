@@ -37,7 +37,7 @@ class EmailResource(SyncAPIResource):
         response = self._transport.request("POST", "/email/find", json_body=drop_none(body))
         return EmailJob(self._transport, job_id=response.json()["job_id"], kind="find")
 
-    @api_route("POST", "/email/find/batch", ignore_params=("contacts",))
+    @api_route("POST", "/email/find/batch")
     def find_batch(self, *, contacts: list[dict[str, str]]) -> EmailBatch:
         response = self._transport.request("POST", "/email/find/batch", json_body={"requests": contacts})
         return EmailBatch(self._transport, batch_id=response.json()["batch_id"], kind="find")
@@ -58,7 +58,7 @@ class AsyncEmailResource(AsyncAPIResource):
         response = await self._transport.request("POST", "/email/find", json_body=drop_none(body))
         return AsyncEmailJob(self._transport, job_id=response.json()["job_id"], kind="find")
 
-    @api_route("POST", "/email/find/batch", ignore_params=("contacts",))
+    @api_route("POST", "/email/find/batch")
     async def find_batch(self, *, contacts: list[dict[str, str]]) -> AsyncEmailBatch:
         response = await self._transport.request("POST", "/email/find/batch", json_body={"requests": contacts})
         return AsyncEmailBatch(self._transport, batch_id=response.json()["batch_id"], kind="find")

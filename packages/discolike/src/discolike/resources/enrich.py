@@ -64,7 +64,7 @@ class EnrichResource(SyncAPIResource):
                 fh.close()
         return Job(self._transport, task_family=FAMILY_SEGMENT, task_id=response.json()["task_id"])
 
-    @api_route("GET", "/segment", ignore_params=("domain_column",))
+    @api_route("GET", "/segment")
     def segment(
         self,
         *,
@@ -137,7 +137,7 @@ class AsyncEnrichResource(AsyncAPIResource):
                 fh.close()
         return AsyncJob(self._transport, task_family=FAMILY_SEGMENT, task_id=response.json()["task_id"])
 
-    @api_route("GET", "/segment", ignore_params=("domain_column",))
+    @api_route("GET", "/segment")
     async def segment(
         self,
         *,

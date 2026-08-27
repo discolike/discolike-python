@@ -41,7 +41,7 @@ def test_route_metadata_stamped() -> None:
     from discolike.resources._base import get_discolike_route
     from discolike.resources.account import AccountResource
 
-    assert get_discolike_route(AccountResource.usage) == ("GET", "/usage", True, ())
+    assert get_discolike_route(AccountResource.usage) == ("GET", "/usage", True)
 
 
 def test_with_options_timeout_applies_only_to_the_view(make_client: ClientFactory) -> None:

@@ -388,57 +388,41 @@ def test_route_metadata_stamped() -> None:
     from discolike.resources.providers import LLMProvidersResource
     from discolike.resources.providers import SearchProvidersResource
 
-    assert get_discolike_route(SearchProvidersResource.list) == ("GET", "/search-providers", True, ())
-    assert get_discolike_route(SearchProvidersResource.create) == ("POST", "/search-providers", True, ())
-    assert get_discolike_route(SearchProvidersResource.update) == (
-        "PUT",
-        "/search-providers/{integration_id}",
-        True,
-        (),
-    )
+    assert get_discolike_route(SearchProvidersResource.list) == ("GET", "/search-providers", True)
+    assert get_discolike_route(SearchProvidersResource.create) == ("POST", "/search-providers", True)
+    assert get_discolike_route(SearchProvidersResource.update) == ("PUT", "/search-providers/{integration_id}", True)
     assert get_discolike_route(SearchProvidersResource.delete) == (
         "DELETE",
         "/search-providers/{integration_id}",
         True,
-        (),
     )
     assert get_discolike_route(SearchProvidersResource.set_default) == (
         "PUT",
         "/search-providers/{integration_id}/default",
         True,
-        (),
     )
     assert get_discolike_route(SearchProvidersResource.clear_default) == (
         "DELETE",
         "/search-providers/{integration_id}/default",
         True,
-        (),
     )
-    assert get_discolike_route(SearchProvidersResource.models) == ("GET", "/search-providers/models", True, ())
-    assert get_discolike_route(LLMProvidersResource.list) == ("GET", "/llm-providers/config", True, ())
-    assert get_discolike_route(LLMProvidersResource.create) == ("POST", "/llm-providers/config", True, ())
-    assert get_discolike_route(LLMProvidersResource.get) == ("GET", "/llm-providers/config/{integration_id}", True, ())
-    assert get_discolike_route(LLMProvidersResource.update) == (
-        "PUT",
-        "/llm-providers/config/{integration_id}",
-        True,
-        (),
-    )
+    assert get_discolike_route(SearchProvidersResource.models) == ("GET", "/search-providers/models", True)
+    assert get_discolike_route(LLMProvidersResource.list) == ("GET", "/llm-providers/config", True)
+    assert get_discolike_route(LLMProvidersResource.create) == ("POST", "/llm-providers/config", True)
+    assert get_discolike_route(LLMProvidersResource.get) == ("GET", "/llm-providers/config/{integration_id}", True)
+    assert get_discolike_route(LLMProvidersResource.update) == ("PUT", "/llm-providers/config/{integration_id}", True)
     assert get_discolike_route(LLMProvidersResource.delete) == (
         "DELETE",
         "/llm-providers/config/{integration_id}",
         True,
-        (),
     )
     assert get_discolike_route(LLMProvidersResource.set_default) == (
         "POST",
         "/llm-providers/config/{integration_id}/set-default",
         True,
-        (),
     )
     assert get_discolike_route(LLMProvidersResource.test_connection) == (
         "POST",
         "/llm-providers/test-connection",
         True,
-        (),
     )
