@@ -51,6 +51,7 @@ path = "src/discolike/_version.py"
 
 [dependency-groups]
 dev = [
+  "datamodel-code-generator>=0.75,<0.76",
   "discolike-testkit",
   "pytest>=8",
   "pytest-asyncio>=0.24",
