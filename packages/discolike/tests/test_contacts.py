@@ -3,11 +3,20 @@ from __future__ import annotations
 import json
 
 import httpx2
+import pydantic
+import pytest
 
 from discolike._jobs import FAMILY_CONTACTMATCH
 from discolike._jobs import FAMILY_DISCOGEN
 from discolike._jobs import AsyncJob
 from discolike._jobs import Job
+from discolike.requests import BulkContactMatchRequest
+from discolike.requests import ContactFilters
+from discolike.requests import ContactGenerateRequest
+from discolike.requests import ContactsCountParams
+from discolike.requests import ContactsLookupParams
+from discolike.requests import ContactsMatchParams
+from discolike.requests import ContactsSearchParams
 from discolike_testkit import AsyncClientFactory
 from discolike_testkit import ClientFactory
 
@@ -26,10 +35,12 @@ def test_search_builds_query_and_parses_list(make_client: ClientFactory) -> None
 
     with make_client(handler) as client:
         results = client.contacts.search(
-            seniority=["vp", "director"],
-            domain=["acme.com"],
-            jobstart_date="2025-01-01,2025-06-30",
-            max_records=25,
+            ContactsSearchParams(
+                seniority=["vp", "director"],
+                domain=["acme.com"],
+                jobstart_date="2025-01-01,2025-06-30",
+                max_records=25,
+            )
         )
 
     assert seen["path"] == "/v1/contacts"
@@ -38,8 +49,19 @@ def test_search_builds_query_and_parses_list(make_client: ClientFactory) -> None
     assert seen["params"]["domain"] == "acme.com"
     assert seen["params"]["jobstart_date"] == "2025-01-01,2025-06-30"
     assert seen["params"]["max_records"] == "25"
+    assert "has_email" not in seen["params"]
     assert results[0].persona_id == 1
     assert results[0].model_extra["extra_field"] == "kept"  # ty: ignore[not-subscriptable]
+
+
+def test_search_rejects_unknown_seniority_before_any_request() -> None:
+    with pytest.raises(pydantic.ValidationError, match="seniority"):
+        ContactsSearchParams.model_validate({"seniority": ["intern"]})
+
+
+def test_search_rejects_max_records_below_floor_before_any_request() -> None:
+    with pytest.raises(pydantic.ValidationError, match="max_records"):
+        ContactsSearchParams(max_records=10)
 
 
 def test_count(make_client: ClientFactory) -> None:
@@ -52,7 +74,9 @@ def test_count(make_client: ClientFactory) -> None:
         return httpx2.Response(200, json={"count": 1234})
 
     with make_client(handler) as client:
-        result = client.contacts.count(seniority=["vp"], has_email=True, jobstart_date="2025-01-01")
+        result = client.contacts.count(
+            ContactsCountParams(seniority=["vp"], has_email=True, jobstart_date="2025-01-01")
+        )
 
     assert seen["path"] == "/v1/contacts/count"
     assert seen["method"] == "GET"
@@ -68,13 +92,10 @@ def test_lookup(make_client: ClientFactory) -> None:
     def handler(request: httpx2.Request) -> httpx2.Response:
         seen["path"] = request.url.path
         seen["params"] = httpx2.QueryParams(request.url.query)
-        return httpx2.Response(
-            200,
-            json={"persona_id": 12345678, "name": "Jane Doe", "domain": "example.com"},
-        )
+        return httpx2.Response(200, json={"persona_id": 12345678, "name": "Jane Doe", "domain": "example.com"})
 
     with make_client(handler) as client:
-        result = client.contacts.lookup(persona_id=12345678, email="jane@example.com")
+        result = client.contacts.lookup(ContactsLookupParams(persona_id=12345678, email="jane@example.com"))
 
     assert seen["path"] == "/v1/contacts/lookup"
     assert seen["params"]["persona_id"] == "12345678"
@@ -107,7 +128,7 @@ def test_match(make_client: ClientFactory) -> None:
         )
 
     with make_client(handler) as client:
-        result = client.contacts.match(name="Jane Doe", company_name="Acme Corp", limit=5)
+        result = client.contacts.match(ContactsMatchParams(name="Jane Doe", company_name="Acme Corp", limit=5))
 
     assert seen["path"] == "/v1/contacts/match"
     assert seen["params"]["name"] == "Jane Doe"
@@ -128,9 +149,9 @@ def test_bulk_match_posts_json_and_returns_job(make_client: ClientFactory) -> No
 
     with make_client(handler) as client:
         job = client.contacts.bulk_match(
-            queries=[{"name": "Jane Doe", "company_name": "Acme Corp"}],
-            enrich=True,
-            limit=5,
+            BulkContactMatchRequest.model_validate(
+                {"queries": [{"name": "Jane Doe", "company_name": "Acme Corp"}], "enrich": True, "limit": 5}
+            )
         )
 
     assert seen["path"] == "/v1/contacts/bulk-match"
@@ -163,11 +184,13 @@ def test_discover_posts_json_body(make_client: ClientFactory) -> None:
 
     with make_client(handler) as client:
         result = client.contacts.discover(
-            domain=["acme.com"],
-            seniority=["vp"],
-            jobstart_date="2025-01-01",
-            results_by_company=10,
-            consensus=2,
+            ContactFilters(
+                domain=["acme.com"],
+                seniority=["vp"],
+                jobstart_date="2025-01-01",
+                results_by_company=10,
+                consensus=2,
+            )
         )
 
     assert seen["path"] == "/v1/contacts/discover"
@@ -195,9 +218,11 @@ def test_generate_posts_json_and_returns_job(make_client: ClientFactory) -> None
 
     with make_client(handler) as client:
         job = client.contacts.generate(
-            icp_text="VPs of Marketing at B2B SaaS",
-            domains=["gusto.com", "rippling.com"],
-            context_mode="website",
+            ContactGenerateRequest(
+                icp_text="VPs of Marketing at B2B SaaS",
+                domains=["gusto.com", "rippling.com"],
+                context_mode="website",
+            )
         )
 
     assert seen["path"] == "/v1/contacts/discover/generate"
@@ -217,7 +242,7 @@ async def test_search_async(make_async_client: AsyncClientFactory) -> None:
         return httpx2.Response(200, json=[{"persona_id": 2, "domain": "b.com"}])
 
     async with make_async_client(handler) as client:
-        results = await client.contacts.search(domain=["b.com"])
+        results = await client.contacts.search(ContactsSearchParams(domain=["b.com"]))
     assert results[0].persona_id == 2
 
 
@@ -226,7 +251,9 @@ async def test_bulk_match_async_returns_async_job(make_async_client: AsyncClient
         return httpx2.Response(200, json={"task_id": "cm-2"})
 
     async with make_async_client(handler) as client:
-        job = await client.contacts.bulk_match(queries=[{"name": "Jane Doe"}])
+        job = await client.contacts.bulk_match(
+            BulkContactMatchRequest.model_validate({"queries": [{"name": "Jane Doe"}]})
+        )
 
     assert isinstance(job, AsyncJob)
     assert job.task_family == FAMILY_CONTACTMATCH
@@ -238,7 +265,7 @@ async def test_generate_async_returns_async_job(make_async_client: AsyncClientFa
         return httpx2.Response(200, json={"task_id": "dg-2"})
 
     async with make_async_client(handler) as client:
-        job = await client.contacts.generate(icp_text="VPs", domains=["a.com"])
+        job = await client.contacts.generate(ContactGenerateRequest(icp_text="VPs", domains=["a.com"]))
 
     assert isinstance(job, AsyncJob)
     assert job.task_family == FAMILY_DISCOGEN
