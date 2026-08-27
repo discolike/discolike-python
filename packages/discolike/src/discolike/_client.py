@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import pathlib
-from typing import BinaryIO
-
 import httpx2
 
 from discolike._config import DEFAULT_BASE_URL
@@ -11,9 +8,13 @@ from discolike._jobs import AsyncJob
 from discolike._jobs import Job
 from discolike._transport import AsyncTransport
 from discolike._transport import Transport
+from discolike.requests import AppendParams
 from discolike.requests import CountParams
 from discolike.requests import DiscoverParams
+from discolike.requests import SegmentFileParams
+from discolike.requests import SegmentParams
 from discolike.requests import ValidateIcpRequest
+from discolike.resources._base import FileInput
 from discolike.resources.account import AccountResource
 from discolike.resources.account import AsyncAccountResource
 from discolike.resources.companies import AsyncCompaniesResource
@@ -96,39 +97,14 @@ class Discolike:
     def validate_icp(self, request: ValidateIcpRequest) -> Job:
         return self._validate.icp(request)
 
-    def append(
-        self,
-        *,
-        file: pathlib.Path | str | BinaryIO | None = None,
-        dataset: list[str] | None = None,
-        domain_column: str | None = None,
-        csv: bool | None = None,
-        query_id: list[str] | None = None,
-    ) -> list[AppendResult] | bytes:
-        return self._enrich.append(
-            file=file,
-            dataset=dataset,
-            domain_column=domain_column,
-            csv=csv,
-            query_id=query_id,
-        )
+    def append(self, params: AppendParams, *, file: FileInput | None = None) -> list[AppendResult] | bytes:
+        return self._enrich.append(params, file=file)
 
-    def segment(
-        self,
-        *,
-        domains: list[str] | None = None,
-        file: pathlib.Path | str | BinaryIO | None = None,
-        domain_column: str | None = None,
-        max_segments: int | None = None,
-        query_id: list[str] | None = None,
-    ) -> Job:
-        return self._enrich.segment(
-            domains=domains,
-            file=file,
-            domain_column=domain_column,
-            max_segments=max_segments,
-            query_id=query_id,
-        )
+    def segment(self, params: SegmentParams) -> Job:
+        return self._enrich.segment(params)
+
+    def segment_file(self, params: SegmentFileParams, *, file: FileInput) -> Job:
+        return self._enrich.segment_file(params, file=file)
 
     def close(self) -> None:
         self._transport.close()
@@ -190,39 +166,14 @@ class AsyncDiscolike:
     async def validate_icp(self, request: ValidateIcpRequest) -> AsyncJob:
         return await self._validate.icp(request)
 
-    async def append(
-        self,
-        *,
-        file: pathlib.Path | str | BinaryIO | None = None,
-        dataset: list[str] | None = None,
-        domain_column: str | None = None,
-        csv: bool | None = None,
-        query_id: list[str] | None = None,
-    ) -> list[AppendResult] | bytes:
-        return await self._enrich.append(
-            file=file,
-            dataset=dataset,
-            domain_column=domain_column,
-            csv=csv,
-            query_id=query_id,
-        )
+    async def append(self, params: AppendParams, *, file: FileInput | None = None) -> list[AppendResult] | bytes:
+        return await self._enrich.append(params, file=file)
 
-    async def segment(
-        self,
-        *,
-        domains: list[str] | None = None,
-        file: pathlib.Path | str | BinaryIO | None = None,
-        domain_column: str | None = None,
-        max_segments: int | None = None,
-        query_id: list[str] | None = None,
-    ) -> AsyncJob:
-        return await self._enrich.segment(
-            domains=domains,
-            file=file,
-            domain_column=domain_column,
-            max_segments=max_segments,
-            query_id=query_id,
-        )
+    async def segment(self, params: SegmentParams) -> AsyncJob:
+        return await self._enrich.segment(params)
+
+    async def segment_file(self, params: SegmentFileParams, *, file: FileInput) -> AsyncJob:
+        return await self._enrich.segment_file(params, file=file)
 
     async def aclose(self) -> None:
         await self._transport.aclose()
