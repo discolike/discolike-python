@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import pathlib
-from typing import BinaryIO
-
 import pydantic
 
 from discolike._jobs import FAMILY_BULKMATCH
 from discolike._jobs import AsyncJob
 from discolike._jobs import Job
 from discolike._models import DiscolikeModel
+from discolike.requests import MatchBulkParams
+from discolike.requests import MatchCompanyParams
 from discolike.resources._base import AsyncAPIResource
+from discolike.resources._base import FileInput
 from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
 from discolike.resources._base import open_upload
@@ -36,52 +36,16 @@ class MatchResponse(DiscolikeModel):
 
 class MatchResource(SyncAPIResource):
     @api_route("GET", "/match")
-    def company(
-        self,
-        *,
-        name: str,
-        phone: str | None = None,
-        city: str | None = None,
-        state: str | None = None,
-        country: str | None = None,
-        zip_code: str | None = None,
-        strict: bool | None = None,
-        local_mode: bool | None = None,
-        min_match_confidence: int | None = None,
-    ) -> MatchResponse:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        return MatchResponse.model_validate(self._transport.request("GET", "/match", params=params).json())
+    def company(self, params: MatchCompanyParams) -> MatchResponse:
+        return MatchResponse.model_validate(self._transport.request("GET", "/match", params=params.to_wire()).json())
 
     @api_route("POST", "/bulkmatch")
-    def bulk(
-        self,
-        *,
-        file: pathlib.Path | str | BinaryIO,
-        name_column: str,
-        phone_column: str | None = None,
-        city_column: str | None = None,
-        state_column: str | None = None,
-        country_column: str | None = None,
-        zip_code_column: str | None = None,
-        strict: bool | None = None,
-        local_mode: bool | None = None,
-        min_match_confidence: int | None = None,
-    ) -> Job:
-        params = {
-            "name_column": name_column,
-            "phone_column": phone_column,
-            "city_column": city_column,
-            "state_column": state_column,
-            "country_column": country_column,
-            "zip_code_column": zip_code_column,
-            "strict": strict,
-            "local_mode": local_mode,
-        }
-        if min_match_confidence is not None:
-            params["min_match_confidence"] = min_match_confidence
+    def bulk(self, params: MatchBulkParams, *, file: FileInput) -> Job:
         filename, fh, we_opened_it = open_upload(file)
         try:
-            response = self._transport.request("POST", "/bulkmatch", params=params, files={"file": (filename, fh)})
+            response = self._transport.request(
+                "POST", "/bulkmatch", params=params.to_wire(), files={"file": (filename, fh)}
+            )
         finally:
             if we_opened_it:
                 fh.close()
@@ -90,53 +54,16 @@ class MatchResource(SyncAPIResource):
 
 class AsyncMatchResource(AsyncAPIResource):
     @api_route("GET", "/match")
-    async def company(
-        self,
-        *,
-        name: str,
-        phone: str | None = None,
-        city: str | None = None,
-        state: str | None = None,
-        country: str | None = None,
-        zip_code: str | None = None,
-        strict: bool | None = None,
-        local_mode: bool | None = None,
-        min_match_confidence: int | None = None,
-    ) -> MatchResponse:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        return MatchResponse.model_validate((await self._transport.request("GET", "/match", params=params)).json())
+    async def company(self, params: MatchCompanyParams) -> MatchResponse:
+        response = await self._transport.request("GET", "/match", params=params.to_wire())
+        return MatchResponse.model_validate(response.json())
 
     @api_route("POST", "/bulkmatch")
-    async def bulk(
-        self,
-        *,
-        file: pathlib.Path | str | BinaryIO,
-        name_column: str,
-        phone_column: str | None = None,
-        city_column: str | None = None,
-        state_column: str | None = None,
-        country_column: str | None = None,
-        zip_code_column: str | None = None,
-        strict: bool | None = None,
-        local_mode: bool | None = None,
-        min_match_confidence: int | None = None,
-    ) -> AsyncJob:
-        params = {
-            "name_column": name_column,
-            "phone_column": phone_column,
-            "city_column": city_column,
-            "state_column": state_column,
-            "country_column": country_column,
-            "zip_code_column": zip_code_column,
-            "strict": strict,
-            "local_mode": local_mode,
-        }
-        if min_match_confidence is not None:
-            params["min_match_confidence"] = min_match_confidence
+    async def bulk(self, params: MatchBulkParams, *, file: FileInput) -> AsyncJob:
         filename, fh, we_opened_it = open_upload(file)
         try:
             response = await self._transport.request(
-                "POST", "/bulkmatch", params=params, files={"file": (filename, fh)}
+                "POST", "/bulkmatch", params=params.to_wire(), files={"file": (filename, fh)}
             )
         finally:
             if we_opened_it:
