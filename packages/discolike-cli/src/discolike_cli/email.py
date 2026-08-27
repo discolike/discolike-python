@@ -10,8 +10,12 @@ from discolike._email import EmailBatch
 from discolike._email import EmailBatchResults
 from discolike._email import EmailJobResult
 from discolike._exceptions import JobTimeoutError
+from discolike.requests import FindEmailBatchRequest
+from discolike.requests import FindEmailRequest
+from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
+from discolike_cli.discover import _merge_params
 
 DEFAULT_WAIT_TIMEOUT_SECONDS = 900.0
 MAX_BATCH_CONTACTS = 500
@@ -81,9 +85,11 @@ def find_command(
     """Submit a single email find job (async); only a proven address bills."""
     from discolike_cli.main import get_client
 
-    job = get_client(ctx).email.find(
-        first_name=first_name, last_name=last_name, domain=domain, known_pattern=known_pattern
+    request = build_request(
+        FindEmailRequest,
+        _merge_params(None, first_name=first_name, last_name=last_name, domain=domain, known_pattern=known_pattern),
     )
+    job = get_client(ctx).email.find(request)
     if not wait:
         emit({"job_id": job.job_id, "hint": f"poll with: discolike email job {job.job_id}"})
         return
@@ -118,7 +124,7 @@ def find_batch_command(
     if len(contacts) > MAX_BATCH_CONTACTS:
         raise typer.BadParameter(f"a batch holds at most {MAX_BATCH_CONTACTS} contacts, got {len(contacts)}")
 
-    batch = get_client(ctx).email.find_batch(contacts=contacts)
+    batch = get_client(ctx).email.find_batch(build_request(FindEmailBatchRequest, {"requests": contacts}))
     if not wait:
         emit({"batch_id": batch.batch_id, "hint": f"fetch with: discolike email results {batch.batch_id}"})
         return
