@@ -3,7 +3,9 @@ from __future__ import annotations
 import pydantic
 
 from discolike._models import DiscolikeModel
-from discolike._transport import drop_none
+from discolike.requests import LLMProviderCreateRequest
+from discolike.requests import LLMProviderUpdateRequest
+from discolike.requests import SearchProviderRequest
 from discolike.resources._base import AsyncAPIResource
 from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
@@ -54,38 +56,13 @@ class SearchProvidersResource(SyncAPIResource):
         return SearchProviderList.model_validate(self._transport.request("GET", "/search-providers").json())
 
     @api_route("POST", "/search-providers")
-    def create(
-        self,
-        *,
-        integration_name: str,
-        provider: str,
-        search_model: str,
-        api_key: str | None = None,
-        base_url: str | None = None,
-    ) -> SearchProviderConfig:
-        body = {k: v for k, v in locals().items() if k != "self"}
-        response = self._transport.request("POST", "/search-providers", json_body=drop_none(body))
+    def create(self, request: SearchProviderRequest) -> SearchProviderConfig:
+        response = self._transport.request("POST", "/search-providers", json_body=request.to_wire())
         return SearchProviderConfig.model_validate(response.json())
 
     @api_route("PUT", "/search-providers/{integration_id}")
-    def update(
-        self,
-        *,
-        integration_id: str,
-        integration_name: str,
-        provider: str,
-        search_model: str,
-        api_key: str | None = None,
-        base_url: str | None = None,
-    ) -> SearchProviderConfig:
-        body = {
-            "integration_name": integration_name,
-            "provider": provider,
-            "search_model": search_model,
-            "api_key": api_key,
-            "base_url": base_url,
-        }
-        response = self._transport.request("PUT", f"/search-providers/{integration_id}", json_body=drop_none(body))
+    def update(self, request: SearchProviderRequest, *, integration_id: str) -> SearchProviderConfig:
+        response = self._transport.request("PUT", f"/search-providers/{integration_id}", json_body=request.to_wire())
         return SearchProviderConfig.model_validate(response.json())
 
     @api_route("DELETE", "/search-providers/{integration_id}")
@@ -114,39 +91,14 @@ class AsyncSearchProvidersResource(AsyncAPIResource):
         return SearchProviderList.model_validate(response.json())
 
     @api_route("POST", "/search-providers")
-    async def create(
-        self,
-        *,
-        integration_name: str,
-        provider: str,
-        search_model: str,
-        api_key: str | None = None,
-        base_url: str | None = None,
-    ) -> SearchProviderConfig:
-        body = {k: v for k, v in locals().items() if k != "self"}
-        response = await self._transport.request("POST", "/search-providers", json_body=drop_none(body))
+    async def create(self, request: SearchProviderRequest) -> SearchProviderConfig:
+        response = await self._transport.request("POST", "/search-providers", json_body=request.to_wire())
         return SearchProviderConfig.model_validate(response.json())
 
     @api_route("PUT", "/search-providers/{integration_id}")
-    async def update(
-        self,
-        *,
-        integration_id: str,
-        integration_name: str,
-        provider: str,
-        search_model: str,
-        api_key: str | None = None,
-        base_url: str | None = None,
-    ) -> SearchProviderConfig:
-        body = {
-            "integration_name": integration_name,
-            "provider": provider,
-            "search_model": search_model,
-            "api_key": api_key,
-            "base_url": base_url,
-        }
+    async def update(self, request: SearchProviderRequest, *, integration_id: str) -> SearchProviderConfig:
         response = await self._transport.request(
-            "PUT", f"/search-providers/{integration_id}", json_body=drop_none(body)
+            "PUT", f"/search-providers/{integration_id}", json_body=request.to_wire()
         )
         return SearchProviderConfig.model_validate(response.json())
 
@@ -176,17 +128,8 @@ class LLMProvidersResource(SyncAPIResource):
         return LLMProviderList.model_validate(self._transport.request("GET", "/llm-providers/config").json())
 
     @api_route("POST", "/llm-providers/config")
-    def create(
-        self,
-        *,
-        integration_name: str,
-        provider: str,
-        api_key: str,
-        model_name: str,
-        base_url: str | None = None,
-    ) -> LLMIntegrationResult:
-        body = {k: v for k, v in locals().items() if k != "self"}
-        response = self._transport.request("POST", "/llm-providers/config", json_body=drop_none(body))
+    def create(self, request: LLMProviderCreateRequest) -> LLMIntegrationResult:
+        response = self._transport.request("POST", "/llm-providers/config", json_body=request.to_wire())
         return LLMIntegrationResult.model_validate(response.json())
 
     @api_route("GET", "/llm-providers/config/{integration_id}")
@@ -195,26 +138,10 @@ class LLMProvidersResource(SyncAPIResource):
         return LLMProviderConfig.model_validate(response.json())
 
     @api_route("PUT", "/llm-providers/config/{integration_id}")
-    def update(
-        self,
-        *,
-        integration_id: str,
-        integration_name: str,
-        provider: str,
-        model_name: str,
-        api_key: str | None = None,
-        base_url: str | None = None,
-    ) -> LLMIntegrationResult:
-        body = drop_none(
-            {
-                "integration_name": integration_name,
-                "provider": provider,
-                "model_name": model_name,
-                "base_url": base_url,
-            }
+    def update(self, request: LLMProviderUpdateRequest, *, integration_id: str) -> LLMIntegrationResult:
+        response = self._transport.request(
+            "PUT", f"/llm-providers/config/{integration_id}", json_body=request.to_wire()
         )
-        body["api_key"] = api_key
-        response = self._transport.request("PUT", f"/llm-providers/config/{integration_id}", json_body=body)
         return LLMIntegrationResult.model_validate(response.json())
 
     @api_route("DELETE", "/llm-providers/config/{integration_id}")
@@ -227,17 +154,8 @@ class LLMProvidersResource(SyncAPIResource):
         return LLMIntegrationResult.model_validate(response.json())
 
     @api_route("POST", "/llm-providers/test-connection")
-    def test_connection(
-        self,
-        *,
-        integration_name: str,
-        provider: str,
-        api_key: str,
-        model_name: str,
-        base_url: str | None = None,
-    ) -> LLMIntegrationResult:
-        body = {k: v for k, v in locals().items() if k != "self"}
-        response = self._transport.request("POST", "/llm-providers/test-connection", json_body=drop_none(body))
+    def test_connection(self, request: LLMProviderCreateRequest) -> LLMIntegrationResult:
+        response = self._transport.request("POST", "/llm-providers/test-connection", json_body=request.to_wire())
         return LLMIntegrationResult.model_validate(response.json())
 
 
@@ -248,17 +166,8 @@ class AsyncLLMProvidersResource(AsyncAPIResource):
         return LLMProviderList.model_validate(response.json())
 
     @api_route("POST", "/llm-providers/config")
-    async def create(
-        self,
-        *,
-        integration_name: str,
-        provider: str,
-        api_key: str,
-        model_name: str,
-        base_url: str | None = None,
-    ) -> LLMIntegrationResult:
-        body = {k: v for k, v in locals().items() if k != "self"}
-        response = await self._transport.request("POST", "/llm-providers/config", json_body=drop_none(body))
+    async def create(self, request: LLMProviderCreateRequest) -> LLMIntegrationResult:
+        response = await self._transport.request("POST", "/llm-providers/config", json_body=request.to_wire())
         return LLMIntegrationResult.model_validate(response.json())
 
     @api_route("GET", "/llm-providers/config/{integration_id}")
@@ -267,26 +176,10 @@ class AsyncLLMProvidersResource(AsyncAPIResource):
         return LLMProviderConfig.model_validate(response.json())
 
     @api_route("PUT", "/llm-providers/config/{integration_id}")
-    async def update(
-        self,
-        *,
-        integration_id: str,
-        integration_name: str,
-        provider: str,
-        model_name: str,
-        api_key: str | None = None,
-        base_url: str | None = None,
-    ) -> LLMIntegrationResult:
-        body = drop_none(
-            {
-                "integration_name": integration_name,
-                "provider": provider,
-                "model_name": model_name,
-                "base_url": base_url,
-            }
+    async def update(self, request: LLMProviderUpdateRequest, *, integration_id: str) -> LLMIntegrationResult:
+        response = await self._transport.request(
+            "PUT", f"/llm-providers/config/{integration_id}", json_body=request.to_wire()
         )
-        body["api_key"] = api_key
-        response = await self._transport.request("PUT", f"/llm-providers/config/{integration_id}", json_body=body)
         return LLMIntegrationResult.model_validate(response.json())
 
     @api_route("DELETE", "/llm-providers/config/{integration_id}")
@@ -299,15 +192,6 @@ class AsyncLLMProvidersResource(AsyncAPIResource):
         return LLMIntegrationResult.model_validate(response.json())
 
     @api_route("POST", "/llm-providers/test-connection")
-    async def test_connection(
-        self,
-        *,
-        integration_name: str,
-        provider: str,
-        api_key: str,
-        model_name: str,
-        base_url: str | None = None,
-    ) -> LLMIntegrationResult:
-        body = {k: v for k, v in locals().items() if k != "self"}
-        response = await self._transport.request("POST", "/llm-providers/test-connection", json_body=drop_none(body))
+    async def test_connection(self, request: LLMProviderCreateRequest) -> LLMIntegrationResult:
+        response = await self._transport.request("POST", "/llm-providers/test-connection", json_body=request.to_wire())
         return LLMIntegrationResult.model_validate(response.json())
