@@ -21,6 +21,7 @@ DEFAULT_WAIT_TIMEOUT_SECONDS = 900.0
 MAX_BATCH_CONTACTS = 500
 EMAIL_KINDS = ("find", "verify")
 CSV_COLUMNS = ("first_name", "last_name", "domain")
+FIRST_DATA_ROW = 2
 
 FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls back to JSON for non-tabular data)."
 WAIT_HELP = "Block until the job finishes, streaming progress to stderr."
@@ -56,7 +57,14 @@ def _read_contacts_file(contacts_file: pathlib.Path) -> list[dict[str, str]]:
         missing = set(CSV_COLUMNS) - set(reader.fieldnames or [])
         if missing:
             raise typer.BadParameter(f"--contacts-file is missing required CSV columns: {', '.join(sorted(missing))}")
-        return [{column: (row.get(column) or "").strip() for column in CSV_COLUMNS} for row in reader]
+        contacts = []
+        for row_number, row in enumerate(reader, start=FIRST_DATA_ROW):
+            contact = {column: (row.get(column) or "").strip() for column in CSV_COLUMNS}
+            empty = [column for column, value in contact.items() if not value]
+            if empty:
+                raise typer.BadParameter(f"--contacts-file row {row_number} has empty {', '.join(empty)}")
+            contacts.append(contact)
+        return contacts
 
 
 def _fetch_batch_snapshot(batch: EmailBatch) -> EmailBatchResults:
