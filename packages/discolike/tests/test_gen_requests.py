@@ -130,11 +130,11 @@ def routes(gen):
         ("ValidateResource", "icp", "IcpParams"),
     ],
 )
-def test_params_model_name(gen, class_name, method_name, expected):
+def test_params_model_name(gen, class_name, method_name, expected) -> None:
     assert gen.params_model_name(class_name=class_name, method_name=method_name) == expected
 
 
-def test_request_schemas_synthesizes_params_from_query_parameters(gen, routes):
+def test_request_schemas_synthesizes_params_from_query_parameters(gen, routes) -> None:
     schemas = gen.request_schemas(spec=FAKE_SPEC, routes=routes)
     assert schemas["MatchCompanyParams"] == {
         "type": "object",
@@ -143,7 +143,7 @@ def test_request_schemas_synthesizes_params_from_query_parameters(gen, routes):
     }
 
 
-def test_request_schemas_skips_multipart_body_and_keeps_query_params(gen, routes):
+def test_request_schemas_skips_multipart_body_and_keeps_query_params(gen, routes) -> None:
     schemas = gen.request_schemas(spec=FAKE_SPEC, routes=routes)
     assert schemas["MatchBulkParams"] == {
         "type": "object",
@@ -153,34 +153,34 @@ def test_request_schemas_skips_multipart_body_and_keeps_query_params(gen, routes
     assert "Body_bulk_match" not in schemas
 
 
-def test_request_schemas_uses_the_json_body_component_name(gen, routes):
+def test_request_schemas_uses_the_json_body_component_name(gen, routes) -> None:
     schemas = gen.request_schemas(spec=FAKE_SPEC, routes=routes)
     assert schemas["FindEmailBatchRequest"] == FAKE_SPEC["components"]["schemas"]["FindEmailBatchRequest"]
 
 
-def test_request_schemas_emits_nothing_for_routes_without_params(gen, routes):
+def test_request_schemas_emits_nothing_for_routes_without_params(gen, routes) -> None:
     schemas = gen.request_schemas(spec=FAKE_SPEC, routes=routes)
     assert "AccountUsageParams" not in schemas
 
 
-def test_request_schemas_fails_loudly_when_a_route_is_missing_from_the_spec(gen):
+def test_request_schemas_fails_loudly_when_a_route_is_missing_from_the_spec(gen) -> None:
     with pytest.raises(SystemExit, match="GET /nowhere"):
         gen.request_schemas(spec=FAKE_SPEC, routes=[gen.Route("X", "y", "GET", "/nowhere")])
 
 
-def test_prune_keeps_transitive_refs_and_drops_unrelated_schemas(gen, routes):
+def test_prune_keeps_transitive_refs_and_drops_unrelated_schemas(gen) -> None:
     requested = {"FindEmailBatchRequest": FAKE_SPEC["components"]["schemas"]["FindEmailBatchRequest"]}
     assert set(gen.prune(spec=FAKE_SPEC, requested=requested)) == {"FindEmailBatchRequest", "FindEmailRequest"}
 
 
-def test_prune_orders_sibling_refs_deterministically(gen):
+def test_prune_orders_sibling_refs_deterministically(gen) -> None:
     requested = {"Root": SIBLING_REF_SPEC["components"]["schemas"]["Root"]}
     kept = list(gen.prune(spec=SIBLING_REF_SPEC, requested=requested))
     assert kept == ["Root", "Alpha", "Middle", "Zebra"]
     assert kept == list(gen.prune(spec=SIBLING_REF_SPEC, requested=requested))
 
 
-def test_normalize_schema_inlines_nullable_and_drops_deprecated_and_additional_properties(gen):
+def test_normalize_schema_inlines_nullable_and_drops_deprecated_and_additional_properties(gen) -> None:
     normalized = gen.normalize_schema(FAKE_SPEC["components"]["schemas"]["FindEmailRequest"])
     assert "additionalProperties" not in normalized
     assert "legacy" not in normalized["properties"]
@@ -193,7 +193,7 @@ def test_normalize_schema_inlines_nullable_and_drops_deprecated_and_additional_p
     assert normalized["required"] == ["first_name"]
 
 
-def test_normalize_schema_leaves_required_nullable_unions_alone(gen):
+def test_normalize_schema_leaves_required_nullable_unions_alone(gen) -> None:
     schema = {
         "type": "object",
         "properties": {"api_key": {"anyOf": [{"type": "string"}, {"type": "null"}]}},
@@ -202,7 +202,7 @@ def test_normalize_schema_leaves_required_nullable_unions_alone(gen):
     assert gen.normalize_schema(schema)["properties"]["api_key"] == {"anyOf": [{"type": "string"}, {"type": "null"}]}
 
 
-def test_normalize_schema_strips_scalar_item_constraints(gen):
+def test_normalize_schema_strips_scalar_item_constraints(gen) -> None:
     schema = {
         "type": "object",
         "properties": {"tags": {"type": "array", "items": {"type": "string", "minLength": 3}, "maxItems": 20}},
@@ -214,7 +214,7 @@ def test_normalize_schema_strips_scalar_item_constraints(gen):
     }
 
 
-def test_build_codegen_spec_wraps_pruned_schemas(gen, routes):
+def test_build_codegen_spec_wraps_pruned_schemas(gen, routes) -> None:
     codegen_spec = gen.build_codegen_spec(spec=FAKE_SPEC, routes=routes)
     assert codegen_spec["paths"] == {}
     assert set(codegen_spec["components"]["schemas"]) == {
@@ -225,12 +225,12 @@ def test_build_codegen_spec_wraps_pruned_schemas(gen, routes):
     }
 
 
-def test_compare_returns_zero_when_identical(gen, capsys):
+def test_compare_returns_zero_when_identical(gen, capsys) -> None:
     assert gen.compare(committed="a\n", fresh="a\n") == 0
     assert "up to date" in capsys.readouterr().out
 
 
-def test_compare_prints_a_diff_and_returns_one_on_drift(gen, capsys):
+def test_compare_prints_a_diff_and_returns_one_on_drift(gen, capsys) -> None:
     assert gen.compare(committed="a\n", fresh="b\n") == 1
     out = capsys.readouterr().out
     assert "-a" in out
@@ -238,7 +238,7 @@ def test_compare_prints_a_diff_and_returns_one_on_drift(gen, capsys):
     assert "gen_requests.py" in out
 
 
-def test_collect_routes_covers_every_stamped_sync_route(gen):
+def test_collect_routes_covers_every_stamped_sync_route(gen) -> None:
     routes = gen.collect_routes()
     assert len(routes) == 48
     assert all(not route.class_name.startswith("Async") for route in routes)
