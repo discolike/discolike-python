@@ -2,7 +2,7 @@
 
 Reads people from a CSV with ``first_name``, ``last_name``, and ``domain``
 columns (names configurable), submits them with
-``client.email.find_batch(contacts=[...])`` in chunks of up to 500, waits for
+``client.email.find_batch(FindEmailBatchRequest(...))`` in chunks of up to 500, waits for
 each batch with ``batch.results()``, and writes the found emails plus status
 to an output CSV.
 
@@ -22,6 +22,8 @@ import sys
 from pathlib import Path
 
 from discolike import Discolike
+from discolike import EnumerationOutput
+from discolike.requests import FindEmailBatchRequest
 
 MAX_CONTACTS_PER_BATCH = 500
 
@@ -65,11 +67,11 @@ def main() -> None:
         for start in range(0, len(contacts), MAX_CONTACTS_PER_BATCH):
             chunk = contacts[start : start + MAX_CONTACTS_PER_BATCH]
             print(f"Submitting batch of {len(chunk)} contacts ({start + len(chunk)}/{len(contacts)})...")
-            batch = client.email.find_batch(contacts=chunk)
+            batch = client.email.find_batch(FindEmailBatchRequest.model_validate({"requests": chunk}))
             results = batch.results(timeout=args.timeout)
             for item in results.results:
                 output = item.result
-                if output is None:
+                if not isinstance(output, EnumerationOutput):
                     # Failed jobs carry no EnumerationOutput (so no identity),
                     # but must not vanish from the output: keep the status and
                     # error so the failure is visible and countable.
@@ -85,8 +87,7 @@ def main() -> None:
                         }
                     )
                     continue
-                match = getattr(output, "result", None)
-                email = match.email if match is not None else None
+                email = output.result.email if output.result is not None else None
                 if output.status == "found":
                     found += 1
                 writer.writerow(

@@ -66,18 +66,30 @@ def test_company_list_subcommands_route_to_expected_path(
     assert rows[0]["linked_domain"] == "acme.io"
 
 
-@pytest.mark.parametrize("subcommand", ["redirects", "vendors", "subsidiaries"])
-def test_company_match_option_forwarded(subcommand: str, install_build_client: Callable[[Handler], None]) -> None:
+@pytest.mark.parametrize(
+    ("subcommand", "mode"),
+    [("redirects", "linked"), ("vendors", "vendor"), ("subsidiaries", "child")],
+)
+def test_company_match_option_forwarded(
+    subcommand: str, mode: str, install_build_client: Callable[[Handler], None]
+) -> None:
     captured: dict[str, httpx2.Request] = {}
 
     def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx2.Response(200, json=[{"linked_domain": "acme.io"}])
+        return httpx2.Response(200, json=[])
 
     install_build_client(handler)
-    result = runner.invoke(app, ["company", subcommand, "acme.com", "--match", "loose"])
+    result = runner.invoke(app, ["company", subcommand, "acme.com", "--match", mode])
     assert result.exit_code == 0, result.output
-    assert captured["request"].url.params.get("match") == "loose"
+    assert captured["request"].url.params.get("match") == mode
+
+
+def test_company_match_option_rejects_unknown_mode(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(lambda request: httpx2.Response(200, json=[]))
+    result = runner.invoke(app, ["company", "redirects", "acme.com", "--match", "loose"])
+    assert result.exit_code == 2
+    assert json.loads(result.stderr)["error"] == "ValidationError"
 
 
 def test_company_public_links_hits_publiclink_endpoint(install_build_client: Callable[[Handler], None]) -> None:
@@ -88,12 +100,12 @@ def test_company_public_links_hits_publiclink_endpoint(install_build_client: Cal
         return httpx2.Response(200, json=[{"linked_domain": "acme.io"}])
 
     install_build_client(handler)
-    result = runner.invoke(app, ["company", "public-links", "acme.com", "--source", "crunchbase"])
+    result = runner.invoke(app, ["company", "public-links", "acme.com", "--source", "social"])
     assert result.exit_code == 0, result.output
     request = captured["request"]
     assert request.url.path == "/v1/publiclink"
     assert request.url.params.get("domain") == "acme.com"
-    assert request.url.params.get("source") == "crunchbase"
+    assert request.url.params.get("source") == "social"
 
 
 def test_company_public_links_requires_source(install_build_client: Callable[[Handler], None]) -> None:

@@ -3,12 +3,15 @@ from __future__ import annotations
 import functools
 import json
 import sys
+import types
+import typing
 from collections.abc import Callable
 from typing import Any
 from typing import ParamSpec
 from typing import Protocol
 from typing import TypeVar
 
+import pydantic
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -24,6 +27,8 @@ from discolike._models import DiscolikeModel
 
 P = ParamSpec("P")
 R = TypeVar("R")
+RequestT = TypeVar("RequestT", bound=pydantic.BaseModel)
+UNION_ORIGINS = (typing.Union, types.UnionType)
 
 EXIT_CODES: dict[type, int] = {
     ValidationError: 2,
@@ -117,11 +122,27 @@ def fail(exc: DiscolikeError) -> typer.Exit:
     return typer.Exit(code=EXIT_CODES.get(type(exc), DEFAULT_EXIT_CODE))
 
 
-def call_typed(fn: Callable[..., R], **kwargs: Any) -> R:  # noqa: ANN401 -- forwarded to a typed SDK method signature
-    try:
-        return fn(**kwargs)
-    except TypeError as exc:
-        raise typer.BadParameter(str(exc)) from exc
+def _accepts_list(model: type[pydantic.BaseModel], name: str) -> bool:
+    field = model.model_fields.get(name)
+    if field is None:
+        return False
+    annotation = field.annotation
+    members = typing.get_args(annotation) if typing.get_origin(annotation) in UNION_ORIGINS else (annotation,)
+    return any(typing.get_origin(member) is list for member in members)
+
+
+def build_request(model: type[RequestT], kwargs: dict[str, Any]) -> RequestT:
+    # --param KEY=VALUE yields a bare string; the API reads one value for a list param as a one-element list.
+    return model.model_validate(
+        {
+            key: [value] if isinstance(value, str) and _accepts_list(model, key) else value
+            for key, value in kwargs.items()
+        }
+    )
+
+
+def _validation_message(exc: pydantic.ValidationError) -> str:
+    return "; ".join(f"{'.'.join(str(part) for part in error['loc'])}: {error['msg']}" for error in exc.errors())
 
 
 def handle_errors(fn: Callable[P, R]) -> Callable[P, R]:
@@ -129,6 +150,8 @@ def handle_errors(fn: Callable[P, R]) -> Callable[P, R]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return fn(*args, **kwargs)
+        except pydantic.ValidationError as exc:
+            raise fail(ValidationError(_validation_message(exc))) from exc
         except DiscolikeError as exc:
             raise fail(exc) from exc
 

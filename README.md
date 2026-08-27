@@ -82,13 +82,16 @@ client = Discolike(api_key="dl_...")  # or pass it explicitly
 
 ```python
 from discolike import Discolike
+from discolike.requests import DiscoverParams
 
 client = Discolike()
 
 companies = client.discover(
-    icp_text="Cybersecurity for SMBs, managed IT services, endpoint protection",
-    country=["US"],
-    max_records=25,
+    DiscoverParams(
+        icp_text="Cybersecurity for SMBs, managed IT services, endpoint protection",
+        country=["US"],
+        max_records=25,
+    )
 )
 for company in companies:
     print(company.domain, company.name, company.similarity)
@@ -97,10 +100,14 @@ for company in companies:
 Run DiscoGen research over a set of domains and wait for the result:
 
 ```python
+from discolike.requests import DiscoGenProcessRequest
+
 job = client.discogen.process(
-    query="Recent funding rounds and headcount growth",
-    domains=["stripe.com", "adyen.com"],
-    web_search=True,
+    DiscoGenProcessRequest(
+        query="Recent funding rounds and headcount growth",
+        domains=["stripe.com", "adyen.com"],
+        web_search=True,
+    )
 )
 result = job.wait()
 print(result.results)
@@ -109,14 +116,18 @@ print(result.results)
 Size a segment before pulling it:
 
 ```python
-total = client.count(phrase_match=["book a demo"], country=["US"])
+from discolike.requests import CountParams
+
+total = client.count(CountParams(phrase_match=["book a demo"], country=["US"]))
 print(total.count)
 ```
 
 Pull a full company profile:
 
 ```python
-profile = client.companies.data(domain="stripe.com")
+from discolike.requests import CompaniesDataParams
+
+profile = client.companies.data(CompaniesDataParams(domain="stripe.com"))
 ```
 
 The client is a context manager if you want deterministic cleanup:
@@ -133,10 +144,11 @@ Every resource has an async twin on `AsyncDiscolike`:
 ```python
 import asyncio
 from discolike import AsyncDiscolike
+from discolike.requests import DiscoverParams
 
 async def main() -> None:
     async with AsyncDiscolike() as client:
-        companies = await client.discover(icp_text="B2B SaaS for logistics", max_records=10)
+        companies = await client.discover(DiscoverParams(icp_text="B2B SaaS for logistics", max_records=10))
         print([c.domain for c in companies])
 
 asyncio.run(main())
@@ -192,11 +204,12 @@ Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `ap
 | `client.contacts` | Search, look up, match, and discover contacts at target companies |
 | `client.match` | Match company names (plus phone/city/state) to domains — single or bulk CSV |
 | `client.append()` | Enrich a CSV of domains with DiscoLike datasets |
-| `client.segment()` | Auto-segment a list of domains |
+| `client.segment()` / `client.segment_file()` | Auto-segment a list of domains (comma-separated string or CSV upload) |
 | `client.validate_icp()` | Validate a domain list against an ICP definition |
 | `client.queries` | Saved inclusion/exclusion lists for reusable targeting |
 | `client.search_providers` / `client.llm_providers` | Manage BYOK search and LLM provider integrations for DiscoGen |
 | `client.account` | Usage and quota |
+| `discolike.requests` | Request models for every call — generated from the platform OpenAPI spec, validated locally before the request is sent |
 
 All responses are typed [Pydantic](https://docs.pydantic.dev/) models.
 
@@ -205,7 +218,9 @@ All responses are typed [Pydantic](https://docs.pydantic.dev/) models.
 Bulk operations (`match.bulk`, `segment`, `validate_icp`, `contacts.bulk_match`) return a `Job` handle instead of blocking:
 
 ```python
-job = client.segment(domains=["stripe.com", "adyen.com", "checkout.com"])
+from discolike.requests import SegmentParams
+
+job = client.segment(SegmentParams(domains="stripe.com,adyen.com,checkout.com"))
 result = job.wait()
 ```
 
@@ -219,9 +234,10 @@ All errors inherit from `DiscolikeError`:
 
 ```python
 from discolike import Discolike, RateLimitError, ValidationError
+from discolike.requests import DiscoverParams
 
 try:
-    companies = Discolike().discover(icp_text="fintech infrastructure")
+    companies = Discolike().discover(DiscoverParams(icp_text="fintech infrastructure"))
 except RateLimitError as err:
     ...
 except ValidationError as err:
@@ -229,6 +245,18 @@ except ValidationError as err:
 ```
 
 `AuthenticationError`, `PlanAccessError`, `NotFoundError`, `ServerError`, and `APIConnectionError` cover the rest. Transient failures are retried automatically (3 attempts by default).
+
+```python
+import pydantic
+from discolike.requests import MatchCompanyParams
+
+try:
+    params = MatchCompanyParams(name="Acme", min_match_confidence=10)
+except pydantic.ValidationError as err:
+    ...  # raised locally: min_match_confidence must be 50-100
+```
+
+Request models validate before anything is sent, so a bad enum value or out-of-range number never costs a round trip. Unknown fields pass through untouched.
 
 ### Configuration
 
@@ -251,7 +279,11 @@ uv sync --all-packages
 uv run pytest packages/discolike/tests
 uv run pytest packages/discolike-cli/tests
 uv run ruff check .
+uv run python scripts/gen_requests.py --spec-url https://api.dev.discolike.com/v1/openapi.json  # regenerate request models
+uv run python scripts/gen_requests.py --check                                                    # fail on drift (CI)
 ```
+
+Committed request models track the dev spec (`--spec-url https://api.dev.discolike.com/v1/openapi.json`); the prod spec lags behind, so `--check` without a `--spec-url` (or against prod) stays red until the platform deploys — don't regenerate against prod to "fix" it.
 
 ## Support & contact
 

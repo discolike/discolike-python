@@ -140,7 +140,9 @@ def test_append_csv_response_writes_output_file(tmp_path, install_build_client: 
         return httpx2.Response(200, content=b"domain,industry\nacme.com,SAAS\n", headers={"Content-Type": "text/csv"})
 
     install_build_client(handler)
-    result = runner.invoke(app, ["append", str(input_file), "--csv", "--output", str(output_file)])
+    result = runner.invoke(
+        app, ["append", str(input_file), "--dataset", "bizdata", "--csv", "--output", str(output_file)]
+    )
     assert result.exit_code == 0, result.output
     assert output_file.read_bytes() == b"domain,industry\nacme.com,SAAS\n"
     payload = json.loads(result.stdout)
@@ -156,8 +158,24 @@ def test_append_csv_response_without_output_exits_2(tmp_path, install_build_clie
         return httpx2.Response(200, content=b"domain\nacme.com\n", headers={"Content-Type": "text/csv"})
 
     install_build_client(handler)
-    result = runner.invoke(app, ["append", str(input_file), "--csv"])
+    result = runner.invoke(app, ["append", str(input_file), "--dataset", "bizdata", "--csv"])
     assert result.exit_code == 2
+
+
+def test_append_without_dataset_exits_2(tmp_path, install_build_client: Callable[[Handler], None]) -> None:
+    input_file = tmp_path / "domains.csv"
+    input_file.write_text("domain\nacme.com\n")
+    install_build_client(lambda request: httpx2.Response(200, json=[]))
+    result = runner.invoke(app, ["append", str(input_file)])
+    assert result.exit_code == 2
+    assert "dataset" in json.loads(result.stderr)["message"]
+
+
+def test_segment_max_segments_out_of_range_exits_2(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(lambda request: httpx2.Response(200, json={"task_id": "seg-9"}))
+    result = runner.invoke(app, ["segment", "--domain", "acme.com", "--max-segments", "99"])
+    assert result.exit_code == 2
+    assert "max_segments" in json.loads(result.stderr)["message"]
 
 
 def test_segment_with_domain_options_prints_task_hint(install_build_client: Callable[[Handler], None]) -> None:

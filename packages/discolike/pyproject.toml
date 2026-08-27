@@ -33,7 +33,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-cli = ["discolike-cli==0.2.0"]
+cli = ["discolike-cli==0.3.0"]
 
 [project.urls]
 Homepage = "https://www.discolike.com"
@@ -51,6 +51,7 @@ path = "src/discolike/_version.py"
 
 [dependency-groups]
 dev = [
+  "datamodel-code-generator>=0.75,<0.76",
   "discolike-testkit",
   "pytest>=8",
   "pytest-asyncio>=0.24",

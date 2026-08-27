@@ -14,6 +14,7 @@ from discolike._jobs import AsyncJob
 from discolike._jobs import Job
 from discolike._jobs import JobStatus
 from discolike._models import DiscolikeModel
+from discolike._models import DiscolikeRequest
 from discolike._version import __version__
 from discolike.resources.discovery import Company
 from discolike.resources.discovery import Count
@@ -33,6 +34,7 @@ __all__ = [
     "Discolike",
     "DiscolikeError",
     "DiscolikeModel",
+    "DiscolikeRequest",
     "EmailBatchResults",
     "EmailJobResult",
     "EnumerationMatch",

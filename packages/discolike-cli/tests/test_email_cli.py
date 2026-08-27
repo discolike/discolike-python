@@ -6,9 +6,11 @@ import time
 from collections.abc import Callable
 
 import httpx2
+import pydantic
 import pytest
 from typer.testing import CliRunner
 
+from discolike.requests import FindEmailBatchRequest
 from discolike_cli.main import app
 from discolike_testkit import Handler
 
@@ -184,6 +186,25 @@ def test_email_find_batch_missing_csv_columns_exits_2(
     assert "domain" in result.output
 
 
+def test_email_find_batch_rejects_empty_csv_cell_before_any_request(
+    tmp_path: pathlib.Path, install_build_client: Callable[[Handler], None]
+) -> None:
+    contacts_file = tmp_path / "contacts.csv"
+    contacts_file.write_text("first_name,last_name,domain\nJane,Doe,acme.com\nJohn,Smith,\n")
+    calls: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        calls.append(request)
+        return httpx2.Response(200, json={"batch_id": "eb-5"})
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["email", "find-batch", "--contacts-file", str(contacts_file)])
+    assert result.exit_code == 2
+    assert "row 3" in result.output
+    assert "domain" in result.output
+    assert calls == []
+
+
 def test_email_find_batch_over_500_contacts_exits_2(
     tmp_path: pathlib.Path, install_build_client: Callable[[Handler], None]
 ) -> None:
@@ -198,6 +219,12 @@ def test_email_find_batch_over_500_contacts_exits_2(
     result = runner.invoke(app, ["email", "find-batch", "--contacts-file", str(contacts_file)])
     assert result.exit_code == 2
     assert "500" in result.output
+
+
+def test_find_email_batch_request_rejects_more_than_500_requests() -> None:
+    requests = [{"first_name": "Jane", "last_name": "Doe", "domain": "acme.com"}] * 501
+    with pytest.raises(pydantic.ValidationError):
+        FindEmailBatchRequest.model_validate({"requests": requests})
 
 
 def test_email_results_without_wait_returns_partial_snapshot(

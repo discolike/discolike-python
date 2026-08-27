@@ -5,7 +5,14 @@ import pathlib
 
 import typer
 
-from discolike_cli._output import call_typed
+from discolike.requests import BulkContactMatchRequest
+from discolike.requests import ContactFilters
+from discolike.requests import ContactGenerateRequest
+from discolike.requests import ContactsCountParams
+from discolike.requests import ContactsLookupParams
+from discolike.requests import ContactsMatchParams
+from discolike.requests import ContactsSearchParams
+from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
 from discolike_cli._output import run_job
@@ -77,7 +84,7 @@ def search_command(
         max_records=max_records,
         offset=offset,
     )
-    emit(call_typed(get_client(ctx).contacts.search, **kwargs), fmt=fmt)
+    emit(get_client(ctx).contacts.search(build_request(ContactsSearchParams, kwargs)), fmt=fmt)
 
 
 @app.command("count")
@@ -129,7 +136,7 @@ def count_command(
         has_email=has_email,
         jobstart_date=jobstart_date,
     )
-    emit(call_typed(get_client(ctx).contacts.count, **kwargs), fmt=fmt)
+    emit(get_client(ctx).contacts.count(build_request(ContactsCountParams, kwargs)), fmt=fmt)
 
 
 @app.command("lookup")
@@ -144,7 +151,10 @@ def lookup_command(
     """Look up a single contact by persona ID, LinkedIn URL, or email."""
     from discolike_cli.main import get_client
 
-    emit(get_client(ctx).contacts.lookup(persona_id=persona_id, linkedin=linkedin, email=email), fmt=fmt)
+    request = build_request(
+        ContactsLookupParams, _merge_params(None, persona_id=persona_id, linkedin=linkedin, email=email)
+    )
+    emit(get_client(ctx).contacts.lookup(request), fmt=fmt)
 
 
 @app.command("match")
@@ -161,16 +171,13 @@ def match_command(
     """Match a person name to contact records."""
     from discolike_cli.main import get_client
 
-    emit(
-        get_client(ctx).contacts.match(
-            name=name,
-            company_name=company_name,
-            domain=domain,
-            person_country=person_country,
-            limit=limit,
+    request = build_request(
+        ContactsMatchParams,
+        _merge_params(
+            None, name=name, company_name=company_name, domain=domain, person_country=person_country, limit=limit
         ),
-        fmt=fmt,
     )
+    emit(get_client(ctx).contacts.match(request), fmt=fmt)
 
 
 @app.command("bulk-match")
@@ -198,8 +205,8 @@ def bulk_match_command(
     if not isinstance(queries, list):
         raise typer.BadParameter("--queries-file must contain a JSON array of objects")
 
-    job = get_client(ctx).contacts.bulk_match(queries=queries, enrich=enrich, limit=limit)
-    run_job(job, wait=wait, timeout=timeout, fmt=fmt)
+    request = build_request(BulkContactMatchRequest, _merge_params(None, queries=queries, enrich=enrich, limit=limit))
+    run_job(get_client(ctx).contacts.bulk_match(request), wait=wait, timeout=timeout, fmt=fmt)
 
 
 @app.command("discover")
@@ -267,7 +274,7 @@ def discover_command(
         include_search_contacts=include_search_contacts,
         consensus=consensus,
     )
-    emit(call_typed(get_client(ctx).contacts.discover, **kwargs), fmt=fmt)
+    emit(get_client(ctx).contacts.discover(build_request(ContactFilters, kwargs)), fmt=fmt)
 
 
 @app.command("generate")
@@ -297,14 +304,18 @@ def generate_command(
     """Generate contacts for target domains from an ICP description (async job)."""
     from discolike_cli.main import get_client
 
-    job = get_client(ctx).contacts.generate(
-        icp_text=icp_text,
-        domains=domain,
-        context_mode=context_mode,
-        integration_id=integration_id,
-        search_provider_id=search_provider_id,
-        search_context_size=search_context_size,
-        max_contacts_per_domain=max_contacts_per_domain,
-        max_company_records=max_company_records,
+    request = build_request(
+        ContactGenerateRequest,
+        _merge_params(
+            None,
+            icp_text=icp_text,
+            domains=domain,
+            context_mode=context_mode,
+            integration_id=integration_id,
+            search_provider_id=search_provider_id,
+            search_context_size=search_context_size,
+            max_contacts_per_domain=max_contacts_per_domain,
+            max_company_records=max_company_records,
+        ),
     )
-    run_job(job, wait=wait, timeout=timeout, fmt=fmt)
+    run_job(get_client(ctx).contacts.generate(request), wait=wait, timeout=timeout, fmt=fmt)

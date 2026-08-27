@@ -7,6 +7,7 @@ import json
 import pathlib
 import pkgutil
 import sys
+import typing
 from dataclasses import dataclass
 from types import ModuleType
 
@@ -14,6 +15,7 @@ import httpx2
 
 import discolike.resources
 from discolike._models import DiscolikeModel
+from discolike._models import DiscolikeRequest
 from discolike.resources._base import get_discolike_route
 from discolike.resources.companies import CompanyProfile
 from discolike.resources.companies import ExtractResult
@@ -27,6 +29,8 @@ from discolike.resources.match import MatchResponse
 from discolike.resources.queries import SavedQueries
 
 IGNORE_PARAMS = {"file"}
+QUERY_LOCATION = "query"
+ASYNC_CLASS_PREFIX = "Async"
 
 # SDK response model -> the OpenAPI component schema it mirrors. Anything listed here is
 # checked field-by-field against the spec, so a platform-side model change surfaces as a
@@ -45,7 +49,6 @@ MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
 }
 SPEC_URL = "https://api.discolike.com/v1/openapi.json"
 REQUEST_TIMEOUT_SECONDS = 30.0
-PATH_METHODS_WITH_BODY = {"POST", "PUT", "PATCH"}
 
 
 @dataclass(frozen=True)
@@ -55,7 +58,7 @@ class RouteEntry:
     http_method: str
     path: str
     openapi: bool
-    params: tuple[str, ...]
+    request_model: type[DiscolikeRequest] | None
 
 
 def _resource_modules() -> list[ModuleType]:
@@ -69,11 +72,18 @@ def _resource_modules() -> list[ModuleType]:
     return modules
 
 
+def _request_model(member: object) -> type[DiscolikeRequest] | None:
+    for annotation in typing.get_type_hints(member).values():
+        if inspect.isclass(annotation) and issubclass(annotation, DiscolikeRequest):
+            return annotation
+    return None
+
+
 def collect_routes() -> list[RouteEntry]:
     seen: dict[tuple[str, str], RouteEntry] = {}
     for module in _resource_modules():
         for class_name, cls in inspect.getmembers(module, inspect.isclass):
-            if cls.__module__ != module.__name__:
+            if cls.__module__ != module.__name__ or class_name.startswith(ASYNC_CLASS_PREFIX):
                 continue
             for method_name, member in vars(cls).items():
                 if not inspect.isfunction(member):
@@ -81,17 +91,11 @@ def collect_routes() -> list[RouteEntry]:
                 route = get_discolike_route(member)
                 if route is None:
                     continue
-                http_method, path, openapi, ignore_params = route
+                http_method, path, openapi = route
                 key = (http_method, path)
                 if key in seen:
                     continue
-                excluded = IGNORE_PARAMS | set(ignore_params)
-                params = tuple(
-                    name
-                    for name, param in inspect.signature(member).parameters.items()
-                    if param.kind is inspect.Parameter.KEYWORD_ONLY and name not in excluded
-                )
-                seen[key] = RouteEntry(class_name, method_name, http_method, path, openapi, params)
+                seen[key] = RouteEntry(class_name, method_name, http_method, path, openapi, _request_model(member))
     return list(seen.values())
 
 
@@ -105,12 +109,26 @@ def _resolve_ref(*, spec: dict, schema: dict) -> dict:
     return node
 
 
-def _request_body_properties(*, spec: dict, operation: dict) -> set[str]:
+def _request_body_properties(*, spec: dict, operation: dict) -> dict[str, dict]:
     content = operation.get("requestBody", {}).get("content", {})
     for media_type in content.values():
         schema = _resolve_ref(spec=spec, schema=media_type.get("schema", {}))
-        return set(schema.get("properties", {}).keys())
-    return set()
+        return schema.get("properties", {})
+    return {}
+
+
+def _spec_request_fields(*, spec: dict, operation: dict) -> set[str]:
+    fields = {
+        parameter["name"]
+        for parameter in operation.get("parameters", [])
+        if parameter["in"] == QUERY_LOCATION and not parameter.get("deprecated", False)
+    }
+    fields |= {
+        name
+        for name, prop in _request_body_properties(spec=spec, operation=operation).items()
+        if not prop.get("deprecated", False)
+    }
+    return fields - IGNORE_PARAMS
 
 
 def check(spec: dict, routes: list[RouteEntry]) -> list[str]:
@@ -125,11 +143,22 @@ def check(spec: dict, routes: list[RouteEntry]) -> list[str]:
         if operation is None:
             mismatches.append(f"{label}: route not found in spec")
             continue
-        allowed = {p["name"] for p in operation.get("parameters", [])}
-        if route.http_method.upper() in PATH_METHODS_WITH_BODY:
-            allowed |= _request_body_properties(spec=spec, operation=operation)
+        spec_fields = _spec_request_fields(spec=spec, operation=operation)
+        if route.request_model is None:
+            mismatches.extend(
+                f"{label}: spec has param '{field}' but the method takes no request model"
+                for field in sorted(spec_fields)
+            )
+            continue
+        model = route.request_model
+        model_fields = set(model.model_fields)
         mismatches.extend(
-            f"{label}: param '{param}' not found in spec" for param in route.params if param not in allowed
+            f"{label}: field '{field}' of {model.__name__} not found in spec"
+            for field in sorted(model_fields - spec_fields)
+        )
+        mismatches.extend(
+            f"{label}: spec param '{field}' not declared on {model.__name__}"
+            for field in sorted(spec_fields - model_fields)
         )
     return mismatches
 

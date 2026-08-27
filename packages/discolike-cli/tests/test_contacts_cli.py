@@ -31,7 +31,7 @@ def test_contacts_search_sends_options_and_param_escape_hatch(install_build_clie
             "--seniority",
             "vp",
             "--department",
-            "marketing",
+            "Sales - Marketing",
             "--title",
             "VP Marketing",
             "--domain",
@@ -48,7 +48,7 @@ def test_contacts_search_sends_options_and_param_escape_hatch(install_build_clie
             "--jobstart-date",
             "2025-01-01,2025-06-30",
             "--max-records",
-            "10",
+            "20",
             "--offset",
             "5",
             "--param",
@@ -59,7 +59,7 @@ def test_contacts_search_sends_options_and_param_escape_hatch(install_build_clie
     params = captured["params"]
     assert params.get("icp_prompt") == "VPs of Marketing"
     assert params.get_list("seniority") == ["vp"]
-    assert params.get_list("department") == ["marketing"]
+    assert params.get_list("department") == ["Sales - Marketing"]
     assert params.get_list("title") == ["VP Marketing"]
     assert params.get_list("domain") == ["acme.com"]
     assert params.get_list("person_country") == ["US"]
@@ -68,7 +68,7 @@ def test_contacts_search_sends_options_and_param_escape_hatch(install_build_clie
     assert params.get("employee_range") == "50-200"
     assert params.get("has_email") == "true"
     assert params.get("jobstart_date") == "2025-01-01,2025-06-30"
-    assert params.get("max_records") == "10"
+    assert params.get("max_records") == "20"
     assert params.get("offset") == "5"
     assert params.get("min_connections") == "5"
     assert json.loads(result.stdout) == [
@@ -90,26 +90,26 @@ def test_contacts_search_forwards_negate_options(install_build_client: Callable[
             "contacts",
             "search",
             "--negate-seniority",
-            "intern",
+            "entry_level",
             "--negate-department",
-            "hr",
+            "Human Resources",
             "--negate-title",
             "Assistant",
             "--negate-person-country",
             "FR",
             "--negate-filter-industry",
-            "GAMBLING",
+            "GAMING_AND_ESPORTS",
             "--negate-filter-country",
             "RU",
         ],
     )
     assert result.exit_code == 0, result.output
     params = captured["params"]
-    assert params.get_list("negate_seniority") == ["intern"]
-    assert params.get_list("negate_department") == ["hr"]
+    assert params.get_list("negate_seniority") == ["entry_level"]
+    assert params.get_list("negate_department") == ["Human Resources"]
     assert params.get_list("negate_title") == ["Assistant"]
     assert params.get_list("negate_person_country") == ["FR"]
-    assert params.get_list("negate_filter_industry") == ["GAMBLING"]
+    assert params.get_list("negate_filter_industry") == ["GAMING_AND_ESPORTS"]
     assert params.get_list("negate_filter_country") == ["RU"]
 
 
@@ -122,14 +122,26 @@ def test_contacts_search_icp_text_is_removed(install_build_client: Callable[[Han
     assert result.exit_code == 2
 
 
-def test_contacts_search_invalid_param_kwarg_exits_2(install_build_client: Callable[[Handler], None]) -> None:
+def test_contacts_search_unknown_param_passes_through(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.QueryParams] = {}
+
     def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["params"] = request.url.params
         return httpx2.Response(200, json=[])
 
     install_build_client(handler)
     result = runner.invoke(app, ["contacts", "search", "--param", "bogus_kwarg=1"])
+    assert result.exit_code == 0, result.output
+    assert captured["params"].get("bogus_kwarg") == "1"
+
+
+def test_contacts_search_invalid_seniority_exits_2(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(lambda request: httpx2.Response(200, json=[]))
+    result = runner.invoke(app, ["contacts", "search", "--seniority", "intern"])
     assert result.exit_code == 2
-    assert "bogus_kwarg" in result.output
+    payload = json.loads(result.stderr)
+    assert payload["error"] == "ValidationError"
+    assert "seniority" in payload["message"]
 
 
 def test_contacts_search_unauthorized_exits_3(install_build_client: Callable[[Handler], None]) -> None:

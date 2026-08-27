@@ -10,13 +10,18 @@ from discolike._email import EmailBatch
 from discolike._email import EmailBatchResults
 from discolike._email import EmailJobResult
 from discolike._exceptions import JobTimeoutError
+from discolike.requests import FindEmailBatchRequest
+from discolike.requests import FindEmailRequest
+from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
+from discolike_cli.discover import _merge_params
 
 DEFAULT_WAIT_TIMEOUT_SECONDS = 900.0
 MAX_BATCH_CONTACTS = 500
 EMAIL_KINDS = ("find", "verify")
 CSV_COLUMNS = ("first_name", "last_name", "domain")
+FIRST_DATA_ROW = 2
 
 FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls back to JSON for non-tabular data)."
 WAIT_HELP = "Block until the job finishes, streaming progress to stderr."
@@ -52,7 +57,14 @@ def _read_contacts_file(contacts_file: pathlib.Path) -> list[dict[str, str]]:
         missing = set(CSV_COLUMNS) - set(reader.fieldnames or [])
         if missing:
             raise typer.BadParameter(f"--contacts-file is missing required CSV columns: {', '.join(sorted(missing))}")
-        return [{column: (row.get(column) or "").strip() for column in CSV_COLUMNS} for row in reader]
+        contacts = []
+        for row_number, row in enumerate(reader, start=FIRST_DATA_ROW):
+            contact = {column: (row.get(column) or "").strip() for column in CSV_COLUMNS}
+            empty = [column for column, value in contact.items() if not value]
+            if empty:
+                raise typer.BadParameter(f"--contacts-file row {row_number} has empty {', '.join(empty)}")
+            contacts.append(contact)
+        return contacts
 
 
 def _fetch_batch_snapshot(batch: EmailBatch) -> EmailBatchResults:
@@ -81,9 +93,11 @@ def find_command(
     """Submit a single email find job (async); only a proven address bills."""
     from discolike_cli.main import get_client
 
-    job = get_client(ctx).email.find(
-        first_name=first_name, last_name=last_name, domain=domain, known_pattern=known_pattern
+    request = build_request(
+        FindEmailRequest,
+        _merge_params(None, first_name=first_name, last_name=last_name, domain=domain, known_pattern=known_pattern),
     )
+    job = get_client(ctx).email.find(request)
     if not wait:
         emit({"job_id": job.job_id, "hint": f"poll with: discolike email job {job.job_id}"})
         return
@@ -118,7 +132,7 @@ def find_batch_command(
     if len(contacts) > MAX_BATCH_CONTACTS:
         raise typer.BadParameter(f"a batch holds at most {MAX_BATCH_CONTACTS} contacts, got {len(contacts)}")
 
-    batch = get_client(ctx).email.find_batch(contacts=contacts)
+    batch = get_client(ctx).email.find_batch(build_request(FindEmailBatchRequest, {"requests": contacts}))
     if not wait:
         emit({"batch_id": batch.batch_id, "hint": f"fetch with: discolike email results {batch.batch_id}"})
         return

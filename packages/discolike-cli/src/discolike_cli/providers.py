@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import typer
 
+from discolike.requests import LLMProviderCreateRequest
+from discolike.requests import LLMProviderUpdateRequest
+from discolike.requests import SearchProviderRequest
+from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
+from discolike_cli.discover import _merge_params
 
 FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls back to JSON for non-tabular data)."
 
@@ -36,15 +41,18 @@ def search_create_command(
     """Create a search provider integration (connectivity is validated first)."""
     from discolike_cli.main import get_client
 
-    emit(
-        get_client(ctx).search_providers.create(
+    request = build_request(
+        SearchProviderRequest,
+        _merge_params(
+            None,
             integration_name=name,
             provider=provider,
             search_model=search_model,
             api_key=api_key,
             base_url=base_url,
-        )
+        ),
     )
+    emit(get_client(ctx).search_providers.create(request))
 
 
 @search_providers_app.command("update")
@@ -61,16 +69,18 @@ def search_update_command(
     """Update a search provider integration."""
     from discolike_cli.main import get_client
 
-    emit(
-        get_client(ctx).search_providers.update(
-            integration_id=integration_id,
+    request = build_request(
+        SearchProviderRequest,
+        _merge_params(
+            None,
             integration_name=name,
             provider=provider,
             search_model=search_model,
             api_key=api_key,
             base_url=base_url,
-        )
+        ),
     )
+    emit(get_client(ctx).search_providers.update(request, integration_id=integration_id))
 
 
 @search_providers_app.command("delete")
@@ -147,15 +157,13 @@ def llm_create_command(
     """Create an LLM provider integration."""
     from discolike_cli.main import get_client
 
-    emit(
-        get_client(ctx).llm_providers.create(
-            integration_name=name,
-            provider=provider,
-            api_key=api_key,
-            model_name=model_name,
-            base_url=base_url,
-        )
+    request = build_request(
+        LLMProviderCreateRequest,
+        _merge_params(
+            None, integration_name=name, provider=provider, api_key=api_key, model_name=model_name, base_url=base_url
+        ),
     )
+    emit(get_client(ctx).llm_providers.create(request))
 
 
 @llm_providers_app.command("get")
@@ -185,16 +193,14 @@ def llm_update_command(
     """Update an LLM provider integration."""
     from discolike_cli.main import get_client
 
-    emit(
-        get_client(ctx).llm_providers.update(
-            integration_id=integration_id,
-            integration_name=name,
-            provider=provider,
-            model_name=model_name,
-            api_key=api_key,
-            base_url=base_url,
-        )
+    request = build_request(
+        LLMProviderUpdateRequest,
+        {
+            **_merge_params(None, integration_name=name, provider=provider, model_name=model_name, base_url=base_url),
+            "api_key": api_key,
+        },
     )
+    emit(get_client(ctx).llm_providers.update(request, integration_id=integration_id))
 
 
 @llm_providers_app.command("delete")
@@ -235,12 +241,10 @@ def llm_test_connection_command(
     """Test a provider configuration before saving it."""
     from discolike_cli.main import get_client
 
-    emit(
-        get_client(ctx).llm_providers.test_connection(
-            integration_name=name,
-            provider=provider,
-            api_key=api_key,
-            model_name=model_name,
-            base_url=base_url,
-        )
+    request = build_request(
+        LLMProviderCreateRequest,
+        _merge_params(
+            None, integration_name=name, provider=provider, api_key=api_key, model_name=model_name, base_url=base_url
+        ),
     )
+    emit(get_client(ctx).llm_providers.test_connection(request))

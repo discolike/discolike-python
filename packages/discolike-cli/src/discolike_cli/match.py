@@ -4,9 +4,13 @@ import pathlib
 
 import typer
 
+from discolike.requests import MatchBulkParams
+from discolike.requests import MatchCompanyParams
+from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
 from discolike_cli._output import run_job
+from discolike_cli.discover import _merge_params
 
 DEFAULT_WAIT_TIMEOUT_SECONDS = 900.0
 DEFAULT_NAME_COLUMN = "name"
@@ -45,19 +49,25 @@ def match_command(
 
     client = get_client(ctx)
     if name is not None:
-        response = client.match.company(
-            name=name,
-            phone=phone,
-            city=city,
-            state=state,
-            country=country,
-            zip_code=zip_code,
-            strict=strict,
-            local_mode=local_mode,
+        request = build_request(
+            MatchCompanyParams,
+            _merge_params(
+                None,
+                name=name,
+                phone=phone,
+                city=city,
+                state=state,
+                country=country,
+                zip_code=zip_code,
+                strict=strict,
+                local_mode=local_mode,
+            ),
         )
-        emit(response, fmt=fmt)
+        emit(client.match.company(request), fmt=fmt)
         return
 
     assert file is not None
-    job = client.match.bulk(file=file, name_column=name_column, strict=strict, local_mode=local_mode)
-    run_job(job, wait=wait, timeout=timeout, fmt=fmt)
+    request = build_request(
+        MatchBulkParams, _merge_params(None, name_column=name_column, strict=strict, local_mode=local_mode)
+    )
+    run_job(client.match.bulk(request, file=file), wait=wait, timeout=timeout, fmt=fmt)
