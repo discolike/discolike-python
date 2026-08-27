@@ -276,6 +276,12 @@ def test_build_request_raises_pydantic_validation_error_on_bad_values() -> None:
         build_request(DiscoverParams, {"min_similarity": "200"})
 
 
+def test_call_typed_is_gone() -> None:
+    import discolike_cli._output as output_module
+
+    assert not hasattr(output_module, "call_typed")
+
+
 def test_handle_errors_maps_pydantic_validation_error_to_exit_2(capsys: pytest.CaptureFixture[str]) -> None:
     @handle_errors
     def bad() -> None:

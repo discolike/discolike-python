@@ -122,13 +122,6 @@ def fail(exc: DiscolikeError) -> typer.Exit:
     return typer.Exit(code=EXIT_CODES.get(type(exc), DEFAULT_EXIT_CODE))
 
 
-def call_typed(fn: Callable[..., R], **kwargs: Any) -> R:  # noqa: ANN401 -- forwarded to a typed SDK method signature
-    try:
-        return fn(**kwargs)
-    except TypeError as exc:
-        raise typer.BadParameter(str(exc)) from exc
-
-
 def _accepts_list(model: type[pydantic.BaseModel], name: str) -> bool:
     field = model.model_fields.get(name)
     if field is None:
