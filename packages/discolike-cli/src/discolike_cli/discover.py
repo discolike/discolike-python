@@ -4,7 +4,9 @@ from typing import Any
 
 import typer
 
-from discolike_cli._output import call_typed
+from discolike.requests import CountParams
+from discolike.requests import DiscoverParams
+from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
 
@@ -65,33 +67,35 @@ def discover_command(
     """Discover companies matching your ICP and filters."""
     from discolike_cli.main import get_client
 
-    kwargs = _merge_params(
-        param,
-        icp_prompt=icp_prompt,
-        domain=domain,
-        phrase_match=phrase_match,
-        negate_phrase_match=negate_phrase_match,
-        category=category,
-        negate_category=negate_category,
-        country=country,
-        negate_country=negate_country,
-        state=state,
-        negate_state=negate_state,
-        employee_range=employee_range,
-        revenue_range=revenue_range,
-        business_model=business_model,
-        negate_business_model=negate_business_model,
-        tech_stack=tech_stack,
-        negate_tech_stack=negate_tech_stack,
-        min_digital_footprint=min_digital_footprint,
-        max_digital_footprint=max_digital_footprint,
-        exclude_domain=exclude_domain,
-        exclusion_query_id=exclusion_query_id,
-        max_records=max_records,
-        offset=offset,
+    request = build_request(
+        DiscoverParams,
+        _merge_params(
+            param,
+            icp_prompt=icp_prompt,
+            domain=domain,
+            phrase_match=phrase_match,
+            negate_phrase_match=negate_phrase_match,
+            category=category,
+            negate_category=negate_category,
+            country=country,
+            negate_country=negate_country,
+            state=state,
+            negate_state=negate_state,
+            employee_range=employee_range,
+            revenue_range=revenue_range,
+            business_model=business_model,
+            negate_business_model=negate_business_model,
+            tech_stack=tech_stack,
+            negate_tech_stack=negate_tech_stack,
+            min_digital_footprint=min_digital_footprint,
+            max_digital_footprint=max_digital_footprint,
+            exclude_domain=exclude_domain,
+            exclusion_query_id=exclusion_query_id,
+            max_records=max_records,
+            offset=offset,
+        ),
     )
-    companies = call_typed(get_client(ctx).discover, **kwargs)
-    emit(companies, fmt=fmt)
+    emit(get_client(ctx).discover(request), fmt=fmt)
 
 
 @handle_errors
@@ -121,24 +125,26 @@ def count_command(
     """Count companies matching the given filters."""
     from discolike_cli.main import get_client
 
-    kwargs = _merge_params(
-        param,
-        phrase_match=phrase_match,
-        negate_phrase_match=negate_phrase_match,
-        category=category,
-        negate_category=negate_category,
-        country=country,
-        negate_country=negate_country,
-        state=state,
-        negate_state=negate_state,
-        employee_range=employee_range,
-        revenue_range=revenue_range,
-        business_model=business_model,
-        negate_business_model=negate_business_model,
-        tech_stack=tech_stack,
-        negate_tech_stack=negate_tech_stack,
-        min_digital_footprint=min_digital_footprint,
-        max_digital_footprint=max_digital_footprint,
+    request = build_request(
+        CountParams,
+        _merge_params(
+            param,
+            phrase_match=phrase_match,
+            negate_phrase_match=negate_phrase_match,
+            category=category,
+            negate_category=negate_category,
+            country=country,
+            negate_country=negate_country,
+            state=state,
+            negate_state=negate_state,
+            employee_range=employee_range,
+            revenue_range=revenue_range,
+            business_model=business_model,
+            negate_business_model=negate_business_model,
+            tech_stack=tech_stack,
+            negate_tech_stack=negate_tech_stack,
+            min_digital_footprint=min_digital_footprint,
+            max_digital_footprint=max_digital_footprint,
+        ),
     )
-    count = call_typed(get_client(ctx).count, **kwargs)
-    emit(count, fmt=fmt)
+    emit(get_client(ctx).count(request), fmt=fmt)
