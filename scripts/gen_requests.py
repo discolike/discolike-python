@@ -17,9 +17,6 @@ from typing import Any
 
 import httpx2
 
-import discolike.resources
-from discolike.resources._base import get_discolike_route
-
 SPEC_URL = "https://api.discolike.com/v1/openapi.json"
 REQUEST_TIMEOUT_SECONDS = 30.0
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -69,6 +66,8 @@ class Route:
 
 
 def _resource_modules() -> list[ModuleType]:
+    import discolike.resources
+
     return [
         importlib.import_module(info.name)
         for info in pkgutil.walk_packages(discolike.resources.__path__, prefix=f"{discolike.resources.__name__}.")
@@ -76,6 +75,8 @@ def _resource_modules() -> list[ModuleType]:
 
 
 def collect_routes() -> list[Route]:
+    from discolike.resources._base import get_discolike_route
+
     routes: dict[tuple[str, str], Route] = {}
     for module in _resource_modules():
         for class_name, cls in inspect.getmembers(module, inspect.isclass):
@@ -220,7 +221,9 @@ def generate(*, spec: dict[str, Any], output: pathlib.Path) -> None:
             check=True,
         )
     ruff = [sys.executable, "-m", "ruff"]
-    subprocess.run([*ruff, "check", "--fix", "--quiet", "--config", str(RUFF_CONFIG), str(output)], check=True)  # noqa: S603
+    subprocess.run(  # noqa: S603
+        [*ruff, "check", "--fix", "--quiet", "--no-show-fixes", "--config", str(RUFF_CONFIG), str(output)], check=True
+    )
     subprocess.run([*ruff, "format", "--quiet", "--config", str(RUFF_CONFIG), str(output)], check=True)  # noqa: S603
 
 
@@ -242,6 +245,10 @@ def compare(*, committed: str, fresh: str) -> int:
 
 
 def check(*, spec: dict[str, Any]) -> int:
+    if not OUTPUT_PATH.exists():
+        relative = OUTPUT_PATH.relative_to(REPO_ROOT)
+        print(f"{relative} is stale; run: uv run python scripts/gen_requests.py")
+        return 1
     with tempfile.TemporaryDirectory() as tmp:
         candidate = pathlib.Path(tmp) / OUTPUT_PATH.name
         generate(spec=spec, output=candidate)
