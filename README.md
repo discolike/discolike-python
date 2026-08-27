@@ -234,9 +234,10 @@ All errors inherit from `DiscolikeError`:
 
 ```python
 from discolike import Discolike, RateLimitError, ValidationError
+from discolike.requests import DiscoverParams
 
 try:
-    companies = Discolike().discover(icp_text="fintech infrastructure")
+    companies = Discolike().discover(DiscoverParams(icp_text="fintech infrastructure"))
 except RateLimitError as err:
     ...
 except ValidationError as err:
