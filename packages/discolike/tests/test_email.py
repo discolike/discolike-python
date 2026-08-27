@@ -3,10 +3,13 @@ from __future__ import annotations
 import json
 
 import httpx2
+import pydantic
 import pytest
 
 import discolike._jobs as jobs_module
 from discolike import JobFailedError
+from discolike.requests import FindEmailBatchRequest
+from discolike.requests import FindEmailRequest
 from discolike.resources.email import AsyncEmailBatch
 from discolike.resources.email import AsyncEmailJob
 from discolike.resources.email import EmailBatch
@@ -51,10 +54,14 @@ def test_find_batch_posts_and_returns_batch(make_client: ClientFactory) -> None:
 
     with make_client(handler) as client:
         batch = client.email.find_batch(
-            contacts=[
-                {"first_name": "Ada", "last_name": "Lovelace", "domain": "acme.com"},
-                {"first_name": "Alan", "last_name": "Turing", "domain": "acme.com"},
-            ]
+            FindEmailBatchRequest.model_validate(
+                {
+                    "requests": [
+                        {"first_name": "Ada", "last_name": "Lovelace", "domain": "acme.com"},
+                        {"first_name": "Alan", "last_name": "Turing", "domain": "acme.com"},
+                    ]
+                }
+            )
         )
 
     assert seen["path"] == "/v1/email/find/batch"
@@ -228,7 +235,7 @@ def test_find_posts_and_job_wait_polls_jobs_endpoint(make_client: ClientFactory)
         return httpx2.Response(200, json=payload)
 
     with make_client(handler) as client:
-        job = client.email.find(first_name="Grace", last_name="Hopper", domain="navy.mil")
+        job = client.email.find(FindEmailRequest(first_name="Grace", last_name="Hopper", domain="navy.mil"))
         assert isinstance(job, EmailJob)
         assert job.job_id == "j-9"
         output = job.wait(timeout=60.0, poll_interval=1.0)
@@ -249,8 +256,10 @@ def test_find_sends_known_pattern_and_omits_it_when_unset(make_client: ClientFac
         return httpx2.Response(202, json={"job_id": "j-kp", "status": "queued"})
 
     with make_client(handler) as client:
-        client.email.find(first_name="Grace", last_name="Hopper", domain="navy.mil", known_pattern="first.last")
-        client.email.find(first_name="Grace", last_name="Hopper", domain="navy.mil")
+        client.email.find(
+            FindEmailRequest(first_name="Grace", last_name="Hopper", domain="navy.mil", known_pattern="first.last")
+        )
+        client.email.find(FindEmailRequest(first_name="Grace", last_name="Hopper", domain="navy.mil"))
 
     assert bodies[0] == {
         "first_name": "Grace",
@@ -268,7 +277,7 @@ def test_find_wait_raises_on_failed_job(make_client: ClientFactory) -> None:
         return httpx2.Response(200, json={"job_id": "j-x", "status": "failed", "result": None, "error": "boom"})
 
     with make_client(handler) as client:
-        job = client.email.find(first_name="No", last_name="One", domain="void.dev")
+        job = client.email.find(FindEmailRequest(first_name="No", last_name="One", domain="void.dev"))
         with pytest.raises(JobFailedError, match="boom"):
             job.wait(timeout=60.0)
 
@@ -296,7 +305,9 @@ async def test_find_batch_async_returns_batch(make_async_client: AsyncClientFact
 
     async with make_async_client(handler) as client:
         batch = await client.email.find_batch(
-            contacts=[{"first_name": "Ada", "last_name": "Lovelace", "domain": "acme.com"}]
+            FindEmailBatchRequest.model_validate(
+                {"requests": [{"first_name": "Ada", "last_name": "Lovelace", "domain": "acme.com"}]}
+            )
         )
 
     assert isinstance(batch, AsyncEmailBatch)
@@ -379,13 +390,18 @@ async def test_find_async_job_wait(make_async_client: AsyncClientFactory) -> Non
         return httpx2.Response(200, json=payload)
 
     async with make_async_client(handler) as client:
-        job = await client.email.find(first_name="Ada", last_name="Lovelace", domain="acme.com")
+        job = await client.email.find(FindEmailRequest(first_name="Ada", last_name="Lovelace", domain="acme.com"))
         assert isinstance(job, AsyncEmailJob)
         output = await job.wait(timeout=60.0, poll_interval=1.0)
 
     assert isinstance(output, EnumerationOutput)
     assert output.result is not None
     assert output.result.tier == 2
+
+
+def test_find_batch_rejects_incomplete_contacts_before_any_request() -> None:
+    with pytest.raises(pydantic.ValidationError, match="last_name"):
+        FindEmailBatchRequest.model_validate({"requests": [{"first_name": "Ada", "domain": "acme.com"}]})
 
 
 def test_route_metadata_stamped() -> None:
