@@ -2588,32 +2588,6 @@ class AppendParams(DiscolikeRequest):
     ] = None
 
 
-class SegmentFileParams(DiscolikeRequest):
-    domain_column: Annotated[
-        str | None,
-        Field(
-            description="Column name containing domains (auto-detected if not provided).",
-            title="Domain Column",
-        ),
-    ] = "domain"
-    max_segments: Annotated[
-        int | None,
-        Field(
-            description="Maximum number of segments to create (2-100).",
-            ge=2,
-            le=100,
-            title="Max Segments",
-        ),
-    ] = None
-    query_id: Annotated[
-        list[str] | None,
-        Field(
-            description="Include domains from these saved queries in the segmentation.",
-            title="Query Id",
-        ),
-    ] = None
-
-
 class SegmentParams(DiscolikeRequest):
     domains: Annotated[
         str | None,
@@ -2636,6 +2610,32 @@ class SegmentParams(DiscolikeRequest):
             ge=2,
             le=20,
             title="Max Segments",
+        ),
+    ] = None
+
+
+class SegmentFileParams(DiscolikeRequest):
+    domain_column: Annotated[
+        str | None,
+        Field(
+            description="Column name containing domains (auto-detected if not provided).",
+            title="Domain Column",
+        ),
+    ] = "domain"
+    max_segments: Annotated[
+        int | None,
+        Field(
+            description="Maximum number of segments to create (2-100).",
+            ge=2,
+            le=100,
+            title="Max Segments",
+        ),
+    ] = None
+    query_id: Annotated[
+        list[str] | None,
+        Field(
+            description="Include domains from these saved queries in the segmentation.",
+            title="Query Id",
         ),
     ] = None
 
