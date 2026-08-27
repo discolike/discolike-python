@@ -3,11 +3,15 @@ from __future__ import annotations
 import json
 
 import httpx2
+import pydantic
 import pytest
 
 from discolike._jobs import FAMILY_DISCOGEN
 from discolike._jobs import AsyncJob
 from discolike._jobs import Job
+from discolike.requests import DiscoGenPersonaProcessRequest
+from discolike.requests import DiscoGenProcessRequest
+from discolike.requests import ValidateIcpRequest
 from discolike_testkit import AsyncClientFactory
 from discolike_testkit import ClientFactory
 
@@ -23,9 +27,7 @@ def test_process_posts_json_and_returns_job(make_client: ClientFactory) -> None:
 
     with make_client(handler) as client:
         job = client.discogen.process(
-            query="Recent funding rounds",
-            domains=["acme.com", "globex.com"],
-            web_search=True,
+            DiscoGenProcessRequest(query="Recent funding rounds", domains=["acme.com", "globex.com"], web_search=True)
         )
 
     assert seen["path"] == "/v1/discogen/process"
@@ -48,7 +50,7 @@ def test_process_drops_unset_optionals(make_client: ClientFactory) -> None:
         return httpx2.Response(200, json={"task_id": "dg-2"})
 
     with make_client(handler) as client:
-        client.discogen.process(query="q", domains=["a.com"])
+        client.discogen.process(DiscoGenProcessRequest(query="q", domains=["a.com"]))
 
     assert seen["body"] == {"query": "q", "domains": ["a.com"]}
 
@@ -62,14 +64,16 @@ def test_process_all_optionals_present(make_client: ClientFactory) -> None:
 
     with make_client(handler) as client:
         client.discogen.process(
-            query="q",
-            domains=["a.com"],
-            integration_id="int-1",
-            web_search=True,
-            context_mode="website",
-            include_x_search=False,
-            search_provider_id="serper",
-            search_context_size="medium",
+            DiscoGenProcessRequest(
+                query="q",
+                domains=["a.com"],
+                integration_id="int-1",
+                web_search=True,
+                context_mode="website",
+                include_x_search=False,
+                search_provider_id="serper",
+                search_context_size="medium",
+            )
         )
 
     assert seen["body"] == {
@@ -95,8 +99,7 @@ def test_process_personas_posts_json_and_returns_job(make_client: ClientFactory)
 
     with make_client(handler) as client:
         job = client.discogen.process_personas(
-            query="Recent job changes",
-            persona_ids=[111, 222],
+            DiscoGenPersonaProcessRequest(query="Recent job changes", persona_ids=[111, 222])
         )
 
     assert seen["path"] == "/v1/discogen/process-personas"
@@ -156,8 +159,7 @@ def test_validate_icp_posts_json_and_returns_job(make_client: ClientFactory) -> 
 
     with make_client(handler) as client:
         job = client.validate_icp(
-            icp_text="VPs of Marketing at B2B SaaS",
-            domains=["gusto.com", "rippling.com"],
+            ValidateIcpRequest(icp_text="VPs of Marketing at B2B SaaS", domains=["gusto.com", "rippling.com"])
         )
 
     assert seen["path"] == "/v1/validate/icp"
@@ -180,12 +182,14 @@ def test_validate_icp_all_optionals_present(make_client: ClientFactory) -> None:
 
     with make_client(handler) as client:
         client.validate_icp(
-            icp_text="q",
-            domains=["a.com"],
-            context_mode="website",
-            integration_id="int-1",
-            web_search=True,
-            search_provider_id="serper",
+            ValidateIcpRequest(
+                icp_text="q",
+                domains=["a.com"],
+                context_mode="website",
+                integration_id="int-1",
+                web_search=True,
+                search_provider_id="serper",
+            )
         )
 
     assert seen["body"] == {
@@ -203,7 +207,7 @@ async def test_process_async_returns_async_job(make_async_client: AsyncClientFac
         return httpx2.Response(200, json={"task_id": "dg-async-1"})
 
     async with make_async_client(handler) as client:
-        job = await client.discogen.process(query="q", domains=["a.com"])
+        job = await client.discogen.process(DiscoGenProcessRequest(query="q", domains=["a.com"]))
 
     assert isinstance(job, AsyncJob)
     assert job.task_family == FAMILY_DISCOGEN
@@ -215,7 +219,7 @@ async def test_process_personas_async_returns_async_job(make_async_client: Async
         return httpx2.Response(200, json={"task_id": "dg-async-2"})
 
     async with make_async_client(handler) as client:
-        job = await client.discogen.process_personas(query="q", persona_ids=[1])
+        job = await client.discogen.process_personas(DiscoGenPersonaProcessRequest(query="q", persona_ids=[1]))
 
     assert isinstance(job, AsyncJob)
     assert job.task_family == FAMILY_DISCOGEN
@@ -249,11 +253,21 @@ async def test_validate_icp_async_returns_async_job(make_async_client: AsyncClie
         return httpx2.Response(200, json={"task_id": "val-async-1"})
 
     async with make_async_client(handler) as client:
-        job = await client.validate_icp(icp_text="q", domains=["a.com"])
+        job = await client.validate_icp(ValidateIcpRequest(icp_text="q", domains=["a.com"]))
 
     assert isinstance(job, AsyncJob)
     assert job.task_family == FAMILY_DISCOGEN
     assert job.task_id == "val-async-1"
+
+
+def test_process_rejects_empty_domains_before_any_request() -> None:
+    with pytest.raises(pydantic.ValidationError, match="domains"):
+        DiscoGenProcessRequest(query="q", domains=[])
+
+
+def test_process_rejects_unknown_context_mode_before_any_request() -> None:
+    with pytest.raises(pydantic.ValidationError, match="context_mode"):
+        DiscoGenProcessRequest.model_validate({"query": "q", "domains": ["a.com"], "context_mode": "bogus"})
 
 
 def test_route_metadata_stamped() -> None:

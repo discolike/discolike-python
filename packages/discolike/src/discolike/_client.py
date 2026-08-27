@@ -11,6 +11,7 @@ from discolike._jobs import AsyncJob
 from discolike._jobs import Job
 from discolike._transport import AsyncTransport
 from discolike._transport import Transport
+from discolike.requests import ValidateIcpRequest
 from discolike.resources.account import AccountResource
 from discolike.resources.account import AsyncAccountResource
 from discolike.resources.companies import AsyncCompaniesResource
@@ -230,24 +231,8 @@ class Discolike:
             exclude_leadgen=exclude_leadgen,
         )
 
-    def validate_icp(
-        self,
-        *,
-        icp_text: str,
-        domains: list[str],
-        context_mode: str | None = None,
-        integration_id: str | None = None,
-        web_search: bool | None = None,
-        search_provider_id: str | None = None,
-    ) -> Job:
-        return self._validate.icp(
-            icp_text=icp_text,
-            domains=domains,
-            context_mode=context_mode,
-            integration_id=integration_id,
-            web_search=web_search,
-            search_provider_id=search_provider_id,
-        )
+    def validate_icp(self, request: ValidateIcpRequest) -> Job:
+        return self._validate.icp(request)
 
     def append(
         self,
@@ -480,24 +465,8 @@ class AsyncDiscolike:
             exclude_leadgen=exclude_leadgen,
         )
 
-    async def validate_icp(
-        self,
-        *,
-        icp_text: str,
-        domains: list[str],
-        context_mode: str | None = None,
-        integration_id: str | None = None,
-        web_search: bool | None = None,
-        search_provider_id: str | None = None,
-    ) -> AsyncJob:
-        return await self._validate.icp(
-            icp_text=icp_text,
-            domains=domains,
-            context_mode=context_mode,
-            integration_id=integration_id,
-            web_search=web_search,
-            search_provider_id=search_provider_id,
-        )
+    async def validate_icp(self, request: ValidateIcpRequest) -> AsyncJob:
+        return await self._validate.icp(request)
 
     async def append(
         self,
