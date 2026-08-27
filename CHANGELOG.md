@@ -23,9 +23,10 @@
   ```
 
 - SDK (breaking): `segment` is split into `client.segment(SegmentParams)` (`GET /segment`, `domains` is the comma-separated string the API takes) and `client.segment_file(SegmentFileParams, file=...)` (`POST /segment`). `email.find_batch` drops its `contacts=` alias for the platform's `requests` field. `append` requires `dataset`, matching the platform.
+- SDK (breaking): `GET /segment` sends `query_id` as repeated `query_id=` params (the spec declares it an array) instead of the old comma-joined single value.
 - SDK: deprecated parameters (`nl_match`, `min_score`, `negate_domain`, `exact_match`, `vendor`, `revenue_range` on contacts, `negate_icp_text`) are not part of the generated models; they still pass through as extra fields if set explicitly.
 - SDK: new `DiscolikeRequest` base (`discolike.DiscolikeRequest`) with `to_wire()`, which sends exactly the fields you set — an explicit `None` goes out as `null` (this is how `llm_providers.update` keeps the stored API key), and unset fields are omitted so server defaults keep governing.
-- CLI: request models are built from the same options as before, so no flags change. Two behavior changes: `--param KEY=VALUE` with an unknown key is forwarded to the API (previously exit 2), and any option or `--param` value outside the spec (an unknown `--department`, `--max-records` below the floor, `--match loose`) exits 2 with `{"error": "ValidationError", ...}` on stderr before the request is sent.
+- CLI: request models are built from the same options as before, so no flags change. Two behavior changes: `--param KEY=VALUE` with an unknown key is forwarded to the API (previously exit 2), and any option or `--param` value outside the spec (an unknown `--department`, `--max-records` below the floor, `--match loose`) exits 2 with `{"error": "ValidationError", ...}` on stderr before the request is sent. `discolike append` without `--dataset` now fails this same client-side validation (was optional before; `AppendParams` requires it).
 - CI: the contract job also runs `scripts/gen_requests.py --check`, so the committed models fail the build when the platform spec moves.
 
 ## 0.2.0 (2026-08-21)

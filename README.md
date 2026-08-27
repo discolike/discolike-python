@@ -283,6 +283,8 @@ uv run python scripts/gen_requests.py --spec-url https://api.dev.discolike.com/v
 uv run python scripts/gen_requests.py --check                                                    # fail on drift (CI)
 ```
 
+Committed request models track the dev spec (`--spec-url https://api.dev.discolike.com/v1/openapi.json`); the prod spec lags behind, so `--check` without a `--spec-url` (or against prod) stays red until the platform deploys — don't regenerate against prod to "fix" it.
+
 ## Support & contact
 
 - **API documentation**: [docs.discolike.com](https://docs.discolike.com)

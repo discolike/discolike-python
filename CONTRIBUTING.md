@@ -36,6 +36,12 @@ CI also validates SDK routes against the live DiscoLike OpenAPI spec
 (`scripts/check_contract.py`). PRs from forks are checked against the
 production spec.
 
+CI also runs `scripts/gen_requests.py --check` against the dev spec
+(`https://api.dev.discolike.com/v1/openapi.json`) — the committed request
+models in `discolike.requests` track dev, not prod. The prod spec lags, so
+both `check_contract.py` and `gen_requests.py --check` against prod stay red
+until the platform deploys; don't regenerate against prod to "fix" it.
+
 ## Reporting bugs
 
 Open a GitHub issue with the package name, version, and a minimal
