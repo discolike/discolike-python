@@ -80,6 +80,25 @@ FAKE_SPEC: dict[str, Any] = {
 }
 
 
+SIBLING_REF_SPEC: dict[str, Any] = {
+    "components": {
+        "schemas": {
+            "Root": {
+                "type": "object",
+                "properties": {
+                    "zebra": {"$ref": "#/components/schemas/Zebra"},
+                    "alpha": {"$ref": "#/components/schemas/Alpha"},
+                    "middle": {"$ref": "#/components/schemas/Middle"},
+                },
+            },
+            "Zebra": {"type": "object", "properties": {"z": {"type": "string"}}},
+            "Alpha": {"type": "object", "properties": {"a": {"type": "string"}}},
+            "Middle": {"type": "object", "properties": {"m": {"type": "string"}}},
+        }
+    }
+}
+
+
 @pytest.fixture(scope="module")
 def gen():
     spec = importlib.util.spec_from_file_location("gen_requests", SCRIPT_PATH)
@@ -152,6 +171,13 @@ def test_request_schemas_fails_loudly_when_a_route_is_missing_from_the_spec(gen)
 def test_prune_keeps_transitive_refs_and_drops_unrelated_schemas(gen, routes):
     requested = {"FindEmailBatchRequest": FAKE_SPEC["components"]["schemas"]["FindEmailBatchRequest"]}
     assert set(gen.prune(spec=FAKE_SPEC, requested=requested)) == {"FindEmailBatchRequest", "FindEmailRequest"}
+
+
+def test_prune_orders_sibling_refs_deterministically(gen):
+    requested = {"Root": SIBLING_REF_SPEC["components"]["schemas"]["Root"]}
+    kept = list(gen.prune(spec=SIBLING_REF_SPEC, requested=requested))
+    assert kept == ["Root", "Alpha", "Middle", "Zebra"]
+    assert kept == list(gen.prune(spec=SIBLING_REF_SPEC, requested=requested))
 
 
 def test_normalize_schema_inlines_nullable_and_drops_deprecated_and_additional_properties(gen):

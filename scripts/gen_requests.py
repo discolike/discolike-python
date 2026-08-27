@@ -158,7 +158,10 @@ def prune(*, spec: dict[str, Any], requested: dict[str, dict[str, Any]]) -> dict
     pending: set[str] = set()
     _collect_refs(kept, pending)
     while pending:
-        name = pending.pop()
+        # min() rather than pop(): set order varies with PYTHONHASHSEED, which would reorder
+        # the generated classes between runs and make --check report phantom drift.
+        name = min(pending)
+        pending.remove(name)
         if name in kept:
             continue
         kept[name] = copy.deepcopy(schemas[name])
