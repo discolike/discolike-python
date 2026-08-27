@@ -1,7 +1,7 @@
 """Match a CSV of CRM contacts to DiscoLike persona IDs via bulk-match.
 
 Reads contacts from a CSV (column names are configurable), submits them to
-``client.contacts.bulk_match()`` in chunks, and writes an output CSV with the
+``client.contacts.bulk_match(BulkContactMatchRequest(...))`` in chunks, and writes an output CSV with the
 matched ``persona_id`` and ``match_score`` per row.
 
 Lessons baked in from production runs:
@@ -34,6 +34,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from discolike import Discolike
+from discolike.requests import BulkContactMatchRequest
 
 MAX_QUERIES_PER_CALL = 500  # bulk_match accepts 1-500 queries per request
 
@@ -204,7 +205,9 @@ def main() -> None:
                 hits: dict[int, dict[str, Any] | None] = dict.fromkeys(row_ids)
             else:
                 try:
-                    job = client.contacts.bulk_match(queries=queries, limit=1)
+                    job = client.contacts.bulk_match(
+                        BulkContactMatchRequest.model_validate({"queries": queries, "limit": 1})
+                    )
                     status = job.wait(timeout=args.timeout)
                 except Exception as exc:  # leave the chunk un-checkpointed so a rerun retries it
                     failed_chunks += 1

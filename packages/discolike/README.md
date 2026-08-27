@@ -24,13 +24,16 @@ Create a key at [app.discolike.com/account/management/keys](https://app.discolik
 
 ```python
 from discolike import Discolike
+from discolike.requests import DiscoverParams
 
 client = Discolike()
 
 companies = client.discover(
-    icp_text="Cybersecurity for SMBs, managed IT services, endpoint protection",
-    country=["US"],
-    max_records=25,
+    DiscoverParams(
+        icp_text="Cybersecurity for SMBs, managed IT services, endpoint protection",
+        country=["US"],
+        max_records=25,
+    )
 )
 for company in companies:
     print(company.domain, company.name, company.similarity)
@@ -50,10 +53,11 @@ Every resource has an async twin on `AsyncDiscolike`:
 ```python
 import asyncio
 from discolike import AsyncDiscolike
+from discolike.requests import DiscoverParams
 
 async def main() -> None:
     async with AsyncDiscolike() as client:
-        companies = await client.discover(icp_text="B2B SaaS for logistics", max_records=10)
+        companies = await client.discover(DiscoverParams(icp_text="B2B SaaS for logistics", max_records=10))
         print([c.domain for c in companies])
 
 asyncio.run(main())
@@ -64,7 +68,9 @@ asyncio.run(main())
 Bulk operations (`match.bulk`, `segment`, `validate_icp`, `contacts.bulk_match`) return a `Job` handle instead of blocking:
 
 ```python
-job = client.segment(domains=["stripe.com", "adyen.com", "checkout.com"])
+from discolike.requests import SegmentParams
+
+job = client.segment(SegmentParams(domains="stripe.com,adyen.com,checkout.com"))
 result = job.wait()
 ```
 

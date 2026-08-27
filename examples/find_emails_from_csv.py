@@ -2,7 +2,7 @@
 
 Reads people from a CSV with ``first_name``, ``last_name``, and ``domain``
 columns (names configurable), submits them with
-``client.email.find_batch(contacts=[...])`` in chunks of up to 500, waits for
+``client.email.find_batch(FindEmailBatchRequest(...))`` in chunks of up to 500, waits for
 each batch with ``batch.results()``, and writes the found emails plus status
 to an output CSV.
 
@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 from discolike import Discolike
+from discolike.requests import FindEmailBatchRequest
 
 MAX_CONTACTS_PER_BATCH = 500
 
@@ -65,7 +66,7 @@ def main() -> None:
         for start in range(0, len(contacts), MAX_CONTACTS_PER_BATCH):
             chunk = contacts[start : start + MAX_CONTACTS_PER_BATCH]
             print(f"Submitting batch of {len(chunk)} contacts ({start + len(chunk)}/{len(contacts)})...")
-            batch = client.email.find_batch(contacts=chunk)
+            batch = client.email.find_batch(FindEmailBatchRequest.model_validate({"requests": chunk}))
             results = batch.results(timeout=args.timeout)
             for item in results.results:
                 output = item.result

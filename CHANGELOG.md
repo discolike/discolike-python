@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.3.0 (2026-08-27)
+
+- SDK (breaking): every request-taking method now takes a single request model instead of keyword arguments, and validates it locally before any HTTP call — a bad enum value, an out-of-range number, or a missing required field raises `pydantic.ValidationError` instead of a server 422. Models live in `discolike.requests` and are generated from the platform OpenAPI spec (`scripts/gen_requests.py`); query-param routes use `<Resource><Method>Params` (`MatchCompanyParams`, `ContactsSearchParams`, `DiscoverParams`, `CountParams`, `AppendParams`, `SegmentParams`, ...) and JSON-body routes use the platform's own names (`FindEmailRequest`, `ContactFilters`, `DiscoGenProcessRequest`, `UpdateQueryRequest`, ...). Path params and file uploads stay keyword arguments next to the model. Unknown fields pass through to the wire, so the SDK never blocks a platform field it does not know about yet.
+
+  ```python
+  # before
+  client.match.company(name="Acme Inc", city="Austin", min_match_confidence=80)
+  client.email.find_batch(contacts=[{"first_name": "Ada", "last_name": "Lovelace", "domain": "acme.com"}])
+  client.queries.update(query_id="q3", query_name="New Name")
+  client.segment(domains=["acme.com", "beta.com"], max_segments=5)
+  client.segment(file="domains.csv", domain_column="domain")
+
+  # after
+  from discolike.requests import FindEmailBatchRequest, MatchCompanyParams, SegmentFileParams, SegmentParams, UpdateQueryRequest
+
+  client.match.company(MatchCompanyParams(name="Acme Inc", city="Austin", min_match_confidence=80))
+  client.email.find_batch(FindEmailBatchRequest.model_validate({"requests": [{"first_name": "Ada", "last_name": "Lovelace", "domain": "acme.com"}]}))
+  client.queries.update(UpdateQueryRequest(query_name="New Name"), query_id="q3")
+  client.segment(SegmentParams(domains="acme.com,beta.com", max_segments=5))
+  client.segment_file(SegmentFileParams(domain_column="domain"), file="domains.csv")
+  ```
+
+- SDK (breaking): `segment` is split into `client.segment(SegmentParams)` (`GET /segment`, `domains` is the comma-separated string the API takes) and `client.segment_file(SegmentFileParams, file=...)` (`POST /segment`). `email.find_batch` drops its `contacts=` alias for the platform's `requests` field. `append` requires `dataset`, matching the platform.
+- SDK: deprecated parameters (`nl_match`, `min_score`, `negate_domain`, `exact_match`, `vendor`, `revenue_range` on contacts, `negate_icp_text`) are not part of the generated models; they still pass through as extra fields if set explicitly.
+- SDK: new `DiscolikeRequest` base (`discolike.DiscolikeRequest`) with `to_wire()`, which sends exactly the fields you set — an explicit `None` goes out as `null` (this is how `llm_providers.update` keeps the stored API key), and unset fields are omitted so server defaults keep governing.
+- CLI: request models are built from the same options as before, so no flags change. Two behavior changes: `--param KEY=VALUE` with an unknown key is forwarded to the API (previously exit 2), and any option or `--param` value outside the spec (an unknown `--department`, `--max-records` below the floor, `--match loose`) exits 2 with `{"error": "ValidationError", ...}` on stderr before the request is sent.
+- CI: the contract job also runs `scripts/gen_requests.py --check`, so the committed models fail the build when the platform spec moves.
+
 ## 0.2.0 (2026-08-21)
 
 - SDK + testkit (breaking): migrated from `httpx` to [`httpx2`](https://github.com/pydantic/httpx2), Pydantic's maintained continuation of httpx, for timely security updates. `httpx` types are part of the public surface (`http_client=`, `with_options(timeout=)`, the testkit `Handler` alias), so callers must swap `import httpx` for `import httpx2` and pass `httpx2.Client` / `httpx2.AsyncClient` / `httpx2.Timeout`. Note httpx2 verifies TLS against the OS trust store via `truststore` instead of bundled `certifi` roots.
