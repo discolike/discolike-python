@@ -28,6 +28,14 @@ class JobStatus(DiscolikeModel):
     results: Any = None
     result: Any = None
     warnings: list[str] = pydantic.Field(default_factory=list)
+    # DiscoGen-family only: spend on the caller's own provider keys, best-effort.
+    # cost_metadata holds one entry per "provider/model" (calls, search_calls,
+    # prompt_tokens, completion_tokens, est_cost_usd) and a "search_provider"
+    # entry (provider, search_model, queries_executed, queries_succeeded,
+    # est_cost_usd) when a BYOS search provider ran. search_calls counts the
+    # model's built-in search only; on a BYOS run read search_provider instead.
+    estimated_cost: float | None = None
+    cost_metadata: dict[str, dict[str, Any]] | None = None
 
 
 class Job:
