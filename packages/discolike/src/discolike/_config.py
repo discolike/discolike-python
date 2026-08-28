@@ -109,6 +109,12 @@ def save_oauth_client(registration: OAuthClientRegistration) -> None:
     save_config({**load_config(), OAUTH_CLIENT_KEY: registration.to_config()})
 
 
+def delete_oauth_client() -> None:
+    config = load_config()
+    config.pop(OAUTH_CLIENT_KEY, None)
+    save_config(config)
+
+
 def resolve_credential(*, api_key: str | None = None, auth: Credential | None = None) -> Credential:
     if auth is not None:
         return auth

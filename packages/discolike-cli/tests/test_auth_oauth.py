@@ -26,6 +26,7 @@ from discolike._credentials import ApiKeyCredential
 from discolike._credentials import OAuthClientRegistration
 from discolike._credentials import OAuthCredential
 from discolike._oauth import AuthServerMetadata
+from discolike._oauth import OAuthError
 from discolike_cli.main import app
 from discolike_testkit import Handler
 
@@ -63,6 +64,7 @@ class FakeProvider:
         self.register_calls: list[list[str]] = []
         self.exchange_calls: list[dict[str, Any]] = []
         self.opened_urls: list[str] = []
+        self.exchange_failures: list[OAuthError] = []
         self.callback_query: Callable[[dict[str, str]], str] = lambda query: f"code=the-code&state={query['state']}"
 
     def discover(self, base_url: str, *, client: httpx2.Client) -> AuthServerMetadata:
@@ -75,6 +77,8 @@ class FakeProvider:
 
     def exchange_code(self, metadata: AuthServerMetadata, *, client: httpx2.Client, **kwargs: Any) -> OAuthCredential:
         self.exchange_calls.append(kwargs)
+        if self.exchange_failures:
+            raise self.exchange_failures.pop(0)
         return CREDENTIAL
 
     def build_authorization_url(self, metadata: AuthServerMetadata, **kwargs: Any) -> str:
@@ -313,3 +317,81 @@ def test_logout_with_api_key_config_removes_the_key_but_keeps_stored_client() ->
     assert "api_key" not in stored
     assert "auth_method" not in stored
     assert load_oauth_client() == _registration(18484)
+
+
+def _dead_then_ok(query: dict[str, str]) -> str:
+    if query["client_id"] == "stored-client":
+        return f"error=invalid_client&error_description=unknown+client&state={query['state']}"
+    return f"code=the-code&state={query['state']}"
+
+
+def test_login_reregisters_when_authorize_rejects_the_stored_client(
+    provider: FakeProvider, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_ok)
+    save_oauth_client(_registration(_free_port()))
+    provider.callback_query = _dead_then_ok
+    result = runner.invoke(app, ["auth", "login"])
+    assert result.exit_code == 0, result.output
+    assert len(provider.register_calls) == 1
+    assert [call["client_id"] for call in provider.exchange_calls] == ["client-1"]
+    stored = load_oauth_client()
+    assert stored is not None
+    assert (stored.client_id, stored.redirect_uri) == ("client-1", provider.register_calls[0][0])
+    assert load_credential() == CREDENTIAL
+
+
+def test_login_reregisters_when_exchange_rejects_the_stored_client(
+    provider: FakeProvider, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_ok)
+    save_oauth_client(_registration(_free_port()))
+    provider.exchange_failures = [OAuthError("invalid_client: gone", error="invalid_client", status_code=400)]
+    result = runner.invoke(app, ["auth", "login"])
+    assert result.exit_code == 0, result.output
+    assert [call["client_id"] for call in provider.exchange_calls] == ["stored-client", "client-1"]
+    assert len(provider.register_calls) == 1
+    stored = load_oauth_client()
+    assert stored is not None
+    assert stored.client_id == "client-1"
+    assert load_credential() == CREDENTIAL
+
+
+def test_login_fresh_client_rejected_is_a_login_error_without_retry(
+    provider: FakeProvider, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_ok)
+    provider.callback_query = lambda query: f"error=unauthorized_client&state={query['state']}"
+    result = runner.invoke(app, ["auth", "login"])
+    assert result.exit_code == 1
+    assert len(provider.register_calls) == 1
+    assert provider.exchange_calls == []
+    assert json.loads(result.stderr.splitlines()[-1]) == {
+        "error": "LoginError",
+        "message": "Authorization failed: unauthorized_client",
+    }
+
+
+def test_login_reused_client_rejected_twice_is_a_login_error(
+    provider: FakeProvider, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_ok)
+    save_oauth_client(_registration(_free_port()))
+    provider.callback_query = lambda query: f"error=invalid_client&state={query['state']}"
+    result = runner.invoke(app, ["auth", "login"])
+    assert result.exit_code == 1
+    assert len(provider.register_calls) == 1
+    assert json.loads(result.stderr.splitlines()[-1])["error"] == "LoginError"
+
+
+def test_login_access_denied_keeps_stored_client(
+    provider: FakeProvider, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_ok)
+    registration = _registration(_free_port())
+    save_oauth_client(registration)
+    provider.callback_query = lambda query: f"error=access_denied&state={query['state']}"
+    result = runner.invoke(app, ["auth", "login"])
+    assert result.exit_code == 1
+    assert provider.register_calls == []
+    assert load_oauth_client() == registration

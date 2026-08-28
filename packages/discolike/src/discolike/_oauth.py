@@ -25,6 +25,21 @@ TOKEN_HEADERS = {"Accept": "application/json"}
 SESSION_EXPIRED_MESSAGE = "OAuth session expired; run `discolike auth login`"
 
 
+class OAuthError(AuthenticationError):
+    """An RFC 6749 error body from the authorization server; `error` is its machine-readable code."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        error: str,
+        status_code: int | None = None,
+        payload: Any = None,  # noqa: ANN401 -- decoded JSON body, shape is server-defined
+    ) -> None:
+        super().__init__(message, status_code=status_code, payload=payload)
+        self.error = error
+
+
 @dataclass(frozen=True)
 class AuthServerMetadata:
     authorization_endpoint: str
@@ -51,8 +66,9 @@ def _payload(response: httpx2.Response) -> dict[str, Any]:
         ) from exc
     if isinstance(payload, dict) and "error" in payload:
         description = payload.get("error_description")
-        message = f"{payload['error']}: {description}" if description else str(payload["error"])
-        raise AuthenticationError(message, status_code=response.status_code, payload=payload)
+        error = str(payload["error"])
+        message = f"{error}: {description}" if description else error
+        raise OAuthError(message, error=error, status_code=response.status_code, payload=payload)
     if response.status_code >= 400 or not isinstance(payload, dict):
         raise AuthenticationError(
             f"OAuth server returned HTTP {response.status_code}", status_code=response.status_code, payload=payload

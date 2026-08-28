@@ -11,6 +11,7 @@ from discolike import AuthenticationError
 from discolike._credentials import OAuthCredential
 from discolike._oauth import CLIENT_NAME
 from discolike._oauth import AuthServerMetadata
+from discolike._oauth import OAuthError
 from discolike._oauth import build_authorization_url
 from discolike._oauth import discover
 from discolike._oauth import exchange_code
@@ -170,7 +171,7 @@ def test_oauth_error_body_maps_to_authentication_error() -> None:
     def handler(request: httpx2.Request) -> httpx2.Response:
         return httpx2.Response(400, json={"error": "invalid_grant", "error_description": "code expired"})
 
-    with pytest.raises(AuthenticationError, match="invalid_grant: code expired") as exc_info:
+    with pytest.raises(OAuthError, match="invalid_grant: code expired") as exc_info:
         exchange_code(
             METADATA,
             client_id="c",
@@ -181,6 +182,7 @@ def test_oauth_error_body_maps_to_authentication_error() -> None:
             client=client_for(handler),
         )
     assert exc_info.value.status_code == 400
+    assert exc_info.value.error == "invalid_grant"
 
 
 def test_non_json_error_maps_to_authentication_error() -> None:

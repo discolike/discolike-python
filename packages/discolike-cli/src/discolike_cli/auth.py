@@ -19,6 +19,7 @@ from discolike._config import DEFAULT_BASE_URL
 from discolike._config import KEYS_URL
 from discolike._config import NO_CREDENTIAL_MESSAGE
 from discolike._config import delete_credential
+from discolike._config import delete_oauth_client
 from discolike._config import load_credential
 from discolike._config import load_oauth_client
 from discolike._config import save_config
@@ -28,6 +29,7 @@ from discolike._credentials import OAuthClientRegistration
 from discolike._credentials import OAuthCredential
 from discolike._exceptions import AuthenticationError
 from discolike._oauth import AuthServerMetadata
+from discolike._oauth import OAuthError
 from discolike._oauth import build_authorization_url
 from discolike._oauth import discover
 from discolike._oauth import exchange_code
@@ -50,6 +52,11 @@ SOURCE_ENV = "env"
 SOURCE_CONFIG = "config"
 
 LOGIN_METHODS = (AUTH_METHOD_OAUTH, AUTH_METHOD_API_KEY)
+DEAD_CLIENT_ERRORS = frozenset({"invalid_client", "unauthorized_client"})
+
+
+class _DeadClientError(Exception):
+    """The authorization server no longer recognises the registered client_id."""
 
 
 def _mask(key: str) -> str:
@@ -102,21 +109,21 @@ def _bind_stored_port(registration: OAuthClientRegistration) -> CallbackServer |
 
 def _register_or_reuse(
     metadata: AuthServerMetadata, *, port: int, http: httpx2.Client
-) -> tuple[CallbackServer, OAuthClientRegistration]:
+) -> tuple[CallbackServer, OAuthClientRegistration, bool]:
     # PropelAuth matches the redirect URI literally (port included) and remembers consent per client_id,
     # so a stored registration is only worth reusing when its exact port can be bound again.
     stored = _reusable_registration(issuer=metadata.issuer, port=port)
     if stored is not None:
         server = _bind_stored_port(stored)
         if server is not None:
-            return server, stored
+            return server, stored, True
     server = CallbackServer(port=port)
     client_id = register_client(metadata, redirect_uris=[server.redirect_uri], client=http)
     registration = OAuthClientRegistration(
         client_id=client_id, redirect_uri=server.redirect_uri, issuer=metadata.issuer
     )
     save_oauth_client(registration)
-    return server, registration
+    return server, registration, False
 
 
 def _authorize(
@@ -145,27 +152,50 @@ def _authorize(
     if callback is None:
         _abort_login(f"Timed out after {LOGIN_TIMEOUT_SECONDS:.0f}s waiting for the browser login")
     if "error" in callback:
-        _abort_login(f"Authorization failed: {callback.get('error_description') or callback['error']}")
+        message = f"Authorization failed: {callback.get('error_description') or callback['error']}"
+        if callback["error"] in DEAD_CLIENT_ERRORS:
+            raise _DeadClientError(message)
+        _abort_login(message)
     if callback.get("state") != state or "code" not in callback:
         _abort_login("Invalid OAuth callback (state mismatch or missing code)")
-    return exchange_code(
-        metadata,
-        client_id=registration.client_id,
-        code=callback["code"],
-        code_verifier=verifier,
-        redirect_uri=registration.redirect_uri,
-        resource=resource,
-        client=http,
-    )
+    try:
+        return exchange_code(
+            metadata,
+            client_id=registration.client_id,
+            code=callback["code"],
+            code_verifier=verifier,
+            redirect_uri=registration.redirect_uri,
+            resource=resource,
+            client=http,
+        )
+    except OAuthError as exc:
+        if exc.error in DEAD_CLIENT_ERRORS:
+            raise _DeadClientError(f"Token exchange failed: {exc}") from exc
+        raise
 
 
 def _oauth_login(ctx: typer.Context, *, open_browser: bool, port: int) -> OAuthCredential:
     base_url = str(ctx.obj.get("base_url") or DEFAULT_BASE_URL).rstrip("/")
     with httpx2.Client(timeout=OAUTH_HTTP_TIMEOUT_SECONDS) as http:
         metadata = discover(base_url, client=http)
-        server, registration = _register_or_reuse(metadata, port=port, http=http)
-        with server:
-            return _authorize(metadata, registration, server, resource=base_url, open_browser=open_browser, http=http)
+        server, registration, reused = _register_or_reuse(metadata, port=port, http=http)
+        try:
+            with server:
+                return _authorize(
+                    metadata, registration, server, resource=base_url, open_browser=open_browser, http=http
+                )
+        except _DeadClientError as exc:
+            if not reused:
+                _abort_login(str(exc))
+        delete_oauth_client()
+        server, registration, _ = _register_or_reuse(metadata, port=port, http=http)
+        try:
+            with server:
+                return _authorize(
+                    metadata, registration, server, resource=base_url, open_browser=open_browser, http=http
+                )
+        except _DeadClientError as exc:
+            _abort_login(str(exc))
 
 
 def _api_key_login(ctx: typer.Context, *, api_key: str | None) -> None:
