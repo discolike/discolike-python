@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- SDK: OAuth login. `Discolike(auth=...)` / `AsyncDiscolike(auth=...)` accept an `ApiKeyCredential` or `OAuthCredential` (both exported from `discolike`); `api_key=`, `DISCOLIKE_API_KEY`, and the config file keep working unchanged, and `auth=` wins over all of them. OAuth credentials send `Authorization: Bearer`, refresh proactively within 60s of expiry and once more after a 401, and write rotated refresh tokens back to the config file when they were loaded from it (an injected `auth=` is never persisted). A refresh that fails raises `AuthenticationError("OAuth session expired; run `discolike auth login`")`. Config file gains the shape `{"auth_method": "oauth", "oauth": {...}}` next to the existing `api_key` shape.
+- SDK: `http_client=` now has its `.auth` set by the SDK (the `X-discolike-key` header moved from a static default header into an `httpx2.Auth`); an `auth` already set on a user-supplied client is replaced.
+- CLI: `discolike auth login` now logs in through the browser by default (PKCE authorization-code flow against the platform's OAuth server, loopback redirect on `127.0.0.1`). `--no-browser` prints the URL only, `--port` pins the loopback port for SSH forwarding, and `--method api_key` (or `--api-key KEY`) keeps the API-key flow, including the prompt. Login-flow failures (timeout, denied consent, state mismatch) exit 1 with `{"error": "LoginError", ...}` on stderr.
+- CLI: `discolike auth status` adds `method` (`api_key` / `oauth`); for OAuth it reports `expires_at` and `expired` instead of a masked key.
+
 - SDK: `JobStatus` gains `estimated_cost` and `cost_metadata` for DiscoGen-family jobs (`discogen`, `validate_icp`, contacts generate). `cost_metadata` has one entry per `provider/model` and a `search_provider` entry with `queries_executed` / `queries_succeeded` / `est_cost_usd` when a BYOS search provider ran. `search_calls` on the model entries counts only the model's built-in search tool and is `0` on every BYOS run; read `search_provider.queries_executed` to confirm web search happened.
 
 ## 0.3.0 (2026-08-27)

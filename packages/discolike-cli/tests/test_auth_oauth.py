@@ -1,0 +1,212 @@
+from __future__ import annotations
+
+import dataclasses
+import json
+import threading
+import time
+from collections.abc import Callable
+from typing import Any
+from urllib.parse import parse_qs
+from urllib.parse import urlparse
+from urllib.request import urlopen
+
+import httpx2
+import pytest
+from typer.testing import CliRunner
+
+import discolike_cli.auth as auth_module
+from discolike._config import DEFAULT_BASE_URL
+from discolike._config import config_path
+from discolike._config import save_credential
+from discolike._credentials import OAuthCredential
+from discolike._oauth import AuthServerMetadata
+from discolike_cli.main import app
+from discolike_testkit import Handler
+
+runner = CliRunner()
+
+METADATA = AuthServerMetadata(
+    authorization_endpoint="https://auth.test/oauth/2.1/authorize",
+    token_endpoint="https://auth.test/oauth/2.1/token",
+    registration_endpoint="https://auth.test/oauth/2.1/register",
+)
+CREDENTIAL = OAuthCredential(
+    access_token="at-1",
+    refresh_token="rt-1",
+    expires_at=1_800_000_000.0,
+    client_id="client-1",
+    token_endpoint=METADATA.token_endpoint,
+)
+
+
+def _usage_ok(request: httpx2.Request) -> httpx2.Response:
+    return httpx2.Response(200, json={"requests_mtd": 1})
+
+
+def _usage_unauthorized(request: httpx2.Request) -> httpx2.Response:
+    return httpx2.Response(401, json={"detail": "Invalid API Key or Session"})
+
+
+class FakeProvider:
+    """Stands in for the authorization server and the user's browser."""
+
+    def __init__(self) -> None:
+        self.real_build_authorization_url = auth_module.build_authorization_url
+        self.discover_calls: list[str] = []
+        self.register_calls: list[list[str]] = []
+        self.exchange_calls: list[dict[str, Any]] = []
+        self.opened_urls: list[str] = []
+        self.callback_query: Callable[[dict[str, str]], str] = lambda query: f"code=the-code&state={query['state']}"
+
+    def discover(self, base_url: str, *, client: httpx2.Client) -> AuthServerMetadata:
+        self.discover_calls.append(base_url)
+        return METADATA
+
+    def register_client(self, metadata: AuthServerMetadata, *, redirect_uris: list[str], client: httpx2.Client) -> str:
+        self.register_calls.append(redirect_uris)
+        return "client-1"
+
+    def exchange_code(self, metadata: AuthServerMetadata, *, client: httpx2.Client, **kwargs: Any) -> OAuthCredential:
+        self.exchange_calls.append(kwargs)
+        return CREDENTIAL
+
+    def build_authorization_url(self, metadata: AuthServerMetadata, **kwargs: Any) -> str:
+        url = self.real_build_authorization_url(metadata, **kwargs)
+        query = {key: values[0] for key, values in parse_qs(urlparse(url).query).items()}
+        callback = f"{query['redirect_uri']}?{self.callback_query(query)}"
+        threading.Thread(target=lambda: urlopen(callback).read(), daemon=True).start()  # noqa: S310 -- loopback test server
+        return url
+
+    def open(self, url: str) -> bool:
+        self.opened_urls.append(url)
+        return True
+
+
+@pytest.fixture
+def provider(monkeypatch: pytest.MonkeyPatch) -> FakeProvider:
+    fake = FakeProvider()
+    monkeypatch.setattr(auth_module, "discover", fake.discover)
+    monkeypatch.setattr(auth_module, "register_client", fake.register_client)
+    monkeypatch.setattr(auth_module, "exchange_code", fake.exchange_code)
+    monkeypatch.setattr(auth_module, "build_authorization_url", fake.build_authorization_url)
+    monkeypatch.setattr(auth_module.webbrowser, "open", fake.open)
+    return fake
+
+
+def test_login_default_runs_oauth_loopback_flow(
+    provider: FakeProvider,
+    install_build_client: Callable[[Handler], None],
+    build_client_calls: list[dict[str, Any]],
+) -> None:
+    install_build_client(_usage_ok)
+    result = runner.invoke(app, ["auth", "login"])
+    assert result.exit_code == 0, result.output
+    assert provider.discover_calls == [DEFAULT_BASE_URL]
+    redirect_uri = provider.register_calls[0][0]
+    assert redirect_uri.startswith("http://127.0.0.1:")
+    assert redirect_uri.endswith("/callback")
+    exchange = provider.exchange_calls[0]
+    assert exchange["code"] == "the-code"
+    assert exchange["client_id"] == "client-1"
+    assert exchange["redirect_uri"] == redirect_uri
+    assert exchange["resource"] == DEFAULT_BASE_URL
+    assert len(provider.opened_urls) == 1
+    assert build_client_calls == [{"auth": CREDENTIAL}]
+    assert json.loads(config_path().read_text()) == {"auth_method": "oauth", "oauth": CREDENTIAL.to_config()}
+    payload = json.loads(result.stderr.splitlines()[-1])
+    assert payload == {"logged_in": True, "method": "oauth", "expires_at": "2027-01-15T08:00:00+00:00"}
+    assert provider.opened_urls[0] in result.stderr
+
+
+def test_login_no_browser_and_fixed_port(
+    provider: FakeProvider, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_ok)
+    result = runner.invoke(
+        app, ["--base-url", "https://api.dev.test/v1/", "auth", "login", "--no-browser", "--port", "18484"]
+    )
+    assert result.exit_code == 0, result.output
+    assert provider.opened_urls == []
+    assert provider.register_calls == [["http://127.0.0.1:18484/callback"]]
+    assert provider.discover_calls == ["https://api.dev.test/v1"]
+    assert provider.exchange_calls[0]["resource"] == "https://api.dev.test/v1"
+
+
+def test_login_state_mismatch_exits_1_and_saves_nothing(
+    provider: FakeProvider, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_ok)
+    provider.callback_query = lambda query: "code=the-code&state=forged"
+    result = runner.invoke(app, ["auth", "login"])
+    assert result.exit_code == 1
+    assert not config_path().exists()
+    assert provider.exchange_calls == []
+    assert json.loads(result.stderr.splitlines()[-1])["error"] == "LoginError"
+
+
+def test_login_user_denied_exits_1(provider: FakeProvider, install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_usage_ok)
+    provider.callback_query = lambda query: f"error=access_denied&error_description=nope&state={query['state']}"
+    result = runner.invoke(app, ["auth", "login"])
+    assert result.exit_code == 1
+    assert "nope" in json.loads(result.stderr.splitlines()[-1])["message"]
+
+
+def test_login_timeout_exits_1(
+    provider: FakeProvider, install_build_client: Callable[[Handler], None], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    install_build_client(_usage_ok)
+    monkeypatch.setattr(auth_module, "LOGIN_TIMEOUT_SECONDS", 0.2)
+    monkeypatch.setattr(auth_module, "build_authorization_url", lambda metadata, **kwargs: "https://auth.test/never")
+    result = runner.invoke(app, ["auth", "login"])
+    assert result.exit_code == 1
+    assert "Timed out" in json.loads(result.stderr.splitlines()[-1])["message"]
+    assert not config_path().exists()
+
+
+def test_login_oauth_verify_failure_exits_3_and_saves_nothing(
+    provider: FakeProvider, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_unauthorized)
+    result = runner.invoke(app, ["auth", "login"])
+    assert result.exit_code == 3
+    assert not config_path().exists()
+    assert json.loads(result.stderr.splitlines()[-1])["error"] == "AuthenticationError"
+
+
+def test_login_rejects_unknown_method(provider: FakeProvider) -> None:
+    result = runner.invoke(app, ["auth", "login", "--method", "magic"])
+    assert result.exit_code == 2
+    assert provider.discover_calls == []
+
+
+def test_status_reports_oauth_credential(
+    install_build_client: Callable[[Handler], None], build_client_calls: list[dict[str, Any]]
+) -> None:
+    install_build_client(_usage_ok)
+    save_credential(CREDENTIAL)
+    result = runner.invoke(app, ["auth", "status"])
+    assert result.exit_code == 0, result.output
+    assert build_client_calls == [{}]
+    assert json.loads(result.stdout) == {
+        "source": "config",
+        "method": "oauth",
+        "expires_at": "2027-01-15T08:00:00+00:00",
+        "expired": False,
+        "valid": True,
+    }
+
+
+def test_status_flags_expired_oauth_credential(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_usage_ok)
+    save_credential(dataclasses.replace(CREDENTIAL, expires_at=time.time() - 1))
+    result = runner.invoke(app, ["auth", "status"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["expired"] is True
+
+
+def test_status_reports_api_key_method(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_usage_ok)
+    result = runner.invoke(app, ["--api-key", "dk-abcdefgh1234", "auth", "status"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["method"] == "api_key"
