@@ -176,3 +176,25 @@ def test_delete_credential_without_oauth_client_removes_file(isolated_config) ->
     delete_credential()
     assert not config_path().exists()
     delete_credential()
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        {"auth_method": "oauth"},
+        {"auth_method": "oauth", "oauth": "not-a-dict"},
+        {"auth_method": "oauth", "oauth": {"access_token": "a", "refresh_token": "r"}},
+        {"auth_method": "oauth", "oauth": {**_oauth_credential().to_config(), "expires_at": "soon"}},
+    ],
+)
+def test_malformed_oauth_section_is_no_credential(isolated_config, config) -> None:
+    save_config(config)
+    assert load_credential() is None
+    with pytest.raises(AuthenticationError, match="discolike auth login"):
+        resolve_credential()
+
+
+@pytest.mark.parametrize("stored", ["not-a-dict", {"client_id": "c"}, 7])
+def test_malformed_oauth_client_is_none(isolated_config, stored) -> None:
+    save_config({"oauth_client": stored})
+    assert load_oauth_client() is None

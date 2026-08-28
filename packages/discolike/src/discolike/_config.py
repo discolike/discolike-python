@@ -79,7 +79,10 @@ def resolve_api_key(explicit: str | None = None) -> str:
 def load_credential() -> Credential | None:
     config = load_config()
     if config.get("auth_method") == AUTH_METHOD_OAUTH:
-        return OAuthCredential.from_config(config["oauth"])
+        try:
+            return OAuthCredential.from_config(config["oauth"])
+        except (KeyError, TypeError, ValueError):
+            return None
     api_key = config.get("api_key")
     return ApiKeyCredential(api_key=str(api_key)) if api_key else None
 
@@ -96,8 +99,10 @@ def save_credential(credential: Credential) -> None:
 
 
 def load_oauth_client() -> OAuthClientRegistration | None:
-    stored = load_config().get(OAUTH_CLIENT_KEY)
-    return OAuthClientRegistration.from_config(stored) if stored else None
+    try:
+        return OAuthClientRegistration.from_config(load_config()[OAUTH_CLIENT_KEY])
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 def save_oauth_client(registration: OAuthClientRegistration) -> None:
