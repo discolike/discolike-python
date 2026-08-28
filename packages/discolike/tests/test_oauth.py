@@ -168,6 +168,23 @@ def test_exchange_code_without_refresh_token_raises() -> None:
         )
 
 
+def test_malformed_token_response_error_payload_carries_no_tokens() -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"access_token": "at", "refresh_token": "rt", "token_type": "Bearer"})
+
+    with pytest.raises(AuthenticationError, match="expires_in") as info:
+        exchange_code(
+            METADATA,
+            client_id="c",
+            code="x",
+            code_verifier="v",
+            redirect_uri="http://127.0.0.1:1/callback",
+            resource=BASE_URL,
+            client=client_for(handler),
+        )
+    assert info.value.payload == {"token_type": "Bearer"}
+
+
 def test_oauth_error_body_maps_to_authentication_error() -> None:
     def handler(request: httpx2.Request) -> httpx2.Response:
         return httpx2.Response(400, json={"error": "invalid_grant", "error_description": "code expired"})

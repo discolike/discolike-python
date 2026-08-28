@@ -22,6 +22,7 @@ RESPONSE_TYPES = ["code"]
 PKCE_METHOD = "S256"
 PKCE_VERIFIER_BYTES = 32
 TOKEN_HEADERS = {"Accept": "application/json"}
+TOKEN_KEYS = frozenset({"access_token", "refresh_token", "id_token"})
 SESSION_EXPIRED_MESSAGE = "OAuth session expired; run `discolike auth login`"
 
 
@@ -82,16 +83,25 @@ def _require(payload: dict[str, Any], key: str) -> str:
     return str(payload[key])
 
 
+def _redacted(payload: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in payload.items() if key not in TOKEN_KEYS}
+
+
 def _credential_from_token_payload(
     payload: dict[str, Any], *, client_id: str, token_endpoint: str, fallback_refresh_token: str | None
 ) -> OAuthCredential:
+    # Exceptions raised here may be logged by SDK consumers; never attach live tokens to them.
+    safe_payload = _redacted(payload)
     refresh_token = payload.get("refresh_token") or fallback_refresh_token
     if not refresh_token:
-        raise AuthenticationError("OAuth token response has no `refresh_token`", payload=payload)
+        raise AuthenticationError("OAuth token response has no `refresh_token`", payload=safe_payload)
+    for key in ("access_token", "expires_in"):
+        if key not in payload:
+            raise AuthenticationError(f"OAuth server response is missing `{key}`", payload=safe_payload)
     return OAuthCredential(
-        access_token=_require(payload, "access_token"),
+        access_token=str(payload["access_token"]),
         refresh_token=str(refresh_token),
-        expires_at=time.time() + float(_require(payload, "expires_in")),
+        expires_at=time.time() + float(payload["expires_in"]),
         client_id=client_id,
         token_endpoint=token_endpoint,
     )

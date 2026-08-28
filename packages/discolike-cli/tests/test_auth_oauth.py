@@ -395,3 +395,17 @@ def test_login_access_denied_keeps_stored_client(
     assert result.exit_code == 1
     assert provider.register_calls == []
     assert load_oauth_client() == registration
+
+
+def test_login_forged_error_callback_cannot_evict_stored_client(
+    provider: FakeProvider, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_ok)
+    registration = _registration(_free_port())
+    save_oauth_client(registration)
+    provider.callback_query = lambda query: "error=invalid_client&state=forged"
+    result = runner.invoke(app, ["auth", "login"])
+    assert result.exit_code == 1
+    assert "state mismatch" in json.loads(result.stderr.splitlines()[-1])["message"]
+    assert provider.register_calls == []
+    assert load_oauth_client() == registration

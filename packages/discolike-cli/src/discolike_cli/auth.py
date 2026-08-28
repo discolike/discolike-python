@@ -151,13 +151,15 @@ def _authorize(
     callback = server.wait(timeout=LOGIN_TIMEOUT_SECONDS)
     if callback is None:
         _abort_login(f"Timed out after {LOGIN_TIMEOUT_SECONDS:.0f}s waiting for the browser login")
+    if callback.get("state") != state:
+        _abort_login("Invalid OAuth callback (state mismatch)")
     if "error" in callback:
         message = f"Authorization failed: {callback.get('error_description') or callback['error']}"
         if callback["error"] in DEAD_CLIENT_ERRORS:
             raise _DeadClientError(message)
         _abort_login(message)
-    if callback.get("state") != state or "code" not in callback:
-        _abort_login("Invalid OAuth callback (state mismatch or missing code)")
+    if "code" not in callback:
+        _abort_login("Invalid OAuth callback (missing code)")
     try:
         return exchange_code(
             metadata,
