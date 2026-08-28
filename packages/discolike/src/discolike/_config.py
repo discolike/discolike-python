@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -41,10 +42,11 @@ def load_config() -> dict[str, Any]:
 def save_config(config: dict[str, Any]) -> None:
     path = config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    fd, temp_path = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
     with os.fdopen(fd, "w") as handle:
         handle.write(json.dumps(config, indent=2) + "\n")
-    path.chmod(0o600)
+    os.chmod(temp_path, 0o600)
+    os.replace(temp_path, path)
 
 
 def delete_config() -> None:

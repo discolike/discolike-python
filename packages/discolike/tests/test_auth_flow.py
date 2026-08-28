@@ -191,3 +191,53 @@ async def test_async_api_key_header() -> None:
     async with async_client(DiscolikeAuth(ApiKeyCredential(api_key="dk-2")), handler) as client:
         await client.get("/usage")
     assert seen["x-discolike-key"] == "dk-2"
+
+
+def test_reload_adopts_credential_rotated_by_another_process() -> None:
+    server = Server(valid_tokens={"at-other"})
+    updates: list[OAuthCredential] = []
+    rotated_elsewhere = make_oauth(access_token="at-other")
+    auth = DiscolikeAuth(make_oauth(expires_in=0), on_update=updates.append, reload=lambda: rotated_elsewhere)
+    response = sync_client(auth, server).get("/usage")
+    assert response.status_code == 200
+    assert server.token_calls == []
+    assert server.bearers == ["Bearer at-other"]
+    assert auth.credential is rotated_elsewhere
+    assert updates == []
+
+
+def test_reload_with_stale_stored_credential_still_refreshes() -> None:
+    server = Server(valid_tokens=set())
+    stale = make_oauth(expires_in=0)
+    auth = DiscolikeAuth(stale, reload=lambda: stale)
+    response = sync_client(auth, server).get("/usage")
+    assert response.status_code == 200
+    assert server.refreshes == 1
+
+
+def test_reload_with_api_key_or_missing_config_still_refreshes() -> None:
+    server = Server(valid_tokens=set())
+    auth = DiscolikeAuth(make_oauth(expires_in=0), reload=lambda: None)
+    assert sync_client(auth, server).get("/usage").status_code == 200
+    assert server.refreshes == 1
+
+
+def test_reload_adopts_after_401() -> None:
+    server = Server(valid_tokens={"at-other"})
+    rotated_elsewhere = make_oauth(access_token="at-other")
+    auth = DiscolikeAuth(make_oauth(), reload=lambda: rotated_elsewhere)
+    response = sync_client(auth, server).get("/usage")
+    assert response.status_code == 200
+    assert server.token_calls == []
+    assert server.bearers == ["Bearer at-1", "Bearer at-other"]
+
+
+async def test_async_reload_adopts_credential_rotated_by_another_process() -> None:
+    server = Server(valid_tokens={"at-other"})
+    rotated_elsewhere = make_oauth(access_token="at-other")
+    auth = DiscolikeAuth(make_oauth(expires_in=0), reload=lambda: rotated_elsewhere)
+    async with async_client(auth, server) as client:
+        response = await client.get("/usage")
+    assert response.status_code == 200
+    assert server.token_calls == []
+    assert server.bearers == ["Bearer at-other"]

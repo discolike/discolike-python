@@ -34,9 +34,16 @@ class DiscolikeAuth(httpx2.Auth):
 
     requires_response_body = False
 
-    def __init__(self, credential: Credential, *, on_update: Callable[[OAuthCredential], None] | None = None) -> None:
+    def __init__(
+        self,
+        credential: Credential,
+        *,
+        on_update: Callable[[OAuthCredential], None] | None = None,
+        reload: Callable[[], Credential | None] | None = None,
+    ) -> None:
         self._credential = credential
         self.on_update = on_update
+        self.reload = reload
         self._lock = threading.Lock()
         self._async_lock = asyncio.Lock()
 
@@ -46,6 +53,20 @@ class DiscolikeAuth(httpx2.Auth):
 
     def _latest(self, credential: OAuthCredential) -> OAuthCredential:
         return cast(OAuthCredential, self._credential) if self._credential is not credential else credential
+
+    def _adopt_stored(self, credential: OAuthCredential) -> OAuthCredential | None:
+        """Another process may have rotated the tokens already; a refresh with our old refresh token would fail."""
+        if self.reload is None:
+            return None
+        stored = self.reload()
+        if (
+            not isinstance(stored, OAuthCredential)
+            or stored.access_token == credential.access_token
+            or stored.expires_within(REFRESH_LEEWAY_SECONDS)
+        ):
+            return None
+        self._credential = stored
+        return stored
 
     def _store(self, response: httpx2.Response, *, credential: OAuthCredential) -> OAuthCredential:
         try:
@@ -68,7 +89,11 @@ class DiscolikeAuth(httpx2.Auth):
         with self._lock:
             credential = self._latest(credential)
             if credential.expires_within(REFRESH_LEEWAY_SECONDS):
-                credential = yield from self._sync_refresh(credential)
+                adopted = self._adopt_stored(credential)
+                if adopted is not None:
+                    credential = adopted
+                else:
+                    credential = yield from self._sync_refresh(credential)
         _set_bearer(request, credential)
         response = yield request
         if response.status_code != UNAUTHORIZED:
@@ -76,7 +101,11 @@ class DiscolikeAuth(httpx2.Auth):
         with self._lock:
             latest = self._latest(credential)
             if latest is credential:
-                latest = yield from self._sync_refresh(credential)
+                adopted = self._adopt_stored(credential)
+                if adopted is not None:
+                    latest = adopted
+                else:
+                    latest = yield from self._sync_refresh(credential)
         _set_bearer(request, latest)
         yield request
 
@@ -94,9 +123,13 @@ class DiscolikeAuth(httpx2.Auth):
         async with self._async_lock:
             credential = self._latest(credential)
             if credential.expires_within(REFRESH_LEEWAY_SECONDS):
-                response = yield refresh_request(credential)
-                await response.aread()
-                credential = self._store(response, credential=credential)
+                adopted = self._adopt_stored(credential)
+                if adopted is not None:
+                    credential = adopted
+                else:
+                    response = yield refresh_request(credential)
+                    await response.aread()
+                    credential = self._store(response, credential=credential)
         _set_bearer(request, credential)
         response = yield request
         if response.status_code != UNAUTHORIZED:
@@ -104,8 +137,12 @@ class DiscolikeAuth(httpx2.Auth):
         async with self._async_lock:
             latest = self._latest(credential)
             if latest is credential:
-                response = yield refresh_request(credential)
-                await response.aread()
-                latest = self._store(response, credential=credential)
+                adopted = self._adopt_stored(credential)
+                if adopted is not None:
+                    latest = adopted
+                else:
+                    response = yield refresh_request(credential)
+                    await response.aread()
+                    latest = self._store(response, credential=credential)
         _set_bearer(request, latest)
         yield request

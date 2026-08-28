@@ -120,3 +120,11 @@ def test_resolve_credential_precedence(isolated_config, monkeypatch) -> None:
 def test_resolve_credential_nothing_raises_with_guidance(isolated_config) -> None:
     with pytest.raises(AuthenticationError, match="discolike auth login"):
         resolve_credential()
+
+
+def test_save_config_is_atomic_and_leaves_no_temp_files(isolated_config) -> None:
+    save_config({"auth_method": "api_key", "api_key": "first"})
+    save_config({"auth_method": "api_key", "api_key": "second"})
+    assert [entry.name for entry in config_path().parent.iterdir()] == [config_path().name]
+    assert load_config()["api_key"] == "second"
+    assert stat.S_IMODE(config_path().stat().st_mode) == 0o600

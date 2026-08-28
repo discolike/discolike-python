@@ -165,3 +165,31 @@ async def test_async_client_accepts_injected_credential() -> None:
     async with AsyncDiscolike(auth=credential, base_url="https://api.test/v1", http_client=http) as client:
         await client.account.usage()
     assert seen == ["Bearer at"]
+
+
+def test_client_from_config_reloads_before_refreshing() -> None:
+    save_credential(
+        OAuthCredential(
+            access_token="stale", refresh_token="rt-1", expires_at=0.0, client_id="c", token_endpoint="https://t/token"
+        )
+    )
+    seen: list[str] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        assert str(request.url) != "https://t/token"
+        seen.append(request.headers["Authorization"])
+        return httpx2.Response(200, json={"requests_mtd": 1})
+
+    http = httpx2.Client(transport=httpx2.MockTransport(handler), base_url="https://api.test/v1")
+    with Discolike(base_url="https://api.test/v1", http_client=http) as client:
+        save_credential(
+            OAuthCredential(
+                access_token="fresh-elsewhere",
+                refresh_token="rt-2",
+                expires_at=time.time() + 3600,
+                client_id="c",
+                token_endpoint="https://t/token",
+            )
+        )
+        client.account.usage()
+    assert seen == ["Bearer fresh-elsewhere"]

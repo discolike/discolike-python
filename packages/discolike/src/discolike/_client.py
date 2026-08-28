@@ -4,6 +4,7 @@ import httpx2
 
 from discolike._auth import DiscolikeAuth
 from discolike._config import DEFAULT_BASE_URL
+from discolike._config import load_credential
 from discolike._config import resolve_credential
 from discolike._config import save_credential
 from discolike._credentials import Credential
@@ -51,9 +52,11 @@ DEFAULT_MAX_RETRIES = 3
 
 
 def _build_auth(*, api_key: str | None, auth: Credential | None) -> DiscolikeAuth:
-    # Rotated refresh tokens are written back only when the credential came from the config file.
+    # The config file is read back and written only when the credential came from it.
     credential = resolve_credential(api_key=api_key, auth=auth)
-    return DiscolikeAuth(credential, on_update=save_credential if auth is None else None)
+    if auth is not None:
+        return DiscolikeAuth(credential)
+    return DiscolikeAuth(credential, on_update=save_credential, reload=load_credential)
 
 
 class Discolike:
