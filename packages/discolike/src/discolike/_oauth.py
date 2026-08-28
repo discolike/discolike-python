@@ -184,7 +184,3 @@ def parse_refresh_response(response: httpx2.Response, *, credential: OAuthCreden
         token_endpoint=credential.token_endpoint,
         fallback_refresh_token=credential.refresh_token,
     )
-
-
-def refresh(credential: OAuthCredential, *, client: httpx2.Client) -> OAuthCredential:
-    return parse_refresh_response(client.send(refresh_request(credential)), credential=credential)

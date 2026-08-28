@@ -15,8 +15,9 @@ from discolike._oauth import OAuthError
 from discolike._oauth import build_authorization_url
 from discolike._oauth import discover
 from discolike._oauth import exchange_code
+from discolike._oauth import parse_refresh_response
 from discolike._oauth import pkce_pair
-from discolike._oauth import refresh
+from discolike._oauth import refresh_request
 from discolike._oauth import register_client
 
 BASE_URL = "https://api.test/v1"
@@ -207,7 +208,8 @@ def test_refresh_rotates_tokens_and_keeps_old_refresh_token_when_absent() -> Non
         seen.append(request)
         return httpx2.Response(200, json={"access_token": "new", "refresh_token": "rt-new", "expires_in": 60})
 
-    rotated = refresh(credential, client=client_for(rotating))
+    with client_for(rotating) as client:
+        rotated = parse_refresh_response(client.send(refresh_request(credential)), credential=credential)
     assert form(seen[0]) == {"grant_type": "refresh_token", "refresh_token": "rt-old", "client_id": "c"}
     assert (rotated.access_token, rotated.refresh_token) == ("new", "rt-new")
     assert rotated.client_id == "c"
@@ -216,7 +218,8 @@ def test_refresh_rotates_tokens_and_keeps_old_refresh_token_when_absent() -> Non
     def not_rotating(request: httpx2.Request) -> httpx2.Response:
         return httpx2.Response(200, json={"access_token": "newer", "expires_in": 60})
 
-    kept = refresh(rotated, client=client_for(not_rotating))
+    with client_for(not_rotating) as client:
+        kept = parse_refresh_response(client.send(refresh_request(rotated)), credential=rotated)
     assert (kept.access_token, kept.refresh_token) == ("newer", "rt-new")
 
 
