@@ -6,11 +6,14 @@ from discolike import AuthenticationError
 from discolike._config import config_path
 from discolike._config import load_config
 from discolike._config import load_credential
+from discolike._config import load_oauth_client
 from discolike._config import resolve_api_key
 from discolike._config import resolve_credential
 from discolike._config import save_config
 from discolike._config import save_credential
+from discolike._config import save_oauth_client
 from discolike._credentials import ApiKeyCredential
+from discolike._credentials import OAuthClientRegistration
 from discolike._credentials import OAuthCredential
 
 
@@ -128,3 +131,31 @@ def test_save_config_is_atomic_and_leaves_no_temp_files(isolated_config) -> None
     assert [entry.name for entry in config_path().parent.iterdir()] == [config_path().name]
     assert load_config()["api_key"] == "second"
     assert stat.S_IMODE(config_path().stat().st_mode) == 0o600
+
+
+REGISTRATION = OAuthClientRegistration(
+    client_id="client-1", redirect_uri="http://127.0.0.1:18484/callback", issuer="https://auth.test/oauth/2.1"
+)
+
+
+def test_oauth_client_registration_roundtrip_and_missing(isolated_config) -> None:
+    assert load_oauth_client() is None
+    save_oauth_client(REGISTRATION)
+    assert load_oauth_client() == REGISTRATION
+    assert load_config()["oauth_client"] == REGISTRATION.to_config()
+
+
+def test_save_credential_preserves_oauth_client(isolated_config) -> None:
+    save_oauth_client(REGISTRATION)
+    save_credential(_oauth_credential())
+    assert load_oauth_client() == REGISTRATION
+    assert load_credential() == _oauth_credential()
+    save_credential(ApiKeyCredential(api_key="dk-1"))
+    assert load_oauth_client() == REGISTRATION
+    assert load_credential() == ApiKeyCredential(api_key="dk-1")
+
+
+def test_save_oauth_client_preserves_credential(isolated_config) -> None:
+    save_credential(_oauth_credential())
+    save_oauth_client(REGISTRATION)
+    assert load_credential() == _oauth_credential()

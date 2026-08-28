@@ -37,4 +37,18 @@ class OAuthCredential:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class OAuthClientRegistration:
+    client_id: str
+    redirect_uri: str
+    issuer: str
+
+    @classmethod
+    def from_config(cls, data: dict[str, Any]) -> OAuthClientRegistration:
+        return cls(client_id=str(data["client_id"]), redirect_uri=str(data["redirect_uri"]), issuer=str(data["issuer"]))
+
+    def to_config(self) -> dict[str, Any]:
+        return asdict(self)
+
+
 Credential = ApiKeyCredential | OAuthCredential

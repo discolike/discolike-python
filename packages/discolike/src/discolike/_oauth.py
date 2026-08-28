@@ -30,6 +30,7 @@ class AuthServerMetadata:
     authorization_endpoint: str
     token_endpoint: str
     registration_endpoint: str
+    issuer: str
 
 
 def _b64url(raw: bytes) -> str:
@@ -86,6 +87,7 @@ def discover(base_url: str, *, client: httpx2.Client) -> AuthServerMetadata:
         authorization_endpoint=_require(payload, "authorization_endpoint"),
         token_endpoint=_require(payload, "token_endpoint"),
         registration_endpoint=_require(payload, "registration_endpoint"),
+        issuer=_require(payload, "issuer"),
     )
 
 

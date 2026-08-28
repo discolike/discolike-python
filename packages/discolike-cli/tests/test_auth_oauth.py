@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import socket
 import threading
 import time
 from collections.abc import Callable
@@ -17,7 +18,11 @@ from typer.testing import CliRunner
 import discolike_cli.auth as auth_module
 from discolike._config import DEFAULT_BASE_URL
 from discolike._config import config_path
+from discolike._config import load_credential
+from discolike._config import load_oauth_client
 from discolike._config import save_credential
+from discolike._config import save_oauth_client
+from discolike._credentials import OAuthClientRegistration
 from discolike._credentials import OAuthCredential
 from discolike._oauth import AuthServerMetadata
 from discolike_cli.main import app
@@ -29,6 +34,7 @@ METADATA = AuthServerMetadata(
     authorization_endpoint="https://auth.test/oauth/2.1/authorize",
     token_endpoint="https://auth.test/oauth/2.1/token",
     registration_endpoint="https://auth.test/oauth/2.1/register",
+    issuer="https://auth.test/oauth/2.1",
 )
 CREDENTIAL = OAuthCredential(
     access_token="at-1",
@@ -112,7 +118,9 @@ def test_login_default_runs_oauth_loopback_flow(
     assert exchange["resource"] == DEFAULT_BASE_URL
     assert len(provider.opened_urls) == 1
     assert build_client_calls == [{"auth": CREDENTIAL}]
-    assert json.loads(config_path().read_text()) == {"auth_method": "oauth", "oauth": CREDENTIAL.to_config()}
+    stored = json.loads(config_path().read_text())
+    assert (stored["auth_method"], stored["oauth"]) == ("oauth", CREDENTIAL.to_config())
+    assert stored["oauth_client"] == {"client_id": "client-1", "redirect_uri": redirect_uri, "issuer": METADATA.issuer}
     payload = json.loads(result.stderr.splitlines()[-1])
     assert payload == {"logged_in": True, "method": "oauth", "expires_at": "2027-01-15T08:00:00+00:00"}
     assert provider.opened_urls[0] in result.stderr
@@ -139,7 +147,7 @@ def test_login_state_mismatch_exits_1_and_saves_nothing(
     provider.callback_query = lambda query: "code=the-code&state=forged"
     result = runner.invoke(app, ["auth", "login"])
     assert result.exit_code == 1
-    assert not config_path().exists()
+    assert load_credential() is None
     assert provider.exchange_calls == []
     assert json.loads(result.stderr.splitlines()[-1])["error"] == "LoginError"
 
@@ -161,7 +169,7 @@ def test_login_timeout_exits_1(
     result = runner.invoke(app, ["auth", "login"])
     assert result.exit_code == 1
     assert "Timed out" in json.loads(result.stderr.splitlines()[-1])["message"]
-    assert not config_path().exists()
+    assert load_credential() is None
 
 
 def test_login_oauth_verify_failure_exits_3_and_saves_nothing(
@@ -170,7 +178,7 @@ def test_login_oauth_verify_failure_exits_3_and_saves_nothing(
     install_build_client(_usage_unauthorized)
     result = runner.invoke(app, ["auth", "login"])
     assert result.exit_code == 3
-    assert not config_path().exists()
+    assert load_credential() is None
     assert json.loads(result.stderr.splitlines()[-1])["error"] == "AuthenticationError"
 
 
@@ -210,3 +218,79 @@ def test_status_reports_api_key_method(install_build_client: Callable[[Handler],
     result = runner.invoke(app, ["--api-key", "dk-abcdefgh1234", "auth", "status"])
     assert result.exit_code == 0, result.output
     assert json.loads(result.stdout)["method"] == "api_key"
+
+
+def _free_port() -> int:
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        return probe.getsockname()[1]
+
+
+def _registration(port: int, *, issuer: str = METADATA.issuer) -> OAuthClientRegistration:
+    return OAuthClientRegistration(
+        client_id="stored-client", redirect_uri=f"http://127.0.0.1:{port}/callback", issuer=issuer
+    )
+
+
+def test_login_reuses_stored_client_when_its_port_is_free(
+    provider: FakeProvider, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_ok)
+    port = _free_port()
+    save_oauth_client(_registration(port))
+    result = runner.invoke(app, ["auth", "login"])
+    assert result.exit_code == 0, result.output
+    assert provider.register_calls == []
+    assert provider.exchange_calls[0]["client_id"] == "stored-client"
+    assert provider.exchange_calls[0]["redirect_uri"] == f"http://127.0.0.1:{port}/callback"
+    assert load_oauth_client() == _registration(port)
+    assert json.loads(config_path().read_text())["auth_method"] == "oauth"
+
+
+def test_login_registers_anew_when_stored_port_is_busy(
+    provider: FakeProvider, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_ok)
+    with socket.socket() as blocker:
+        blocker.bind(("127.0.0.1", 0))
+        blocker.listen()
+        busy_port = blocker.getsockname()[1]
+        save_oauth_client(_registration(busy_port))
+        result = runner.invoke(app, ["auth", "login"])
+    assert result.exit_code == 0, result.output
+    new_uri = provider.register_calls[0][0]
+    assert new_uri != f"http://127.0.0.1:{busy_port}/callback"
+    stored = load_oauth_client()
+    assert stored is not None
+    assert (stored.client_id, stored.redirect_uri) == ("client-1", new_uri)
+
+
+def test_login_registers_anew_for_a_different_issuer(
+    provider: FakeProvider, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_ok)
+    save_oauth_client(_registration(_free_port(), issuer="https://auth.other/oauth/2.1"))
+    result = runner.invoke(app, ["auth", "login"])
+    assert result.exit_code == 0, result.output
+    assert len(provider.register_calls) == 1
+    stored = load_oauth_client()
+    assert stored is not None
+    assert stored.issuer == METADATA.issuer
+
+
+def test_login_explicit_port_differing_from_stored_registers_anew(
+    provider: FakeProvider, install_build_client: Callable[[Handler], None]
+) -> None:
+    install_build_client(_usage_ok)
+    save_oauth_client(_registration(_free_port()))
+    wanted = _free_port()
+    result = runner.invoke(app, ["auth", "login", "--port", str(wanted)])
+    assert result.exit_code == 0, result.output
+    assert provider.register_calls == [[f"http://127.0.0.1:{wanted}/callback"]]
+
+
+def test_logout_removes_stored_client() -> None:
+    save_oauth_client(_registration(18484))
+    result = runner.invoke(app, ["auth", "logout"])
+    assert result.exit_code == 0, result.output
+    assert load_oauth_client() is None

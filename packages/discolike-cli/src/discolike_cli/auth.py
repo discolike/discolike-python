@@ -8,6 +8,7 @@ from datetime import datetime
 from datetime import timezone
 from typing import Any
 from typing import NoReturn
+from urllib.parse import urlparse
 
 import httpx2
 import typer
@@ -19,10 +20,14 @@ from discolike._config import KEYS_URL
 from discolike._config import NO_CREDENTIAL_MESSAGE
 from discolike._config import delete_config
 from discolike._config import load_credential
+from discolike._config import load_oauth_client
 from discolike._config import save_config
 from discolike._config import save_credential
+from discolike._config import save_oauth_client
+from discolike._credentials import OAuthClientRegistration
 from discolike._credentials import OAuthCredential
 from discolike._exceptions import AuthenticationError
+from discolike._oauth import AuthServerMetadata
 from discolike._oauth import build_authorization_url
 from discolike._oauth import discover
 from discolike._oauth import exchange_code
@@ -75,41 +80,92 @@ def _abort_login(message: str) -> NoReturn:
     raise typer.Exit(code=1)
 
 
+def _registered_port(registration: OAuthClientRegistration) -> int:
+    return int(urlparse(registration.redirect_uri).port or RANDOM_PORT)
+
+
+def _reusable_registration(*, issuer: str, port: int) -> OAuthClientRegistration | None:
+    stored = load_oauth_client()
+    if stored is None or stored.issuer != issuer:
+        return None
+    if port != RANDOM_PORT and _registered_port(stored) != port:
+        return None
+    return stored
+
+
+def _bind_stored_port(registration: OAuthClientRegistration) -> CallbackServer | None:
+    try:
+        return CallbackServer(port=_registered_port(registration))
+    except OSError:
+        return None
+
+
+def _register_or_reuse(
+    metadata: AuthServerMetadata, *, port: int, http: httpx2.Client
+) -> tuple[CallbackServer, OAuthClientRegistration]:
+    # PropelAuth matches the redirect URI literally (port included) and remembers consent per client_id,
+    # so a stored registration is only worth reusing when its exact port can be bound again.
+    stored = _reusable_registration(issuer=metadata.issuer, port=port)
+    if stored is not None:
+        server = _bind_stored_port(stored)
+        if server is not None:
+            return server, stored
+    server = CallbackServer(port=port)
+    client_id = register_client(metadata, redirect_uris=[server.redirect_uri], client=http)
+    registration = OAuthClientRegistration(
+        client_id=client_id, redirect_uri=server.redirect_uri, issuer=metadata.issuer
+    )
+    save_oauth_client(registration)
+    return server, registration
+
+
+def _authorize(
+    metadata: AuthServerMetadata,
+    registration: OAuthClientRegistration,
+    server: CallbackServer,
+    *,
+    resource: str,
+    open_browser: bool,
+    http: httpx2.Client,
+) -> OAuthCredential:
+    verifier, challenge = pkce_pair()
+    state = secrets.token_urlsafe(STATE_BYTES)
+    url = build_authorization_url(
+        metadata,
+        client_id=registration.client_id,
+        redirect_uri=registration.redirect_uri,
+        code_challenge=challenge,
+        state=state,
+        resource=resource,
+    )
+    print(f"Open this URL in your browser to log in:\n{url}", file=sys.stderr)
+    if open_browser and not webbrowser.open(url):
+        print("Could not open a browser; open the URL above manually.", file=sys.stderr)
+    callback = server.wait(timeout=LOGIN_TIMEOUT_SECONDS)
+    if callback is None:
+        _abort_login(f"Timed out after {LOGIN_TIMEOUT_SECONDS:.0f}s waiting for the browser login")
+    if "error" in callback:
+        _abort_login(f"Authorization failed: {callback.get('error_description') or callback['error']}")
+    if callback.get("state") != state or "code" not in callback:
+        _abort_login("Invalid OAuth callback (state mismatch or missing code)")
+    return exchange_code(
+        metadata,
+        client_id=registration.client_id,
+        code=callback["code"],
+        code_verifier=verifier,
+        redirect_uri=registration.redirect_uri,
+        resource=resource,
+        client=http,
+    )
+
+
 def _oauth_login(ctx: typer.Context, *, open_browser: bool, port: int) -> OAuthCredential:
     base_url = str(ctx.obj.get("base_url") or DEFAULT_BASE_URL).rstrip("/")
-    with httpx2.Client(timeout=OAUTH_HTTP_TIMEOUT_SECONDS) as http, CallbackServer(port=port) as server:
+    with httpx2.Client(timeout=OAUTH_HTTP_TIMEOUT_SECONDS) as http:
         metadata = discover(base_url, client=http)
-        redirect_uri = server.redirect_uri
-        client_id = register_client(metadata, redirect_uris=[redirect_uri], client=http)
-        verifier, challenge = pkce_pair()
-        state = secrets.token_urlsafe(STATE_BYTES)
-        url = build_authorization_url(
-            metadata,
-            client_id=client_id,
-            redirect_uri=redirect_uri,
-            code_challenge=challenge,
-            state=state,
-            resource=base_url,
-        )
-        print(f"Open this URL in your browser to log in:\n{url}", file=sys.stderr)
-        if open_browser and not webbrowser.open(url):
-            print("Could not open a browser; open the URL above manually.", file=sys.stderr)
-        callback = server.wait(timeout=LOGIN_TIMEOUT_SECONDS)
-        if callback is None:
-            _abort_login(f"Timed out after {LOGIN_TIMEOUT_SECONDS:.0f}s waiting for the browser login")
-        if "error" in callback:
-            _abort_login(f"Authorization failed: {callback.get('error_description') or callback['error']}")
-        if callback.get("state") != state or "code" not in callback:
-            _abort_login("Invalid OAuth callback (state mismatch or missing code)")
-        return exchange_code(
-            metadata,
-            client_id=client_id,
-            code=callback["code"],
-            code_verifier=verifier,
-            redirect_uri=redirect_uri,
-            resource=base_url,
-            client=http,
-        )
+        server, registration = _register_or_reuse(metadata, port=port, http=http)
+        with server:
+            return _authorize(metadata, registration, server, resource=base_url, open_browser=open_browser, http=http)
 
 
 def _api_key_login(ctx: typer.Context, *, api_key: str | None) -> None:

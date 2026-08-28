@@ -8,6 +8,7 @@ from typing import Any
 
 from discolike._credentials import ApiKeyCredential
 from discolike._credentials import Credential
+from discolike._credentials import OAuthClientRegistration
 from discolike._credentials import OAuthCredential
 from discolike._exceptions import AuthenticationError
 
@@ -16,6 +17,7 @@ ENV_API_KEY = "DISCOLIKE_API_KEY"  # foxguard: ignore[py/no-hardcoded-secret]
 KEYS_URL = "https://app.discolike.com/account/management/keys"
 AUTH_METHOD_API_KEY = "api_key"
 AUTH_METHOD_OAUTH = "oauth"
+OAUTH_CLIENT_KEY = "oauth_client"
 
 NO_CREDENTIAL_MESSAGE = (
     "No API key found. Set the DISCOLIKE_API_KEY environment variable, pass api_key=..., "
@@ -75,9 +77,22 @@ def load_credential() -> Credential | None:
 
 def save_credential(credential: Credential) -> None:
     if isinstance(credential, OAuthCredential):
-        save_config({"auth_method": AUTH_METHOD_OAUTH, "oauth": credential.to_config()})
-        return
-    save_config({"auth_method": AUTH_METHOD_API_KEY, "api_key": credential.api_key})
+        config: dict[str, Any] = {"auth_method": AUTH_METHOD_OAUTH, "oauth": credential.to_config()}
+    else:
+        config = {"auth_method": AUTH_METHOD_API_KEY, "api_key": credential.api_key}
+    stored_client = load_config().get(OAUTH_CLIENT_KEY)
+    if stored_client is not None:
+        config[OAUTH_CLIENT_KEY] = stored_client
+    save_config(config)
+
+
+def load_oauth_client() -> OAuthClientRegistration | None:
+    stored = load_config().get(OAUTH_CLIENT_KEY)
+    return OAuthClientRegistration.from_config(stored) if stored else None
+
+
+def save_oauth_client(registration: OAuthClientRegistration) -> None:
+    save_config({**load_config(), OAUTH_CLIENT_KEY: registration.to_config()})
 
 
 def resolve_credential(*, api_key: str | None = None, auth: Credential | None = None) -> Credential:

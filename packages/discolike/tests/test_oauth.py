@@ -23,6 +23,7 @@ METADATA = AuthServerMetadata(
     authorization_endpoint="https://auth.test/oauth/2.1/authorize",
     token_endpoint="https://auth.test/oauth/2.1/token",
     registration_endpoint="https://auth.test/oauth/2.1/register",
+    issuer="https://auth.test/oauth/2.1",
 )
 
 
@@ -50,7 +51,7 @@ def test_discover_reads_well_known_under_base_url() -> None:
         return httpx2.Response(
             200,
             json={
-                "issuer": "https://auth.test",
+                "issuer": METADATA.issuer,
                 "authorization_endpoint": METADATA.authorization_endpoint,
                 "token_endpoint": METADATA.token_endpoint,
                 "registration_endpoint": METADATA.registration_endpoint,
