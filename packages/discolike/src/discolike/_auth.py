@@ -18,6 +18,9 @@ from discolike._oauth import SESSION_EXPIRED_MESSAGE
 from discolike._oauth import parse_refresh_response
 from discolike._oauth import refresh_request
 
+# TODO: replace this module and _oauth.py with authlib's httpx2 OAuth2Client once a release
+# includes authlib/authlib@e4fb941 (httpx2 support merged 2026-08-27; 1.7.2 predates it).
+
 API_KEY_HEADER = "X-discolike-key"
 UNAUTHORIZED = 401
 
