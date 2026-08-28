@@ -55,6 +55,15 @@ def delete_config() -> None:
     config_path().unlink(missing_ok=True)
 
 
+def delete_credential() -> None:
+    """Forget the credential but keep the OAuth client registration; it is a public PKCE client, not a secret."""
+    stored_client = load_config().get(OAUTH_CLIENT_KEY)
+    if stored_client is None:
+        delete_config()
+        return
+    save_config({OAUTH_CLIENT_KEY: stored_client})
+
+
 def resolve_api_key(explicit: str | None = None) -> str:
     if explicit:
         return explicit

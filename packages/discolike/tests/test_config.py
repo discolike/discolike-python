@@ -4,6 +4,7 @@ import pytest
 
 from discolike import AuthenticationError
 from discolike._config import config_path
+from discolike._config import delete_credential
 from discolike._config import load_config
 from discolike._config import load_credential
 from discolike._config import load_oauth_client
@@ -159,3 +160,19 @@ def test_save_oauth_client_preserves_credential(isolated_config) -> None:
     save_credential(_oauth_credential())
     save_oauth_client(REGISTRATION)
     assert load_credential() == _oauth_credential()
+
+
+def test_delete_credential_keeps_oauth_client(isolated_config) -> None:
+    save_oauth_client(REGISTRATION)
+    save_credential(_oauth_credential())
+    delete_credential()
+    assert load_credential() is None
+    assert load_oauth_client() == REGISTRATION
+    assert load_config() == {"oauth_client": REGISTRATION.to_config()}
+
+
+def test_delete_credential_without_oauth_client_removes_file(isolated_config) -> None:
+    save_credential(ApiKeyCredential(api_key="dk-1"))
+    delete_credential()
+    assert not config_path().exists()
+    delete_credential()

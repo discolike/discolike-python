@@ -18,7 +18,7 @@ from discolike._config import AUTH_METHOD_OAUTH
 from discolike._config import DEFAULT_BASE_URL
 from discolike._config import KEYS_URL
 from discolike._config import NO_CREDENTIAL_MESSAGE
-from discolike._config import delete_config
+from discolike._config import delete_credential
 from discolike._config import load_credential
 from discolike._config import load_oauth_client
 from discolike._config import save_config
@@ -248,6 +248,6 @@ def status(ctx: typer.Context) -> None:
 @app.command()
 @handle_errors
 def logout() -> None:
-    """Delete saved credentials from the local config file."""
-    delete_config()
+    """Delete saved credentials from the local config file (the registered OAuth client is kept)."""
+    delete_credential()
     emit({"logged_out": True})

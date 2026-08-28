@@ -22,6 +22,7 @@ from discolike._config import load_credential
 from discolike._config import load_oauth_client
 from discolike._config import save_credential
 from discolike._config import save_oauth_client
+from discolike._credentials import ApiKeyCredential
 from discolike._credentials import OAuthClientRegistration
 from discolike._credentials import OAuthCredential
 from discolike._oauth import AuthServerMetadata
@@ -289,8 +290,26 @@ def test_login_explicit_port_differing_from_stored_registers_anew(
     assert provider.register_calls == [[f"http://127.0.0.1:{wanted}/callback"]]
 
 
-def test_logout_removes_stored_client() -> None:
+def test_logout_keeps_stored_client_and_drops_credential(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_usage_ok)
     save_oauth_client(_registration(18484))
+    save_credential(CREDENTIAL)
     result = runner.invoke(app, ["auth", "logout"])
     assert result.exit_code == 0, result.output
-    assert load_oauth_client() is None
+    assert json.loads(result.stdout) == {"logged_out": True}
+    assert load_credential() is None
+    assert load_oauth_client() == _registration(18484)
+    status = runner.invoke(app, ["auth", "status"])
+    assert status.exit_code == 3
+    assert "discolike auth login" in json.loads(status.stderr)["message"]
+
+
+def test_logout_with_api_key_config_removes_the_key_but_keeps_stored_client() -> None:
+    save_oauth_client(_registration(18484))
+    save_credential(ApiKeyCredential(api_key="dk-1"))
+    result = runner.invoke(app, ["auth", "logout"])
+    assert result.exit_code == 0, result.output
+    stored = json.loads(config_path().read_text())
+    assert "api_key" not in stored
+    assert "auth_method" not in stored
+    assert load_oauth_client() == _registration(18484)
