@@ -18,7 +18,7 @@ Requires Python 3.10+.
 export DISCOLIKE_API_KEY="dl_..."
 ```
 
-Create a key at [app.discolike.com/account/management/keys](https://app.discolike.com/account/management/keys). You can also pass `api_key=...` explicitly to `Discolike()`.
+Create a key at [app.discolike.com/account/management/keys](https://app.discolike.com/account/management/keys). You can also pass `api_key=...` explicitly to `Discolike()`, or run `discolike auth login` from the CLI to log in through the browser — the SDK then picks up the saved OAuth session and refreshes it automatically.
 
 ## Quickstart
 

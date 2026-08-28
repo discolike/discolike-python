@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import httpx2
 
+from discolike._auth import DiscolikeAuth
 from discolike._config import DEFAULT_BASE_URL
-from discolike._config import resolve_api_key
+from discolike._config import resolve_credential
+from discolike._config import save_credential
+from discolike._credentials import Credential
 from discolike._jobs import AsyncJob
 from discolike._jobs import Job
 from discolike._transport import AsyncTransport
@@ -47,11 +50,18 @@ DEFAULT_TIMEOUT_SECONDS = 60.0
 DEFAULT_MAX_RETRIES = 3
 
 
+def _build_auth(*, api_key: str | None, auth: Credential | None) -> DiscolikeAuth:
+    # Rotated refresh tokens are written back only when the credential came from the config file.
+    credential = resolve_credential(api_key=api_key, auth=auth)
+    return DiscolikeAuth(credential, on_update=save_credential if auth is None else None)
+
+
 class Discolike:
     def __init__(
         self,
         *,
         api_key: str | None = None,
+        auth: Credential | None = None,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         max_retries: int = DEFAULT_MAX_RETRIES,
@@ -59,7 +69,7 @@ class Discolike:
     ) -> None:
         self._attach(
             Transport(
-                resolve_api_key(api_key),
+                _build_auth(api_key=api_key, auth=auth),
                 base_url=base_url,
                 timeout=timeout,
                 max_retries=max_retries,
@@ -121,6 +131,7 @@ class AsyncDiscolike:
         self,
         *,
         api_key: str | None = None,
+        auth: Credential | None = None,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         max_retries: int = DEFAULT_MAX_RETRIES,
@@ -128,7 +139,7 @@ class AsyncDiscolike:
     ) -> None:
         self._attach(
             AsyncTransport(
-                resolve_api_key(api_key),
+                _build_auth(api_key=api_key, auth=auth),
                 base_url=base_url,
                 timeout=timeout,
                 max_retries=max_retries,

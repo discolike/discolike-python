@@ -9,6 +9,7 @@ from discolike._jobs import AsyncJob
 from discolike._jobs import Job
 from discolike._transport import AsyncTransport
 from discolike._transport import Transport
+from discolike_testkit import api_key_auth
 
 BASE = "https://api.test/v1"
 
@@ -25,7 +26,7 @@ def no_sleep(monkeypatch):
 
 def make_job(handler) -> Job:
     http = httpx2.Client(transport=httpx2.MockTransport(handler), base_url=BASE)
-    transport = Transport("k", base_url=BASE, timeout=5.0, max_retries=0, http_client=http)
+    transport = Transport(api_key_auth("k"), base_url=BASE, timeout=5.0, max_retries=0, http_client=http)
     return Job(transport, task_family=FAMILY_DISCOGEN, task_id="t-1")
 
 
@@ -123,6 +124,6 @@ async def test_async_job_wait() -> None:
         [{"status": "in_progress", "progress": 5}, {"status": "completed", "progress": 100, "results": []}]
     )
     http = httpx2.AsyncClient(transport=httpx2.MockTransport(handler), base_url=BASE)
-    transport = AsyncTransport("k", base_url=BASE, timeout=5.0, max_retries=0, http_client=http)
+    transport = AsyncTransport(api_key_auth("k"), base_url=BASE, timeout=5.0, max_retries=0, http_client=http)
     final = await AsyncJob(transport, task_family=FAMILY_DISCOGEN, task_id="t-1").wait(timeout=60.0)
     assert final.status == "completed"

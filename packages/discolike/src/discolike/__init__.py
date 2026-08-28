@@ -1,5 +1,7 @@
 from discolike._client import AsyncDiscolike
 from discolike._client import Discolike
+from discolike._credentials import ApiKeyCredential
+from discolike._credentials import OAuthCredential
 from discolike._exceptions import APIConnectionError
 from discolike._exceptions import AuthenticationError
 from discolike._exceptions import DiscolikeError
@@ -26,6 +28,7 @@ from discolike.resources.email import ValidationOutput
 
 __all__ = [
     "APIConnectionError",
+    "ApiKeyCredential",
     "AsyncDiscolike",
     "AsyncJob",
     "AuthenticationError",
@@ -44,6 +47,7 @@ __all__ = [
     "JobStatus",
     "JobTimeoutError",
     "NotFoundError",
+    "OAuthCredential",
     "PlanAccessError",
     "RateLimitError",
     "ServerError",
