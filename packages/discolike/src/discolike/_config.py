@@ -64,18 +64,6 @@ def delete_credential() -> None:
     save_config({OAUTH_CLIENT_KEY: stored_client})
 
 
-def resolve_api_key(explicit: str | None = None) -> str:
-    if explicit:
-        return explicit
-    from_env = os.environ.get(ENV_API_KEY)
-    if from_env:
-        return from_env
-    from_file = load_config().get("api_key")
-    if from_file:
-        return str(from_file)
-    raise AuthenticationError(NO_CREDENTIAL_MESSAGE)
-
-
 def load_credential() -> Credential | None:
     config = load_config()
     if config.get("auth_method") == AUTH_METHOD_OAUTH:

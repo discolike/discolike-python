@@ -9,7 +9,6 @@ from discolike._config import delete_oauth_client
 from discolike._config import load_config
 from discolike._config import load_credential
 from discolike._config import load_oauth_client
-from discolike._config import resolve_api_key
 from discolike._config import resolve_credential
 from discolike._config import save_config
 from discolike._config import save_credential
@@ -47,22 +46,6 @@ def test_load_missing_returns_empty(isolated_config) -> None:
     assert load_config() == {}
 
 
-def test_resolve_precedence_explicit_wins(isolated_config, monkeypatch) -> None:
-    save_config({"auth_method": "api_key", "api_key": "from-file"})
-    monkeypatch.setenv("DISCOLIKE_API_KEY", "from-env")
-    assert resolve_api_key("explicit") == "explicit"
-    assert resolve_api_key(None) == "from-env"
-    monkeypatch.delenv("DISCOLIKE_API_KEY")
-    assert resolve_api_key(None) == "from-file"
-
-
-def test_resolve_nothing_raises_with_guidance(isolated_config) -> None:
-    with pytest.raises(AuthenticationError) as exc_info:
-        resolve_api_key(None)
-    assert "DISCOLIKE_API_KEY" in str(exc_info.value)
-    assert "discolike auth login" in str(exc_info.value)
-
-
 def test_corrupt_config_returns_empty(isolated_config) -> None:
     config_path().parent.mkdir(parents=True, exist_ok=True)
     config_path().write_text("{not json")
@@ -98,7 +81,6 @@ def test_save_and_load_oauth_credential(isolated_config) -> None:
 def test_save_api_key_credential_keeps_legacy_shape(isolated_config) -> None:
     save_credential(ApiKeyCredential(api_key="dk-1"))
     assert load_config() == {"auth_method": "api_key", "api_key": "dk-1"}
-    assert resolve_api_key(None) == "dk-1"
 
 
 def test_load_credential_without_auth_method_is_api_key(isolated_config) -> None:
