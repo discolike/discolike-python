@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 (unreleased)
+## 0.3.0 (2026-08-29)
 
 - SDK: OAuth login. `Discolike(auth=...)` / `AsyncDiscolike(auth=...)` accept an `ApiKeyCredential` or `OAuthCredential` (both exported from `discolike`); `api_key=`, `DISCOLIKE_API_KEY`, and the config file keep working unchanged, and `auth=` wins over all of them. OAuth credentials send `Authorization: Bearer`, refresh proactively within 60s of expiry and once more after a 401, and write rotated refresh tokens back to the config file when they were loaded from it (an injected `auth=` is never persisted). A refresh that fails raises `AuthenticationError("OAuth session expired; run `discolike auth login`")`. Config file gains the shape `{"auth_method": "oauth", "oauth": {...}}` next to the existing `api_key` shape.
 - SDK: `http_client=` now has its `.auth` set by the SDK (the `X-discolike-key` header moved from a static default header into an `httpx2.Auth`); an `auth` already set on a user-supplied client is replaced.
