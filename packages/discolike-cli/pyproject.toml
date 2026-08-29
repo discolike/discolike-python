@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "discolike-cli"
-version = "0.2.0"
+version = "0.3.0"
 description = "Official CLI for the DiscoLike API"
 readme = "README.md"
 license = "MIT"
@@ -12,7 +12,7 @@ license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [{ name = "DiscoLike", email = "support@discolike.com" }]
 dependencies = [
-  "discolike==0.2.0",
+  "discolike==0.3.0",
   "typer>=0.12",
   "rich>=13.0",
 ]

@@ -27,6 +27,8 @@ jobs:
               run: |
                   if [ "$BASE_REF" = "development" ] && [ -n "$DEV_SPEC_URL" ]; then
                       uv run python scripts/check_contract.py --spec-url "$DEV_SPEC_URL"
+                      uv run python scripts/gen_requests.py --check --spec-url "$DEV_SPEC_URL"
                   else
                       uv run python scripts/check_contract.py
+                      uv run python scripts/gen_requests.py --check
                   fi

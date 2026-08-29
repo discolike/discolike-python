@@ -22,7 +22,7 @@ Requires Python 3.10+. Installing this package gives you the `discolike` command
 discolike auth login
 ```
 
-Prompts for an API key (or pass `--api-key`) and verifies it against your account. Create a key at [app.discolike.com/account/management/keys](https://app.discolike.com/account/management/keys). You can also set `DISCOLIKE_API_KEY` in the environment instead.
+Opens your browser to log in (add `--no-browser` to print the URL instead, `--port` to pin the loopback port when forwarding over SSH). To use an API key instead, pass `--api-key KEY` or `--method api_key` to be prompted; create a key at [app.discolike.com/account/management/keys](https://app.discolike.com/account/management/keys). You can also set `DISCOLIKE_API_KEY` in the environment instead.
 
 ## Quickstart
 

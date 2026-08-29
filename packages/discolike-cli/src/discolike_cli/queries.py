@@ -7,8 +7,14 @@ from pathlib import Path
 
 import typer
 
+from discolike.requests import CreateExclusionListRequest
+from discolike.requests import QueriesListParams
+from discolike.requests import SaveResultsRequest
+from discolike.requests import UpdateQueryRequest
+from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
+from discolike_cli.discover import _merge_params
 
 FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls back to JSON for non-tabular data)."
 
@@ -36,7 +42,10 @@ def list_command(
     """List saved queries."""
     from discolike_cli.main import get_client
 
-    emit(get_client(ctx).queries.list(max_records=max_records, offset=offset, action=action, tags=tag), fmt=fmt)
+    request = build_request(
+        QueriesListParams, _merge_params(None, max_records=max_records, offset=offset, action=action, tags=tag)
+    )
+    emit(get_client(ctx).queries.list(request), fmt=fmt)
 
 
 @app.command("create-exclusion-list")
@@ -51,14 +60,11 @@ def create_exclusion_list_command(
     """Create a named exclusion list of domains and/or persona IDs."""
     from discolike_cli.main import get_client
 
-    emit(
-        get_client(ctx).queries.create_exclusion_list(
-            query_name=name,
-            domains=domain,
-            persona_ids=persona_id,
-            tags=tag,
-        )
+    request = build_request(
+        CreateExclusionListRequest,
+        _merge_params(None, query_name=name, domains=domain, persona_ids=persona_id, tags=tag),
     )
+    emit(get_client(ctx).queries.create_exclusion_list(request))
 
 
 @app.command("save-results")
@@ -89,15 +95,11 @@ def save_results_command(
     except json.JSONDecodeError as exc:
         raise typer.BadParameter(f"--input file {input_path} must contain valid JSON: {exc}") from exc
 
-    emit(
-        get_client(ctx).queries.save_results(
-            query_name=name,
-            action=action.value,
-            data=data,
-            domain_column=domain_column,
-            tags=tag,
-        )
+    request = build_request(
+        SaveResultsRequest,
+        _merge_params(None, query_name=name, action=action.value, data=data, domain_column=domain_column, tags=tag),
     )
+    emit(get_client(ctx).queries.save_results(request))
 
 
 @app.command("update")
@@ -111,7 +113,8 @@ def update_command(
     """Rename a saved query and/or update its tags."""
     from discolike_cli.main import get_client
 
-    emit(get_client(ctx).queries.update(query_id=query_id, query_name=name, tags=tag))
+    request = build_request(UpdateQueryRequest, _merge_params(None, query_name=name, tags=tag))
+    emit(get_client(ctx).queries.update(request, query_id=query_id))
 
 
 @app.command("delete")

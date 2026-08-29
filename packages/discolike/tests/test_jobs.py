@@ -9,6 +9,7 @@ from discolike._jobs import AsyncJob
 from discolike._jobs import Job
 from discolike._transport import AsyncTransport
 from discolike._transport import Transport
+from discolike_testkit import api_key_auth
 
 BASE = "https://api.test/v1"
 
@@ -25,7 +26,7 @@ def no_sleep(monkeypatch):
 
 def make_job(handler) -> Job:
     http = httpx2.Client(transport=httpx2.MockTransport(handler), base_url=BASE)
-    transport = Transport("k", base_url=BASE, timeout=5.0, max_retries=0, http_client=http)
+    transport = Transport(api_key_auth("k"), base_url=BASE, timeout=5.0, max_retries=0, http_client=http)
     return Job(transport, task_family=FAMILY_DISCOGEN, task_id="t-1")
 
 
@@ -52,6 +53,39 @@ def test_wait_polls_to_completion() -> None:
     final = make_job(handler).wait(timeout=60.0, poll_interval=1.0)
     assert final.status == "completed"
     assert final.results == [{"domain": "a.com"}]
+
+
+def test_status_exposes_cost_metadata_and_warnings() -> None:
+    payload = {
+        "status": "completed",
+        "progress": 100,
+        "results": {"a.com": "yes"},
+        "estimated_cost": 0.0283,
+        "warnings": ["Search provider out of credits"],
+        "cost_metadata": {
+            "openai/gpt-4o-mini": {"calls": 10, "search_calls": 0, "est_cost_usd": 0.0083},
+            "search_provider": {
+                "provider": "serper",
+                "search_model": "serper/search",
+                "queries_executed": 20,
+                "queries_succeeded": 20,
+                "est_cost_usd": 0.02,
+            },
+        },
+    }
+    final = make_job(_status_sequence([payload])).status()
+    assert final.estimated_cost == 0.0283
+    assert final.warnings == ["Search provider out of credits"]
+    assert final.cost_metadata is not None
+    assert final.cost_metadata["search_provider"]["queries_executed"] == 20
+    assert final.cost_metadata["openai/gpt-4o-mini"]["search_calls"] == 0
+
+
+def test_status_without_cost_fields_defaults_to_none() -> None:
+    final = make_job(_status_sequence([{"status": "in_progress", "progress": 10}])).status()
+    assert final.estimated_cost is None
+    assert final.cost_metadata is None
+    assert final.warnings == []
 
 
 def test_wait_failed_raises() -> None:
@@ -90,6 +124,6 @@ async def test_async_job_wait() -> None:
         [{"status": "in_progress", "progress": 5}, {"status": "completed", "progress": 100, "results": []}]
     )
     http = httpx2.AsyncClient(transport=httpx2.MockTransport(handler), base_url=BASE)
-    transport = AsyncTransport("k", base_url=BASE, timeout=5.0, max_retries=0, http_client=http)
+    transport = AsyncTransport(api_key_auth("k"), base_url=BASE, timeout=5.0, max_retries=0, http_client=http)
     final = await AsyncJob(transport, task_family=FAMILY_DISCOGEN, task_id="t-1").wait(timeout=60.0)
     assert final.status == "completed"

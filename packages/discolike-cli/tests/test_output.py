@@ -4,6 +4,7 @@ import json
 import sys
 from collections.abc import Callable
 
+import pydantic
 import pytest
 import typer
 
@@ -11,8 +12,11 @@ from discolike import AuthenticationError
 from discolike import RateLimitError
 from discolike import ServerError
 from discolike import ValidationError
+from discolike.requests import DiscoverParams
+from discolike.requests import MatchCompanyParams
 from discolike.resources.discovery import Company
 from discolike_cli._output import EXIT_CODES
+from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import fail
 from discolike_cli._output import handle_errors
@@ -251,3 +255,43 @@ def test_run_job_with_wait_emits_full_status_when_no_results(capsys: pytest.Capt
     run_job(job, wait=True, timeout=30.0)
     captured = capsys.readouterr()
     assert json.loads(captured.out) == {"progress": 100, "results": None}
+
+
+def test_build_request_wraps_a_bare_string_for_list_fields() -> None:
+    request = build_request(DiscoverParams, {"subdomain": "shop", "country": ["DE"], "icp_prompt": "X"})
+    assert request.to_wire() == {"subdomain": ["shop"], "country": ["DE"], "icp_prompt": "X"}
+
+
+def test_build_request_coerces_scalar_strings_from_param() -> None:
+    request = build_request(DiscoverParams, {"min_similarity": "50", "redirect": "true"})
+    assert request.to_wire() == {"min_similarity": 50, "redirect": True}
+
+
+def test_build_request_passes_unknown_keys_through() -> None:
+    assert build_request(DiscoverParams, {"future_flag": "on"}).to_wire() == {"future_flag": "on"}
+
+
+def test_build_request_raises_pydantic_validation_error_on_bad_values() -> None:
+    with pytest.raises(pydantic.ValidationError, match="min_similarity"):
+        build_request(DiscoverParams, {"min_similarity": "200"})
+
+
+def test_call_typed_is_gone() -> None:
+    import discolike_cli._output as output_module
+
+    assert not hasattr(output_module, "call_typed")
+
+
+def test_handle_errors_maps_pydantic_validation_error_to_exit_2(capsys: pytest.CaptureFixture[str]) -> None:
+    @handle_errors
+    def bad() -> None:
+        MatchCompanyParams.model_validate({"min_match_confidence": 10})
+
+    with pytest.raises(typer.Exit) as exc_info:
+        bad()
+    assert exc_info.value.exit_code == 2
+    payload = json.loads(capsys.readouterr().err)
+    assert payload["error"] == "ValidationError"
+    assert payload["status_code"] is None
+    assert "name" in payload["message"]
+    assert "min_match_confidence" in payload["message"]

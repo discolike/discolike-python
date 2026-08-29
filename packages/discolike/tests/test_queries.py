@@ -3,7 +3,13 @@ from __future__ import annotations
 import json
 
 import httpx2
+import pydantic
+import pytest
 
+from discolike.requests import CreateExclusionListRequest
+from discolike.requests import QueriesListParams
+from discolike.requests import SaveResultsRequest
+from discolike.requests import UpdateQueryRequest
 from discolike_testkit import AsyncClientFactory
 from discolike_testkit import ClientFactory
 
@@ -17,7 +23,7 @@ def test_list_sends_params_and_parses_response(make_client: ClientFactory) -> No
         return httpx2.Response(200, json={"results": [{"query_id": "q1"}], "count": 1})
 
     with make_client(handler) as client:
-        result = client.queries.list(max_records=10, offset=5, action="discover", tags=["a", "b"])
+        result = client.queries.list(QueriesListParams(max_records=10, offset=5, action="discover", tags=["a", "b"]))
 
     assert seen["path"] == "/v1/queries/saved"
     assert seen["params"]["max_records"] == "10"
@@ -38,7 +44,9 @@ def test_create_exclusion_list_posts_json_body(make_client: ClientFactory) -> No
         return httpx2.Response(200, json={"query_id": "q2", "query_name": "My List", "domain_count": 2})
 
     with make_client(handler) as client:
-        result = client.queries.create_exclusion_list(query_name="My List", domains=["a.com", "b.com"])
+        result = client.queries.create_exclusion_list(
+            CreateExclusionListRequest(query_name="My List", domains=["a.com", "b.com"])
+        )
 
     assert seen["path"] == "/v1/queries/exclusion-list"
     assert seen["method"] == "POST"
@@ -56,7 +64,7 @@ def test_update_patches_path_and_body(make_client: ClientFactory) -> None:
         return httpx2.Response(200, json={"query_id": "q3", "query_name": "New Name"})
 
     with make_client(handler) as client:
-        result = client.queries.update(query_id="q3", query_name="New Name")
+        result = client.queries.update(UpdateQueryRequest(query_name="New Name"), query_id="q3")
 
     assert seen["path"] == "/v1/queries/q3"
     assert seen["method"] == "PATCH"
@@ -85,7 +93,7 @@ async def test_list_async(make_async_client: AsyncClientFactory) -> None:
         return httpx2.Response(200, json={"results": [], "count": 0})
 
     async with make_async_client(handler) as client:
-        result = await client.queries.list()
+        result = await client.queries.list(QueriesListParams())
 
     assert result.count == 0
     assert result.results == []
@@ -111,7 +119,9 @@ def test_save_results_posts_json_body(make_client: ClientFactory) -> None:
         return httpx2.Response(200, json={"query_id": "q6", "action": "thin_discover", "row_count": 1})
 
     with make_client(handler) as client:
-        result = client.queries.save_results(query_name="R", action="discover", data=[{"domain": "a.com"}], tags=["x"])
+        result = client.queries.save_results(
+            SaveResultsRequest(query_name="R", action="discover", data=[{"domain": "a.com"}], tags=["x"])
+        )
 
     assert seen["path"] == "/v1/queries/save-results"
     assert seen["method"] == "POST"
@@ -126,17 +136,24 @@ async def test_save_results_async(make_async_client: AsyncClientFactory) -> None
         return httpx2.Response(200, json={"query_id": "q7"})
 
     async with make_async_client(handler) as client:
-        result = await client.queries.save_results(query_name="R", action="discover", data=[{"domain": "a.com"}])
+        result = await client.queries.save_results(
+            SaveResultsRequest(query_name="R", action="discover", data=[{"domain": "a.com"}])
+        )
 
     assert result.query_id == "q7"
+
+
+def test_save_results_rejects_unknown_action_before_any_request() -> None:
+    with pytest.raises(pydantic.ValidationError, match="action"):
+        SaveResultsRequest.model_validate({"query_name": "R", "action": "bogus", "data": [{"domain": "a.com"}]})
 
 
 def test_route_metadata_stamped() -> None:
     from discolike.resources._base import get_discolike_route
     from discolike.resources.queries import QueriesResource
 
-    assert get_discolike_route(QueriesResource.list) == ("GET", "/queries/saved", True, ())
-    assert get_discolike_route(QueriesResource.create_exclusion_list) == ("POST", "/queries/exclusion-list", True, ())
-    assert get_discolike_route(QueriesResource.update) == ("PATCH", "/queries/{query_id}", True, ())
-    assert get_discolike_route(QueriesResource.delete) == ("DELETE", "/queries/{query_id}", True, ())
-    assert get_discolike_route(QueriesResource.save_results) == ("POST", "/queries/save-results", True, ())
+    assert get_discolike_route(QueriesResource.list) == ("GET", "/queries/saved", True)
+    assert get_discolike_route(QueriesResource.create_exclusion_list) == ("POST", "/queries/exclusion-list", True)
+    assert get_discolike_route(QueriesResource.update) == ("PATCH", "/queries/{query_id}", True)
+    assert get_discolike_route(QueriesResource.delete) == ("DELETE", "/queries/{query_id}", True)
+    assert get_discolike_route(QueriesResource.save_results) == ("POST", "/queries/save-results", True)

@@ -5,7 +5,10 @@ import builtins
 import pydantic
 
 from discolike._models import DiscolikeModel
-from discolike._transport import drop_none
+from discolike.requests import CreateExclusionListRequest
+from discolike.requests import QueriesListParams
+from discolike.requests import SaveResultsRequest
+from discolike.requests import UpdateQueryRequest
 from discolike.resources._base import AsyncAPIResource
 from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
@@ -40,55 +43,23 @@ class QueryResult(DiscolikeModel):
 
 class QueriesResource(SyncAPIResource):
     @api_route("GET", "/queries/saved")
-    def list(
-        self,
-        *,
-        max_records: int | None = None,
-        offset: int | None = None,
-        action: str | None = None,
-        tags: builtins.list[str] | None = None,
-    ) -> SavedQueries:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        return SavedQueries.model_validate(self._transport.request("GET", "/queries/saved", params=params).json())
+    def list(self, params: QueriesListParams) -> SavedQueries:
+        response = self._transport.request("GET", "/queries/saved", params=params.to_wire())
+        return SavedQueries.model_validate(response.json())
 
     @api_route("POST", "/queries/exclusion-list")
-    def create_exclusion_list(
-        self,
-        *,
-        query_name: str,
-        domains: builtins.list[str] | None = None,
-        persona_ids: builtins.list[int] | None = None,
-        tags: builtins.list[str] | None = None,
-    ) -> QueryResult:
-        body = {k: v for k, v in locals().items() if k != "self"}
-        response = self._transport.request("POST", "/queries/exclusion-list", json_body=drop_none(body))
+    def create_exclusion_list(self, request: CreateExclusionListRequest) -> QueryResult:
+        response = self._transport.request("POST", "/queries/exclusion-list", json_body=request.to_wire())
         return QueryResult.model_validate(response.json())
 
     @api_route("POST", "/queries/save-results")
-    def save_results(
-        self,
-        *,
-        query_name: str,
-        action: str,
-        data: builtins.list[dict],
-        query_params: dict | None = None,
-        domain_column: str | None = None,
-        tags: builtins.list[str] | None = None,
-    ) -> QueryResult:
-        body = {k: v for k, v in locals().items() if k != "self"}
-        response = self._transport.request("POST", "/queries/save-results", json_body=drop_none(body))
+    def save_results(self, request: SaveResultsRequest) -> QueryResult:
+        response = self._transport.request("POST", "/queries/save-results", json_body=request.to_wire())
         return QueryResult.model_validate(response.json())
 
     @api_route("PATCH", "/queries/{query_id}")
-    def update(
-        self,
-        *,
-        query_id: str,
-        query_name: str | None = None,
-        tags: builtins.list[str] | None = None,
-    ) -> QueryResult:
-        body = {"query_name": query_name, "tags": tags}
-        response = self._transport.request("PATCH", f"/queries/{query_id}", json_body=drop_none(body))
+    def update(self, request: UpdateQueryRequest, *, query_id: str) -> QueryResult:
+        response = self._transport.request("PATCH", f"/queries/{query_id}", json_body=request.to_wire())
         return QueryResult.model_validate(response.json())
 
     @api_route("DELETE", "/queries/{query_id}")
@@ -98,56 +69,23 @@ class QueriesResource(SyncAPIResource):
 
 class AsyncQueriesResource(AsyncAPIResource):
     @api_route("GET", "/queries/saved")
-    async def list(
-        self,
-        *,
-        max_records: int | None = None,
-        offset: int | None = None,
-        action: str | None = None,
-        tags: builtins.list[str] | None = None,
-    ) -> SavedQueries:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        response = await self._transport.request("GET", "/queries/saved", params=params)
+    async def list(self, params: QueriesListParams) -> SavedQueries:
+        response = await self._transport.request("GET", "/queries/saved", params=params.to_wire())
         return SavedQueries.model_validate(response.json())
 
     @api_route("POST", "/queries/exclusion-list")
-    async def create_exclusion_list(
-        self,
-        *,
-        query_name: str,
-        domains: builtins.list[str] | None = None,
-        persona_ids: builtins.list[int] | None = None,
-        tags: builtins.list[str] | None = None,
-    ) -> QueryResult:
-        body = {k: v for k, v in locals().items() if k != "self"}
-        response = await self._transport.request("POST", "/queries/exclusion-list", json_body=drop_none(body))
+    async def create_exclusion_list(self, request: CreateExclusionListRequest) -> QueryResult:
+        response = await self._transport.request("POST", "/queries/exclusion-list", json_body=request.to_wire())
         return QueryResult.model_validate(response.json())
 
     @api_route("POST", "/queries/save-results")
-    async def save_results(
-        self,
-        *,
-        query_name: str,
-        action: str,
-        data: builtins.list[dict],
-        query_params: dict | None = None,
-        domain_column: str | None = None,
-        tags: builtins.list[str] | None = None,
-    ) -> QueryResult:
-        body = {k: v for k, v in locals().items() if k != "self"}
-        response = await self._transport.request("POST", "/queries/save-results", json_body=drop_none(body))
+    async def save_results(self, request: SaveResultsRequest) -> QueryResult:
+        response = await self._transport.request("POST", "/queries/save-results", json_body=request.to_wire())
         return QueryResult.model_validate(response.json())
 
     @api_route("PATCH", "/queries/{query_id}")
-    async def update(
-        self,
-        *,
-        query_id: str,
-        query_name: str | None = None,
-        tags: builtins.list[str] | None = None,
-    ) -> QueryResult:
-        body = {"query_name": query_name, "tags": tags}
-        response = await self._transport.request("PATCH", f"/queries/{query_id}", json_body=drop_none(body))
+    async def update(self, request: UpdateQueryRequest, *, query_id: str) -> QueryResult:
+        response = await self._transport.request("PATCH", f"/queries/{query_id}", json_body=request.to_wire())
         return QueryResult.model_validate(response.json())
 
     @api_route("DELETE", "/queries/{query_id}")

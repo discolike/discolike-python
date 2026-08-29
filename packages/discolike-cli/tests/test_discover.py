@@ -34,13 +34,13 @@ def test_discover_sends_options_and_param_escape_hatch(install_build_client: Cal
     install_build_client(handler)
     result = runner.invoke(
         app,
-        ["discover", "--icp-prompt", "X", "--country", "DE", "--param", "min_similarity=200"],
+        ["discover", "--icp-prompt", "X", "--country", "DE", "--param", "min_similarity=50"],
     )
     assert result.exit_code == 0, result.output
     params = captured["params"]
     assert params.get("icp_prompt") == "X"
     assert params.get_list("country") == ["DE"]
-    assert params.get("min_similarity") == "200"
+    assert params.get("min_similarity") == "50"
     stdout = json.loads(result.stdout)
     assert stdout[0]["domain"] == "acme.com"
 
@@ -53,9 +53,9 @@ def test_discover_param_with_comma_value_becomes_list(install_build_client: Call
         return _discover_ok(request)
 
     install_build_client(handler)
-    result = runner.invoke(app, ["discover", "--param", "social=linkedin,github"])
+    result = runner.invoke(app, ["discover", "--param", "social=linkedin,youtube"])
     assert result.exit_code == 0, result.output
-    assert captured["params"].get_list("social") == ["linkedin", "github"]
+    assert captured["params"].get_list("social") == ["linkedin", "youtube"]
 
 
 def test_discover_param_without_equals_exits_2(install_build_client: Callable[[Handler], None]) -> None:
@@ -64,10 +64,26 @@ def test_discover_param_without_equals_exits_2(install_build_client: Callable[[H
     assert result.exit_code == 2
 
 
-def test_discover_param_removed_kwarg_exits_2(install_build_client: Callable[[Handler], None]) -> None:
-    install_build_client(_discover_ok)
+def test_discover_param_unknown_key_passes_through(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.QueryParams] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["params"] = request.url.params
+        return _discover_ok(request)
+
+    install_build_client(handler)
     result = runner.invoke(app, ["discover", "--param", "min_score=1"])
+    assert result.exit_code == 0, result.output
+    assert captured["params"].get("min_score") == "1"
+
+
+def test_discover_param_out_of_range_exits_2(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_discover_ok)
+    result = runner.invoke(app, ["discover", "--param", "min_similarity=200"])
     assert result.exit_code == 2
+    payload = json.loads(result.stderr)
+    assert payload["error"] == "ValidationError"
+    assert "min_similarity" in payload["message"]
 
 
 def test_discover_explicit_option_wins_over_param_duplicate(install_build_client: Callable[[Handler], None]) -> None:

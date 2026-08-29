@@ -4,9 +4,15 @@ import pathlib
 
 import typer
 
+from discolike.requests import AppendParams
+from discolike.requests import SegmentFileParams
+from discolike.requests import SegmentParams
+from discolike.requests import ValidateIcpRequest
+from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
 from discolike_cli._output import run_job
+from discolike_cli.discover import _merge_params
 
 DEFAULT_WAIT_TIMEOUT_SECONDS = 900.0
 
@@ -49,15 +55,19 @@ def validate_icp_command(
         assert domain is not None
         domains = domain
 
-    job = get_client(ctx).validate_icp(
-        icp_text=icp,
-        domains=domains,
-        context_mode=context_mode,
-        integration_id=integration_id,
-        web_search=web_search,
-        search_provider_id=search_provider_id,
+    request = build_request(
+        ValidateIcpRequest,
+        _merge_params(
+            None,
+            icp_text=icp,
+            domains=domains,
+            context_mode=context_mode,
+            integration_id=integration_id,
+            web_search=web_search,
+            search_provider_id=search_provider_id,
+        ),
     )
-    run_job(job, wait=wait, timeout=timeout, fmt=fmt)
+    run_job(get_client(ctx).validate_icp(request), wait=wait, timeout=timeout, fmt=fmt)
 
 
 @handle_errors
@@ -75,7 +85,8 @@ def append_command(
     """Enrich a CSV of domains with DiscoLike datasets."""
     from discolike_cli.main import get_client
 
-    result = get_client(ctx).append(file=file, dataset=dataset, domain_column=domain_column, csv=csv)
+    request = build_request(AppendParams, _merge_params(None, dataset=dataset, domain_column=domain_column, csv=csv))
+    result = get_client(ctx).append(request, file=file)
     if isinstance(result, bytes):
         if output is None:
             raise typer.BadParameter("--output is required when the response is CSV bytes")
@@ -102,10 +113,14 @@ def segment_command(
     if (not domain) == (file is None):
         raise typer.BadParameter("Provide exactly one of --domain or --file")
 
-    job = get_client(ctx).segment(
-        domains=domain or None,
-        file=file,
-        domain_column=domain_column,
-        max_segments=max_segments,
-    )
+    client = get_client(ctx)
+    if file is not None:
+        request = build_request(
+            SegmentFileParams, _merge_params(None, domain_column=domain_column, max_segments=max_segments)
+        )
+        job = client.segment_file(request, file=file)
+    else:
+        assert domain is not None
+        request = build_request(SegmentParams, _merge_params(None, domains=",".join(domain), max_segments=max_segments))
+        job = client.segment(request)
     run_job(job, wait=wait, timeout=timeout, fmt=fmt)

@@ -3,6 +3,14 @@ from __future__ import annotations
 import pydantic
 
 from discolike._models import DiscolikeModel
+from discolike.requests import CompaniesDataParams
+from discolike.requests import CompaniesExtractParams
+from discolike.requests import CompaniesGrowthParams
+from discolike.requests import CompaniesPublicLinksParams
+from discolike.requests import CompaniesRedirectsParams
+from discolike.requests import CompaniesScoreParams
+from discolike.requests import CompaniesSubsidiariesParams
+from discolike.requests import CompaniesVendorsParams
 from discolike.resources._base import AsyncAPIResource
 from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
@@ -114,91 +122,79 @@ class PublicLink(DiscolikeModel):
 
 class CompaniesResource(SyncAPIResource):
     @api_route("GET", "/bizdata")
-    def data(self, *, domain: str) -> BizData:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        return BizData.model_validate(self._transport.request("GET", "/bizdata", params=params).json())
+    def data(self, params: CompaniesDataParams) -> BizData:
+        return BizData.model_validate(self._transport.request("GET", "/bizdata", params=params.to_wire()).json())
 
     @api_route("GET", "/score")
-    def score(self, *, domain: str) -> Score:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        return Score.model_validate(self._transport.request("GET", "/score", params=params).json())
+    def score(self, params: CompaniesScoreParams) -> Score:
+        return Score.model_validate(self._transport.request("GET", "/score", params=params.to_wire()).json())
 
     @api_route("GET", "/growth")
-    def growth(self, *, domain: str) -> Growth:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        return Growth.model_validate(self._transport.request("GET", "/growth", params=params).json())
+    def growth(self, params: CompaniesGrowthParams) -> Growth:
+        return Growth.model_validate(self._transport.request("GET", "/growth", params=params.to_wire()).json())
 
     @api_route("GET", "/extract")
-    def extract(self, *, url: str | None = None, domain: str | None = None) -> ExtractResult:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        return ExtractResult.model_validate(self._transport.request("GET", "/extract", params=params).json())
+    def extract(self, params: CompaniesExtractParams) -> ExtractResult:
+        return ExtractResult.model_validate(self._transport.request("GET", "/extract", params=params.to_wire()).json())
 
     @api_route("GET", "/redirects")
-    def redirects(self, *, domain: str, match: str | None = None) -> list[Redirect]:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        rows = self._transport.request("GET", "/redirects", params=params).json()
+    def redirects(self, params: CompaniesRedirectsParams) -> list[Redirect]:
+        rows = self._transport.request("GET", "/redirects", params=params.to_wire()).json()
         return [Redirect.model_validate(row) for row in rows]
 
     @api_route("GET", "/vendors")
-    def vendors(self, *, domain: str, match: str | None = None) -> list[Vendor]:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        rows = self._transport.request("GET", "/vendors", params=params).json()
+    def vendors(self, params: CompaniesVendorsParams) -> list[Vendor]:
+        rows = self._transport.request("GET", "/vendors", params=params.to_wire()).json()
         return [Vendor.model_validate(row) for row in rows]
 
     @api_route("GET", "/subsidiaries")
-    def subsidiaries(self, *, domain: str, match: str | None = None) -> list[Subsidiary]:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        rows = self._transport.request("GET", "/subsidiaries", params=params).json()
+    def subsidiaries(self, params: CompaniesSubsidiariesParams) -> list[Subsidiary]:
+        rows = self._transport.request("GET", "/subsidiaries", params=params.to_wire()).json()
         return [Subsidiary.model_validate(row) for row in rows]
 
     @api_route("GET", "/publiclink")
-    def public_links(self, *, domain: str, source: str) -> list[PublicLink]:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        rows = self._transport.request("GET", "/publiclink", params=params).json()
+    def public_links(self, params: CompaniesPublicLinksParams) -> list[PublicLink]:
+        rows = self._transport.request("GET", "/publiclink", params=params.to_wire()).json()
         return [PublicLink.model_validate(row) for row in rows]
 
 
 class AsyncCompaniesResource(AsyncAPIResource):
     @api_route("GET", "/bizdata")
-    async def data(self, *, domain: str) -> BizData:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        return BizData.model_validate((await self._transport.request("GET", "/bizdata", params=params)).json())
+    async def data(self, params: CompaniesDataParams) -> BizData:
+        response = await self._transport.request("GET", "/bizdata", params=params.to_wire())
+        return BizData.model_validate(response.json())
 
     @api_route("GET", "/score")
-    async def score(self, *, domain: str) -> Score:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        return Score.model_validate((await self._transport.request("GET", "/score", params=params)).json())
+    async def score(self, params: CompaniesScoreParams) -> Score:
+        response = await self._transport.request("GET", "/score", params=params.to_wire())
+        return Score.model_validate(response.json())
 
     @api_route("GET", "/growth")
-    async def growth(self, *, domain: str) -> Growth:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        return Growth.model_validate((await self._transport.request("GET", "/growth", params=params)).json())
+    async def growth(self, params: CompaniesGrowthParams) -> Growth:
+        response = await self._transport.request("GET", "/growth", params=params.to_wire())
+        return Growth.model_validate(response.json())
 
     @api_route("GET", "/extract")
-    async def extract(self, *, url: str | None = None, domain: str | None = None) -> ExtractResult:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        return ExtractResult.model_validate((await self._transport.request("GET", "/extract", params=params)).json())
+    async def extract(self, params: CompaniesExtractParams) -> ExtractResult:
+        response = await self._transport.request("GET", "/extract", params=params.to_wire())
+        return ExtractResult.model_validate(response.json())
 
     @api_route("GET", "/redirects")
-    async def redirects(self, *, domain: str, match: str | None = None) -> list[Redirect]:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        rows = (await self._transport.request("GET", "/redirects", params=params)).json()
+    async def redirects(self, params: CompaniesRedirectsParams) -> list[Redirect]:
+        rows = (await self._transport.request("GET", "/redirects", params=params.to_wire())).json()
         return [Redirect.model_validate(row) for row in rows]
 
     @api_route("GET", "/vendors")
-    async def vendors(self, *, domain: str, match: str | None = None) -> list[Vendor]:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        rows = (await self._transport.request("GET", "/vendors", params=params)).json()
+    async def vendors(self, params: CompaniesVendorsParams) -> list[Vendor]:
+        rows = (await self._transport.request("GET", "/vendors", params=params.to_wire())).json()
         return [Vendor.model_validate(row) for row in rows]
 
     @api_route("GET", "/subsidiaries")
-    async def subsidiaries(self, *, domain: str, match: str | None = None) -> list[Subsidiary]:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        rows = (await self._transport.request("GET", "/subsidiaries", params=params)).json()
+    async def subsidiaries(self, params: CompaniesSubsidiariesParams) -> list[Subsidiary]:
+        rows = (await self._transport.request("GET", "/subsidiaries", params=params.to_wire())).json()
         return [Subsidiary.model_validate(row) for row in rows]
 
     @api_route("GET", "/publiclink")
-    async def public_links(self, *, domain: str, source: str) -> list[PublicLink]:
-        params = {k: v for k, v in locals().items() if k != "self"}
-        rows = (await self._transport.request("GET", "/publiclink", params=params)).json()
+    async def public_links(self, params: CompaniesPublicLinksParams) -> list[PublicLink]:
+        rows = (await self._transport.request("GET", "/publiclink", params=params.to_wire())).json()
         return [PublicLink.model_validate(row) for row in rows]

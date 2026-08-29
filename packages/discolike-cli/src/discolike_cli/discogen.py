@@ -5,9 +5,13 @@ import enum
 import typer
 
 from discolike._jobs import Job
+from discolike.requests import DiscoGenPersonaProcessRequest
+from discolike.requests import DiscoGenProcessRequest
+from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
 from discolike_cli._output import run_job
+from discolike_cli.discover import _merge_params
 
 DEFAULT_WAIT_TIMEOUT_SECONDS = 900.0
 
@@ -58,17 +62,21 @@ def run_command(
     """Run a DiscoGen research query across company domains (async job)."""
     from discolike_cli.main import get_client
 
-    job = get_client(ctx).discogen.process(
-        query=query,
-        domains=domain,
-        integration_id=integration_id,
-        web_search=web_search,
-        context_mode=context_mode,
-        include_x_search=include_x_search,
-        search_provider_id=search_provider_id,
-        search_context_size=search_context_size,
+    request = build_request(
+        DiscoGenProcessRequest,
+        _merge_params(
+            None,
+            query=query,
+            domains=domain,
+            integration_id=integration_id,
+            web_search=web_search,
+            context_mode=context_mode,
+            include_x_search=include_x_search,
+            search_provider_id=search_provider_id,
+            search_context_size=search_context_size,
+        ),
     )
-    run_job(job, wait=wait, timeout=timeout, fmt=fmt)
+    run_job(get_client(ctx).discogen.process(request), wait=wait, timeout=timeout, fmt=fmt)
 
 
 @app.command("run-personas")
@@ -92,17 +100,21 @@ def run_personas_command(
     """Run a DiscoGen research query across personas (async job)."""
     from discolike_cli.main import get_client
 
-    job = get_client(ctx).discogen.process_personas(
-        query=query,
-        persona_ids=persona_id,
-        integration_id=integration_id,
-        web_search=web_search,
-        context_mode=context_mode,
-        include_x_search=include_x_search,
-        search_provider_id=search_provider_id,
-        search_context_size=search_context_size,
+    request = build_request(
+        DiscoGenPersonaProcessRequest,
+        _merge_params(
+            None,
+            query=query,
+            persona_ids=persona_id,
+            integration_id=integration_id,
+            web_search=web_search,
+            context_mode=context_mode,
+            include_x_search=include_x_search,
+            search_provider_id=search_provider_id,
+            search_context_size=search_context_size,
+        ),
     )
-    run_job(job, wait=wait, timeout=timeout, fmt=fmt)
+    run_job(get_client(ctx).discogen.process_personas(request), wait=wait, timeout=timeout, fmt=fmt)
 
 
 @app.command("models")

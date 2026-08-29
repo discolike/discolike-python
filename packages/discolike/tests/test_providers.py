@@ -3,8 +3,12 @@ from __future__ import annotations
 import json
 
 import httpx2
+import pydantic
 import pytest
 
+from discolike.requests import LLMProviderCreateRequest
+from discolike.requests import LLMProviderUpdateRequest
+from discolike.requests import SearchProviderRequest
 from discolike_testkit import AsyncClientFactory
 from discolike_testkit import ClientFactory
 
@@ -36,10 +40,9 @@ def test_search_providers_create_posts_body_and_drops_unset(make_client: ClientF
 
     with make_client(handler) as client:
         result = client.search_providers.create(
-            integration_name="Tavily",
-            provider="tavily",
-            search_model="tavily/search",
-            api_key="tvly-key",
+            SearchProviderRequest(
+                integration_name="Tavily", provider="tavily", search_model="tavily/search", api_key="tvly-key"
+            )
         )
 
     assert seen["path"] == "/v1/search-providers"
@@ -64,10 +67,8 @@ def test_search_providers_update_puts_path_and_body(make_client: ClientFactory) 
 
     with make_client(handler) as client:
         result = client.search_providers.update(
+            SearchProviderRequest(integration_name="Serper", provider="serper", search_model="serper/search"),
             integration_id="sp3",
-            integration_name="Serper",
-            provider="serper",
-            search_model="serper/search",
         )
 
     assert seen["path"] == "/v1/search-providers/sp3"
@@ -172,10 +173,9 @@ def test_llm_providers_create_posts_body_and_drops_unset(make_client: ClientFact
 
     with make_client(handler) as client:
         result = client.llm_providers.create(
-            integration_name="OpenAI",
-            provider="openai",
-            api_key="sk-key",
-            model_name="gpt-4o",
+            LLMProviderCreateRequest(
+                integration_name="OpenAI", provider="openai", api_key="sk-key", model_name="gpt-4o"
+            )
         )
 
     assert seen["path"] == "/v1/llm-providers/config"
@@ -216,10 +216,10 @@ def test_llm_providers_update_keeps_null_api_key_in_body(make_client: ClientFact
 
     with make_client(handler) as client:
         result = client.llm_providers.update(
+            LLMProviderUpdateRequest(
+                integration_name="Anthropic", provider="anthropic", model_name="claude-sonnet-4-5", api_key=None
+            ),
             integration_id="llm3",
-            integration_name="Anthropic",
-            provider="anthropic",
-            model_name="claude-sonnet-4-5",
         )
 
     assert seen["path"] == "/v1/llm-providers/config/llm3"
@@ -242,11 +242,10 @@ def test_llm_providers_update_sends_new_api_key(make_client: ClientFactory) -> N
 
     with make_client(handler) as client:
         client.llm_providers.update(
+            LLMProviderUpdateRequest(
+                integration_name="Anthropic", provider="anthropic", model_name="claude-sonnet-4-5", api_key="sk-new"
+            ),
             integration_id="llm3",
-            integration_name="Anthropic",
-            provider="anthropic",
-            model_name="claude-sonnet-4-5",
-            api_key="sk-new",
         )
 
     assert seen["body"]["api_key"] == "sk-new"
@@ -295,11 +294,13 @@ def test_llm_providers_test_connection_posts_body(make_client: ClientFactory) ->
 
     with make_client(handler) as client:
         result = client.llm_providers.test_connection(
-            integration_name="probe",
-            provider="openai",
-            api_key="sk-key",
-            model_name="gpt-4o",
-            base_url="https://proxy.example.com",
+            LLMProviderCreateRequest(
+                integration_name="probe",
+                provider="openai",
+                api_key="sk-key",
+                model_name="gpt-4o",
+                base_url="https://proxy.example.com",
+            )
         )
 
     assert seen["path"] == "/v1/llm-providers/test-connection"
@@ -353,10 +354,9 @@ async def test_llm_providers_create_async(make_async_client: AsyncClientFactory)
 
     async with make_async_client(handler) as client:
         result = await client.llm_providers.create(
-            integration_name="OpenAI",
-            provider="openai",
-            api_key="sk-key",
-            model_name="gpt-4o",
+            LLMProviderCreateRequest(
+                integration_name="OpenAI", provider="openai", api_key="sk-key", model_name="gpt-4o"
+            )
         )
 
     assert seen["path"] == "/v1/llm-providers/config"
@@ -374,13 +374,20 @@ async def test_llm_providers_update_async_keeps_null_api_key(make_async_client: 
 
     async with make_async_client(handler) as client:
         await client.llm_providers.update(
+            LLMProviderUpdateRequest(
+                integration_name="Anthropic", provider="anthropic", model_name="claude-sonnet-4-5", api_key=None
+            ),
             integration_id="llm7",
-            integration_name="Anthropic",
-            provider="anthropic",
-            model_name="claude-sonnet-4-5",
         )
 
     assert seen["body"]["api_key"] is None
+
+
+def test_llm_update_requires_api_key_to_be_passed_even_when_none() -> None:
+    with pytest.raises(pydantic.ValidationError, match="api_key"):
+        LLMProviderUpdateRequest.model_validate(
+            {"integration_name": "Anthropic", "provider": "anthropic", "model_name": "claude-sonnet-4-5"}
+        )
 
 
 def test_route_metadata_stamped() -> None:
@@ -388,57 +395,41 @@ def test_route_metadata_stamped() -> None:
     from discolike.resources.providers import LLMProvidersResource
     from discolike.resources.providers import SearchProvidersResource
 
-    assert get_discolike_route(SearchProvidersResource.list) == ("GET", "/search-providers", True, ())
-    assert get_discolike_route(SearchProvidersResource.create) == ("POST", "/search-providers", True, ())
-    assert get_discolike_route(SearchProvidersResource.update) == (
-        "PUT",
-        "/search-providers/{integration_id}",
-        True,
-        (),
-    )
+    assert get_discolike_route(SearchProvidersResource.list) == ("GET", "/search-providers", True)
+    assert get_discolike_route(SearchProvidersResource.create) == ("POST", "/search-providers", True)
+    assert get_discolike_route(SearchProvidersResource.update) == ("PUT", "/search-providers/{integration_id}", True)
     assert get_discolike_route(SearchProvidersResource.delete) == (
         "DELETE",
         "/search-providers/{integration_id}",
         True,
-        (),
     )
     assert get_discolike_route(SearchProvidersResource.set_default) == (
         "PUT",
         "/search-providers/{integration_id}/default",
         True,
-        (),
     )
     assert get_discolike_route(SearchProvidersResource.clear_default) == (
         "DELETE",
         "/search-providers/{integration_id}/default",
         True,
-        (),
     )
-    assert get_discolike_route(SearchProvidersResource.models) == ("GET", "/search-providers/models", True, ())
-    assert get_discolike_route(LLMProvidersResource.list) == ("GET", "/llm-providers/config", True, ())
-    assert get_discolike_route(LLMProvidersResource.create) == ("POST", "/llm-providers/config", True, ())
-    assert get_discolike_route(LLMProvidersResource.get) == ("GET", "/llm-providers/config/{integration_id}", True, ())
-    assert get_discolike_route(LLMProvidersResource.update) == (
-        "PUT",
-        "/llm-providers/config/{integration_id}",
-        True,
-        (),
-    )
+    assert get_discolike_route(SearchProvidersResource.models) == ("GET", "/search-providers/models", True)
+    assert get_discolike_route(LLMProvidersResource.list) == ("GET", "/llm-providers/config", True)
+    assert get_discolike_route(LLMProvidersResource.create) == ("POST", "/llm-providers/config", True)
+    assert get_discolike_route(LLMProvidersResource.get) == ("GET", "/llm-providers/config/{integration_id}", True)
+    assert get_discolike_route(LLMProvidersResource.update) == ("PUT", "/llm-providers/config/{integration_id}", True)
     assert get_discolike_route(LLMProvidersResource.delete) == (
         "DELETE",
         "/llm-providers/config/{integration_id}",
         True,
-        (),
     )
     assert get_discolike_route(LLMProvidersResource.set_default) == (
         "POST",
         "/llm-providers/config/{integration_id}/set-default",
         True,
-        (),
     )
     assert get_discolike_route(LLMProvidersResource.test_connection) == (
         "POST",
         "/llm-providers/test-connection",
         True,
-        (),
     )

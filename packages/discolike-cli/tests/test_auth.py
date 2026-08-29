@@ -39,7 +39,7 @@ def test_login_with_api_key_option_verifies_and_saves(install_build_client: Call
 
 def test_login_prompts_for_key_when_not_given(install_build_client: Callable[[Handler], None]) -> None:
     install_build_client(_usage_ok)
-    result = runner.invoke(app, ["auth", "login"], input="dk-2\n")
+    result = runner.invoke(app, ["auth", "login", "--method", "api_key"], input="dk-2\n")
     assert result.exit_code == 0, result.output
     assert json.loads(config_path().read_text())["api_key"] == "dk-2"
 
@@ -196,7 +196,7 @@ def test_login_ignores_ambient_env_key_and_still_prompts(
 ) -> None:
     install_build_client(_usage_ok)
     monkeypatch.setenv(ENV_API_KEY, "dk-from-env")
-    result = runner.invoke(app, ["auth", "login"], input="dk-typed\n")
+    result = runner.invoke(app, ["auth", "login", "--method", "api_key"], input="dk-typed\n")
     assert result.exit_code == 0, result.output
     assert json.loads(config_path().read_text())["api_key"] == "dk-typed"
 

@@ -2,9 +2,9 @@
 
 Two calls end to end:
 
-1. ``client.discover(icp_text=..., country=..., max_records=...)`` finds
-   lookalike companies from DiscoLike's index of 80M+ business websites.
-2. ``client.discogen.process(query=..., domains=[...], web_search=True)``
+1. ``client.discover(DiscoverParams(icp_text=..., country=..., max_records=...))``
+   finds lookalike companies from DiscoLike's index of 80M+ business websites.
+2. ``client.discogen.process(DiscoGenProcessRequest(query=..., domains=[...], web_search=True))``
    runs an AI research prompt over the discovered domains and returns one
    structured answer per company. ``job.wait()`` blocks until it finishes.
 
@@ -26,6 +26,8 @@ import json
 import sys
 
 from discolike import Discolike
+from discolike.requests import DiscoGenProcessRequest
+from discolike.requests import DiscoverParams
 
 
 def parse_args() -> argparse.Namespace:
@@ -43,7 +45,7 @@ def main() -> None:
     client = Discolike()
 
     print(f"Discovering up to {args.max_records} companies for: {args.icp!r}")
-    companies = client.discover(icp_text=args.icp, country=args.country, max_records=args.max_records)
+    companies = client.discover(DiscoverParams(icp_text=args.icp, country=args.country, max_records=args.max_records))
     if not companies:
         sys.exit("No companies found for that ICP - try broadening it.")
     domains = [company.domain for company in companies if company.domain]
@@ -51,7 +53,7 @@ def main() -> None:
         print(f"  {company.domain}  {company.name or ''}  (similarity {company.similarity})")
 
     print(f"\nRunning DiscoGen over {len(domains)} domains: {args.query!r}")
-    job = client.discogen.process(query=args.query, domains=domains, web_search=True)
+    job = client.discogen.process(DiscoGenProcessRequest(query=args.query, domains=domains, web_search=True))
     status = job.wait(timeout=args.timeout, on_poll=lambda s: print(f"  status={s.status} progress={s.progress}%"))
 
     print("\nEnriched results:")
