@@ -70,4 +70,4 @@ ban-relative-imports = "all"
 force-single-line = true
 
 [tool.ruff.lint.per-file-ignores]
-"packages/*/tests/*" = ["ANN"]
+"packages/*/tests/*" = ["ANN", "S105", "S106", "S107"]  # fake tokens in fixtures

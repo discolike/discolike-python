@@ -1,10 +1,16 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 (unreleased)
+
+- SDK: OAuth login. `Discolike(auth=...)` / `AsyncDiscolike(auth=...)` accept an `ApiKeyCredential` or `OAuthCredential` (both exported from `discolike`); `api_key=`, `DISCOLIKE_API_KEY`, and the config file keep working unchanged, and `auth=` wins over all of them. OAuth credentials send `Authorization: Bearer`, refresh proactively within 60s of expiry and once more after a 401, and write rotated refresh tokens back to the config file when they were loaded from it (an injected `auth=` is never persisted). A refresh that fails raises `AuthenticationError("OAuth session expired; run `discolike auth login`")`. Config file gains the shape `{"auth_method": "oauth", "oauth": {...}}` next to the existing `api_key` shape.
+- SDK: `http_client=` now has its `.auth` set by the SDK (the `X-discolike-key` header moved from a static default header into an `httpx2.Auth`); an `auth` already set on a user-supplied client is replaced.
+- CLI: `discolike auth login` now logs in through the browser by default (PKCE authorization-code flow against the platform's OAuth server, loopback redirect on `127.0.0.1`). `--no-browser` prints the URL only, `--port` pins the loopback port for SSH forwarding, and `--method api_key` (or `--api-key KEY`) keeps the API-key flow, including the prompt. Login-flow failures (timeout, denied consent, state mismatch) exit 1 with `{"error": "LoginError", ...}` on stderr.
+- CLI: `discolike auth login` remembers the OAuth client it registered (`oauth_client` in the config file) and reuses it on the next login for the same server, so the browser consent screen is only asked once per machine. `auth logout` drops the credential but keeps the registration (a public PKCE client, not a secret), so the next login skips consent too. If PropelAuth no longer recognises the stored client (`invalid_client` / `unauthorized_client`), login registers a fresh one and retries once.
+- CLI: `discolike auth status` adds `method` (`api_key` / `oauth`); for OAuth it reports `expires_at` and `expired` instead of a masked key.
 
 - SDK: `JobStatus` gains `estimated_cost` and `cost_metadata` for DiscoGen-family jobs (`discogen`, `validate_icp`, contacts generate). `cost_metadata` has one entry per `provider/model` and a `search_provider` entry with `queries_executed` / `queries_succeeded` / `est_cost_usd` when a BYOS search provider ran. `search_calls` on the model entries counts only the model's built-in search tool and is `0` on every BYOS run; read `search_provider.queries_executed` to confirm web search happened.
 
-## 0.3.0 (2026-08-27)
+### Request models
 
 - SDK (breaking): every request-taking method now takes a single request model instead of keyword arguments, and validates it locally before any HTTP call — a bad enum value, an out-of-range number, or a missing required field raises `pydantic.ValidationError` instead of a server 422. Models live in `discolike.requests` and are generated from the platform OpenAPI spec (`scripts/gen_requests.py`); query-param routes use `<Resource><Method>Params` (`MatchCompanyParams`, `ContactsSearchParams`, `DiscoverParams`, `CountParams`, `AppendParams`, `SegmentParams`, ...) and JSON-body routes use the platform's own names (`FindEmailRequest`, `ContactFilters`, `DiscoGenProcessRequest`, `UpdateQueryRequest`, ...). Path params and file uploads stay keyword arguments next to the model. Unknown fields pass through to the wire, so the SDK never blocks a platform field it does not know about yet.
 

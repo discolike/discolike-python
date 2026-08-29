@@ -22,8 +22,8 @@ def drop_none(params: Mapping[str, Any] | None) -> dict[str, Any]:
     return {key: value for key, value in (params or {}).items() if value is not None}
 
 
-def _default_headers(api_key: str) -> dict[str, str]:
-    return {"X-discolike-key": api_key, "User-Agent": f"discolike-python/{__version__}"}
+def _default_headers() -> dict[str, str]:
+    return {"User-Agent": f"discolike-python/{__version__}"}
 
 
 def _retryable_statuses(method: str) -> frozenset[int]:
@@ -45,7 +45,7 @@ def _retry_delay(response: httpx2.Response | None, attempt: int) -> float:
 class Transport:
     def __init__(
         self,
-        api_key: str,
+        auth: httpx2.Auth,
         *,
         base_url: str,
         timeout: float,
@@ -55,7 +55,8 @@ class Transport:
         if http_client is not None and not str(http_client.base_url):
             http_client.base_url = base_url
         self._client = http_client or httpx2.Client(base_url=base_url, timeout=timeout)
-        self._client.headers.update(_default_headers(api_key))
+        self._client.auth = auth
+        self._client.headers.update(_default_headers())
         self._max_retries = max_retries
         self._timeout_override: float | httpx2.Timeout | None = None
         self._is_view = False
@@ -109,7 +110,7 @@ class Transport:
 class AsyncTransport:
     def __init__(
         self,
-        api_key: str,
+        auth: httpx2.Auth,
         *,
         base_url: str,
         timeout: float,
@@ -119,7 +120,8 @@ class AsyncTransport:
         if http_client is not None and not str(http_client.base_url):
             http_client.base_url = base_url
         self._client = http_client or httpx2.AsyncClient(base_url=base_url, timeout=timeout)
-        self._client.headers.update(_default_headers(api_key))
+        self._client.auth = auth
+        self._client.headers.update(_default_headers())
         self._max_retries = max_retries
         self._timeout_override: float | httpx2.Timeout | None = None
         self._is_view = False

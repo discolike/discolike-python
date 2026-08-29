@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import httpx2
 
+from discolike._auth import DiscolikeAuth
 from discolike._config import DEFAULT_BASE_URL
-from discolike._config import resolve_api_key
+from discolike._config import load_credential
+from discolike._config import resolve_credential
+from discolike._config import save_credential
+from discolike._credentials import Credential
 from discolike._jobs import AsyncJob
 from discolike._jobs import Job
 from discolike._transport import AsyncTransport
@@ -47,11 +51,20 @@ DEFAULT_TIMEOUT_SECONDS = 60.0
 DEFAULT_MAX_RETRIES = 3
 
 
+def _build_auth(*, api_key: str | None, auth: Credential | None) -> DiscolikeAuth:
+    # The config file is read back and written only when the credential came from it.
+    credential = resolve_credential(api_key=api_key, auth=auth)
+    if auth is not None:
+        return DiscolikeAuth(credential)
+    return DiscolikeAuth(credential, on_update=save_credential, reload=load_credential)
+
+
 class Discolike:
     def __init__(
         self,
         *,
         api_key: str | None = None,
+        auth: Credential | None = None,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         max_retries: int = DEFAULT_MAX_RETRIES,
@@ -59,7 +72,7 @@ class Discolike:
     ) -> None:
         self._attach(
             Transport(
-                resolve_api_key(api_key),
+                _build_auth(api_key=api_key, auth=auth),
                 base_url=base_url,
                 timeout=timeout,
                 max_retries=max_retries,
@@ -121,6 +134,7 @@ class AsyncDiscolike:
         self,
         *,
         api_key: str | None = None,
+        auth: Credential | None = None,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
         max_retries: int = DEFAULT_MAX_RETRIES,
@@ -128,7 +142,7 @@ class AsyncDiscolike:
     ) -> None:
         self._attach(
             AsyncTransport(
-                resolve_api_key(api_key),
+                _build_auth(api_key=api_key, auth=auth),
                 base_url=base_url,
                 timeout=timeout,
                 max_retries=max_retries,
