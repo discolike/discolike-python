@@ -33,7 +33,6 @@ from discolike._oauth import OAuthError
 from discolike._oauth import build_authorization_url
 from discolike._oauth import discover
 from discolike._oauth import exchange_code
-from discolike._oauth import pkce_pair
 from discolike._oauth import register_client
 from discolike_cli._loopback import CallbackServer
 from discolike_cli._output import emit
@@ -135,13 +134,11 @@ def _authorize(
     open_browser: bool,
     http: httpx2.Client,
 ) -> OAuthCredential:
-    verifier, challenge = pkce_pair()
     state = secrets.token_urlsafe(STATE_BYTES)
-    url = build_authorization_url(
+    url, verifier = build_authorization_url(
         metadata,
         client_id=registration.client_id,
         redirect_uri=registration.redirect_uri,
-        code_challenge=challenge,
         state=state,
         resource=resource,
     )
@@ -168,7 +165,6 @@ def _authorize(
             code_verifier=verifier,
             redirect_uri=registration.redirect_uri,
             resource=resource,
-            client=http,
         )
     except OAuthError as exc:
         if exc.error in DEAD_CLIENT_ERRORS:

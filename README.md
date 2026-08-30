@@ -23,7 +23,7 @@
   <a href="https://discolike.com">Website</a> ·
   <a href="https://docs.discolike.com">API Docs</a> ·
   <a href="https://app.discolike.com/account/management/keys">Get an API key</a> ·
-  <a href="https://auth.discolike.com/en/signup">Sign up</a> ·
+  <a href="https://discolike.com/signup">Sign up</a> ·
   <a href="https://calendly.com/discolike/introductory-call">Book a demo</a> ·
   <a href="https://discolike.com/blog/">Blog</a>
 </p>
@@ -288,7 +288,7 @@ Committed request models track the dev spec (`--spec-url https://api.dev.discoli
 ## Support & contact
 
 - **API documentation**: [docs.discolike.com](https://docs.discolike.com)
-- **Sign up**: [auth.discolike.com/en/signup](https://auth.discolike.com/en/signup)
+- **Sign up**: [discolike.com/signup](https://discolike.com/signup)
 - **Book a demo**: [calendly.com/discolike/introductory-call](https://calendly.com/discolike/introductory-call)
 - **LinkedIn**: [linkedin.com/company/discolike](https://www.linkedin.com/company/discolike/)
 - **Issues with this SDK**: [GitHub issues](https://github.com/Discolike/discolike-python/issues)

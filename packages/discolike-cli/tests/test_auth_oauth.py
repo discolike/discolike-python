@@ -75,18 +75,18 @@ class FakeProvider:
         self.register_calls.append(redirect_uris)
         return "client-1"
 
-    def exchange_code(self, metadata: AuthServerMetadata, *, client: httpx2.Client, **kwargs: Any) -> OAuthCredential:
+    def exchange_code(self, metadata: AuthServerMetadata, **kwargs: Any) -> OAuthCredential:
         self.exchange_calls.append(kwargs)
         if self.exchange_failures:
             raise self.exchange_failures.pop(0)
         return CREDENTIAL
 
-    def build_authorization_url(self, metadata: AuthServerMetadata, **kwargs: Any) -> str:
-        url = self.real_build_authorization_url(metadata, **kwargs)
+    def build_authorization_url(self, metadata: AuthServerMetadata, **kwargs: Any) -> tuple[str, str]:
+        url, verifier = self.real_build_authorization_url(metadata, **kwargs)
         query = {key: values[0] for key, values in parse_qs(urlparse(url).query).items()}
         callback = f"{query['redirect_uri']}?{self.callback_query(query)}"
         threading.Thread(target=lambda: urlopen(callback).read(), daemon=True).start()  # noqa: S310 -- loopback test server
-        return url
+        return url, verifier
 
     def open(self, url: str) -> bool:
         self.opened_urls.append(url)
@@ -170,7 +170,9 @@ def test_login_timeout_exits_1(
 ) -> None:
     install_build_client(_usage_ok)
     monkeypatch.setattr(auth_module, "LOGIN_TIMEOUT_SECONDS", 0.2)
-    monkeypatch.setattr(auth_module, "build_authorization_url", lambda metadata, **kwargs: "https://auth.test/never")
+    monkeypatch.setattr(
+        auth_module, "build_authorization_url", lambda metadata, **kwargs: ("https://auth.test/never", "v")
+    )
     result = runner.invoke(app, ["auth", "login"])
     assert result.exit_code == 1
     assert "Timed out" in json.loads(result.stderr.splitlines()[-1])["message"]
