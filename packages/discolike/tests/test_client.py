@@ -137,6 +137,9 @@ def test_client_from_config_oauth_persists_rotated_tokens() -> None:
 
     http = httpx2.Client(transport=httpx2.MockTransport(handler), base_url="https://api.test/v1")
     with Discolike(base_url="https://api.test/v1", http_client=http) as client:
+        auth = client._transport._client.auth
+        assert isinstance(auth, DiscolikeAuth)
+        auth._token_transport = httpx2.MockTransport(handler)
         assert client.account.usage().requests_mtd == 1
     stored = load_credential()
     assert isinstance(stored, OAuthCredential)

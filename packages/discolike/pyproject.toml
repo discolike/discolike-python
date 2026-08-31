@@ -12,6 +12,7 @@ license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [{ name = "DiscoLike", email = "support@discolike.com" }]
 dependencies = [
+  "authlib>=1.8.0",
   "httpx2>=2.9",
   "pydantic>=2.7",
   "typing-extensions>=4.1",
@@ -33,7 +34,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-cli = ["discolike-cli==0.3.0"]
+cli = ["discolike-cli==0.3.1"]
 
 [project.urls]
 Homepage = "https://www.discolike.com"

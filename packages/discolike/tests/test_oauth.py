@@ -15,9 +15,8 @@ from discolike._oauth import OAuthError
 from discolike._oauth import build_authorization_url
 from discolike._oauth import discover
 from discolike._oauth import exchange_code
-from discolike._oauth import parse_refresh_response
-from discolike._oauth import pkce_pair
-from discolike._oauth import refresh_request
+from discolike._oauth import refresh
+from discolike._oauth import refresh_async
 from discolike._oauth import register_client
 
 BASE_URL = "https://api.test/v1"
@@ -33,16 +32,12 @@ def client_for(handler) -> httpx2.Client:
     return httpx2.Client(transport=httpx2.MockTransport(handler))
 
 
+def transport_for(handler) -> httpx2.MockTransport:
+    return httpx2.MockTransport(handler)
+
+
 def form(request: httpx2.Request) -> dict[str, str]:
     return {key: values[0] for key, values in parse_qs(request.content.decode()).items()}
-
-
-def test_pkce_pair_is_s256() -> None:
-    verifier, challenge = pkce_pair()
-    expected = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
-    assert challenge == expected
-    assert "=" not in verifier
-    assert 43 <= len(verifier) <= 128
 
 
 def test_discover_reads_well_known_under_base_url() -> None:
@@ -93,14 +88,12 @@ def test_register_client_sends_public_client_metadata() -> None:
 
 
 def test_build_authorization_url_carries_pkce_state_and_resource() -> None:
-    url = build_authorization_url(
-        METADATA,
-        client_id="client-abc",
-        redirect_uri="http://127.0.0.1:9999/callback",
-        code_challenge="chal",
-        state="st",
-        resource=BASE_URL,
+    url, verifier = build_authorization_url(
+        METADATA, client_id="client-abc", redirect_uri="http://127.0.0.1:9999/callback", state="st", resource=BASE_URL
     )
+    assert verifier.isalnum()
+    assert 43 <= len(verifier) <= 128
+    challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
     parsed = urlparse(url)
     assert f"{parsed.scheme}://{parsed.netloc}{parsed.path}" == METADATA.authorization_endpoint
     query = {key: values[0] for key, values in parse_qs(parsed.query).items()}
@@ -108,7 +101,7 @@ def test_build_authorization_url_carries_pkce_state_and_resource() -> None:
         "response_type": "code",
         "client_id": "client-abc",
         "redirect_uri": "http://127.0.0.1:9999/callback",
-        "code_challenge": "chal",
+        "code_challenge": challenge,
         "code_challenge_method": "S256",
         "state": "st",
         "resource": BASE_URL,
@@ -133,10 +126,10 @@ def test_exchange_code_posts_form_and_builds_credential() -> None:
         code_verifier="ver",
         redirect_uri="http://127.0.0.1:9999/callback",
         resource=BASE_URL,
-        client=client_for(handler),
+        transport=transport_for(handler),
     )
     request = seen[0]
-    assert request.headers["Content-Type"] == "application/x-www-form-urlencoded"
+    assert request.headers["Content-Type"].startswith("application/x-www-form-urlencoded")
     assert form(request) == {
         "grant_type": "authorization_code",
         "client_id": "client-abc",
@@ -149,7 +142,7 @@ def test_exchange_code_posts_form_and_builds_credential() -> None:
     assert credential.refresh_token == "rt"
     assert credential.client_id == "client-abc"
     assert credential.token_endpoint == METADATA.token_endpoint
-    assert before + 3600 <= credential.expires_at <= time.time() + 3600
+    assert int(before) + 3600 <= credential.expires_at <= time.time() + 3600
 
 
 def test_exchange_code_without_refresh_token_raises() -> None:
@@ -164,7 +157,7 @@ def test_exchange_code_without_refresh_token_raises() -> None:
             code_verifier="v",
             redirect_uri="http://127.0.0.1:1/callback",
             resource=BASE_URL,
-            client=client_for(handler),
+            transport=transport_for(handler),
         )
 
 
@@ -180,7 +173,7 @@ def test_malformed_token_response_error_payload_carries_no_tokens() -> None:
             code_verifier="v",
             redirect_uri="http://127.0.0.1:1/callback",
             resource=BASE_URL,
-            client=client_for(handler),
+            transport=transport_for(handler),
         )
     assert info.value.payload == {"token_type": "Bearer"}
 
@@ -197,7 +190,7 @@ def test_oauth_error_body_maps_to_authentication_error() -> None:
             code_verifier="v",
             redirect_uri="http://127.0.0.1:1/callback",
             resource=BASE_URL,
-            client=client_for(handler),
+            transport=transport_for(handler),
         )
     assert exc_info.value.status_code == 400
     assert exc_info.value.error == "invalid_grant"
@@ -225,8 +218,7 @@ def test_refresh_rotates_tokens_and_keeps_old_refresh_token_when_absent() -> Non
         seen.append(request)
         return httpx2.Response(200, json={"access_token": "new", "refresh_token": "rt-new", "expires_in": 60})
 
-    with client_for(rotating) as client:
-        rotated = parse_refresh_response(client.send(refresh_request(credential)), credential=credential)
+    rotated = refresh(credential, transport=transport_for(rotating))
     assert form(seen[0]) == {"grant_type": "refresh_token", "refresh_token": "rt-old", "client_id": "c"}
     assert (rotated.access_token, rotated.refresh_token) == ("new", "rt-new")
     assert rotated.client_id == "c"
@@ -235,9 +227,63 @@ def test_refresh_rotates_tokens_and_keeps_old_refresh_token_when_absent() -> Non
     def not_rotating(request: httpx2.Request) -> httpx2.Response:
         return httpx2.Response(200, json={"access_token": "newer", "expires_in": 60})
 
-    with client_for(not_rotating) as client:
-        kept = parse_refresh_response(client.send(refresh_request(rotated)), credential=rotated)
+    kept = refresh(rotated, transport=transport_for(not_rotating))
     assert (kept.access_token, kept.refresh_token) == ("newer", "rt-new")
+
+
+async def test_refresh_async_rotates_tokens() -> None:
+    credential = OAuthCredential(
+        access_token="old",
+        refresh_token="rt-old",
+        expires_at=0.0,
+        client_id="c",
+        token_endpoint=METADATA.token_endpoint,
+    )
+    seen: list[httpx2.Request] = []
+
+    def rotating(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, json={"access_token": "new", "refresh_token": "rt-new", "expires_in": 60})
+
+    rotated = await refresh_async(credential, transport=transport_for(rotating))
+    assert form(seen[0]) == {"grant_type": "refresh_token", "refresh_token": "rt-old", "client_id": "c"}
+    assert (rotated.access_token, rotated.refresh_token) == ("new", "rt-new")
+
+
+def test_refresh_error_body_maps_to_session_expired() -> None:
+    credential = OAuthCredential(
+        access_token="old",
+        refresh_token="rt-old",
+        expires_at=0.0,
+        client_id="c",
+        token_endpoint=METADATA.token_endpoint,
+    )
+
+    def revoked(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(400, json={"error": "invalid_grant", "error_description": "revoked"})
+
+    with pytest.raises(AuthenticationError, match="discolike auth login") as info:
+        refresh(credential, transport=transport_for(revoked))
+    assert info.value.status_code == 400
+    assert isinstance(info.value.__cause__, OAuthError)
+    assert info.value.__cause__.error == "invalid_grant"
+
+
+def test_refresh_5xx_maps_to_session_expired() -> None:
+    credential = OAuthCredential(
+        access_token="old",
+        refresh_token="rt-old",
+        expires_at=0.0,
+        client_id="c",
+        token_endpoint=METADATA.token_endpoint,
+    )
+
+    def down(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(503, json={"detail": "maintenance"})
+
+    with pytest.raises(AuthenticationError, match="discolike auth login") as info:
+        refresh(credential, transport=transport_for(down))
+    assert info.value.status_code == 503
 
 
 def test_credential_config_roundtrip_and_expiry() -> None:

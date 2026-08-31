@@ -12,14 +12,9 @@ import httpx2
 from discolike._credentials import ApiKeyCredential
 from discolike._credentials import Credential
 from discolike._credentials import OAuthCredential
-from discolike._exceptions import AuthenticationError
 from discolike._oauth import REFRESH_LEEWAY_SECONDS
-from discolike._oauth import SESSION_EXPIRED_MESSAGE
-from discolike._oauth import parse_refresh_response
-from discolike._oauth import refresh_request
-
-# TODO: replace this module and _oauth.py with authlib's httpx2 OAuth2Client once a release
-# includes authlib/authlib@e4fb941 (httpx2 support merged 2026-08-27; 1.7.2 predates it).
+from discolike._oauth import refresh
+from discolike._oauth import refresh_async
 
 API_KEY_HEADER = "X-discolike-key"
 UNAUTHORIZED = 401
@@ -32,7 +27,8 @@ def _set_bearer(request: httpx2.Request, credential: OAuthCredential) -> None:
 class DiscolikeAuth(httpx2.Auth):
     """Sends the API key header, or a bearer token that is refreshed before expiry and once after a 401.
 
-    Refreshes go through the same client as the request they precede, so tests drive them via ``MockTransport``.
+    Refreshes go to the token endpoint through authlib's client, not the SDK client; ``token_transport``
+    lets tests intercept them.
     """
 
     requires_response_body = False
@@ -43,10 +39,12 @@ class DiscolikeAuth(httpx2.Auth):
         *,
         on_update: Callable[[OAuthCredential], None] | None = None,
         reload: Callable[[], Credential | None] | None = None,
+        token_transport: httpx2.BaseTransport | httpx2.AsyncBaseTransport | None = None,
     ) -> None:
         self._credential = credential
         self.on_update = on_update
         self.reload = reload
+        self._token_transport = token_transport
         self._lock = threading.Lock()
         self._async_lock = asyncio.Lock()
 
@@ -71,13 +69,7 @@ class DiscolikeAuth(httpx2.Auth):
         self._credential = stored
         return stored
 
-    def _store(self, response: httpx2.Response, *, credential: OAuthCredential) -> OAuthCredential:
-        try:
-            rotated = parse_refresh_response(response, credential=credential)
-        except AuthenticationError as exc:
-            raise AuthenticationError(
-                SESSION_EXPIRED_MESSAGE, status_code=exc.status_code, payload=exc.payload
-            ) from exc
+    def _store(self, rotated: OAuthCredential) -> OAuthCredential:
         self._credential = rotated
         if self.on_update is not None:
             self.on_update(rotated)
@@ -92,11 +84,9 @@ class DiscolikeAuth(httpx2.Auth):
         with self._lock:
             credential = self._latest(credential)
             if credential.expires_within(REFRESH_LEEWAY_SECONDS):
-                adopted = self._adopt_stored(credential)
-                if adopted is not None:
-                    credential = adopted
-                else:
-                    credential = yield from self._sync_refresh(credential)
+                credential = self._adopt_stored(credential) or self._store(
+                    refresh(credential, transport=self._token_transport)
+                )
         _set_bearer(request, credential)
         response = yield request
         if response.status_code != UNAUTHORIZED:
@@ -104,18 +94,11 @@ class DiscolikeAuth(httpx2.Auth):
         with self._lock:
             latest = self._latest(credential)
             if latest is credential:
-                adopted = self._adopt_stored(credential)
-                if adopted is not None:
-                    latest = adopted
-                else:
-                    latest = yield from self._sync_refresh(credential)
+                latest = self._adopt_stored(credential) or self._store(
+                    refresh(credential, transport=self._token_transport)
+                )
         _set_bearer(request, latest)
         yield request
-
-    def _sync_refresh(self, credential: OAuthCredential) -> Generator[httpx2.Request, httpx2.Response, OAuthCredential]:
-        response = yield refresh_request(credential)
-        response.read()
-        return self._store(response, credential=credential)
 
     async def async_auth_flow(self, request: httpx2.Request) -> AsyncGenerator[httpx2.Request, httpx2.Response]:
         credential = self._credential
@@ -126,13 +109,9 @@ class DiscolikeAuth(httpx2.Auth):
         async with self._async_lock:
             credential = self._latest(credential)
             if credential.expires_within(REFRESH_LEEWAY_SECONDS):
-                adopted = self._adopt_stored(credential)
-                if adopted is not None:
-                    credential = adopted
-                else:
-                    response = yield refresh_request(credential)
-                    await response.aread()
-                    credential = self._store(response, credential=credential)
+                credential = self._adopt_stored(credential) or self._store(
+                    await refresh_async(credential, transport=self._token_transport)
+                )
         _set_bearer(request, credential)
         response = yield request
         if response.status_code != UNAUTHORIZED:
@@ -140,12 +119,8 @@ class DiscolikeAuth(httpx2.Auth):
         async with self._async_lock:
             latest = self._latest(credential)
             if latest is credential:
-                adopted = self._adopt_stored(credential)
-                if adopted is not None:
-                    latest = adopted
-                else:
-                    response = yield refresh_request(credential)
-                    await response.aread()
-                    latest = self._store(response, credential=credential)
+                latest = self._adopt_stored(credential) or self._store(
+                    await refresh_async(credential, transport=self._token_transport)
+                )
         _set_bearer(request, latest)
         yield request
