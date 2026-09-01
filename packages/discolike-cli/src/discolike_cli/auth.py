@@ -37,6 +37,7 @@ from discolike._oauth import register_client
 from discolike_cli._loopback import CallbackServer
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
+from discolike_cli.signup import _is_interactive
 from discolike_cli.signup import run_signup
 
 app = typer.Typer(help="Manage credentials: log in (browser or API key), check status, log out.")
@@ -65,10 +66,6 @@ class _DeadClientError(Exception):
 
 def _mask(key: str) -> str:
     return "…" + key[-MASKED_VISIBLE_CHARS:]
-
-
-def _is_interactive() -> bool:
-    return sys.stdin.isatty()
 
 
 def _was_passed_on_command_line(ctx: typer.Context, name: str) -> bool:
@@ -249,16 +246,17 @@ def login(
     ),
 ) -> None:
     """Log in via the browser (OAuth) or with an API key, verify, and save to the local config file."""
+    global_key_passed = ctx.obj.get("api_key") is not None and _global_key_source(ctx) == SOURCE_OPTION
     if (
         _is_interactive()
         and api_key is None
+        and not global_key_passed
         and not _was_passed_on_command_line(ctx, "method")
         and not typer.confirm(HAS_ACCOUNT_PROMPT, default=True)
     ):
         _offer_signup(ctx)
     if method not in LOGIN_METHODS:
         raise typer.BadParameter(f"must be one of {', '.join(LOGIN_METHODS)}", param_hint="--method")
-    global_key_passed = ctx.obj.get("api_key") is not None and _global_key_source(ctx) == SOURCE_OPTION
     if api_key or global_key_passed or method == AUTH_METHOD_API_KEY:
         _api_key_login(ctx, api_key=api_key)
         return

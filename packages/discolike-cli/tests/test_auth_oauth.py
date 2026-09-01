@@ -456,3 +456,16 @@ def test_login_with_api_key_skips_account_question(install_build_client: Callabl
         result = runner.invoke(app, ["auth", "login", "--api-key", "dk-1"])
     assert result.exit_code == 0, result.output
     confirm_mock.assert_not_called()
+
+
+def test_login_with_global_api_key_skips_account_question(
+    install_build_client: Callable[[Handler], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_build_client(_usage_ok)
+    monkeypatch.setattr(auth_module, "_is_interactive", lambda: True)
+    with patch("discolike_cli.auth.typer.confirm", autospec=True) as confirm_mock:
+        result = runner.invoke(app, ["--api-key", "dk-global", "auth", "login"])
+    assert result.exit_code == 0, result.output
+    confirm_mock.assert_not_called()
+    assert json.loads(config_path().read_text())["api_key"] == "dk-global"
