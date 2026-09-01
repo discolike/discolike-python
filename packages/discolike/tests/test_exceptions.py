@@ -31,6 +31,7 @@ def _response(status: int, json_body: dict | None = None, headers: dict | None =
         (402, PlanAccessError),
         (403, PlanAccessError),
         (404, NotFoundError),
+        (409, ValidationError),
         (429, RateLimitError),
         (500, ServerError),
         (503, ServerError),
