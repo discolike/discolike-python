@@ -133,6 +133,12 @@ def test_signup_allow_new_email_updates_stored_email() -> None:
         "Jean Luc",
         "J",
         "x" * MAX_NAME_LENGTH,
+        "Jane2",
+        "Anne (AM)",
+        "J.R., Jr",
+        "Jane_Doe",
+        "jane@acme.com",
+        "Björn 2nd",
     ],
 )
 def test_accepted_names(name: str) -> None:
@@ -146,7 +152,18 @@ def test_accepted_names(name: str) -> None:
 
 @pytest.mark.parametrize(
     "name",
-    ["Jane2", "Jane<b>", "\U0001f600", "jane@acme.com", "Jane_Doe", "-", "", " ", "   ", "x" * (MAX_NAME_LENGTH + 1)],
+    [
+        "Jane<b>",
+        "\U0001f600",
+        "-",
+        "123",
+        "Jane​",
+        "Jane\x07",
+        "",
+        " ",
+        "   ",
+        "x" * (MAX_NAME_LENGTH + 1),
+    ],
 )
 def test_rejected_names(name: str) -> None:
     def unexpected_call(request: httpx2.Request) -> httpx2.Response:
@@ -161,8 +178,8 @@ def test_charset_rejection_names_the_rule() -> None:
     client = httpx2.Client(
         base_url="https://api.test/v1", transport=httpx2.MockTransport(lambda r: httpx2.Response(201))
     )
-    with pytest.raises(ValidationError, match="letters, spaces, hyphens, apostrophes and periods only"):
-        signup(email="jane@acme.com", first_name="Jane2", last_name="Doe", http_client=client)
+    with pytest.raises(ValidationError, match="must contain a letter and no angle brackets or control characters"):
+        signup(email="jane@acme.com", first_name="Jane<b>", last_name="Doe", http_client=client)
 
 
 def test_over_length_rejection_names_the_limit() -> None:

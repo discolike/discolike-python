@@ -22,8 +22,8 @@ SIGNUP_PATH = "/public/signup"
 DEFAULT_AGENT = f"discolike-python/{__version__}"
 # PropelAuth's own cap, probed against the dev tenant: anything longer is a 400 there.
 MAX_NAME_LENGTH = 40
-NAME_PUNCTUATION = frozenset(" -.'\u2019")
-NAME_RULE_MESSAGE = "{field} may contain letters, spaces, hyphens, apostrophes and periods only"
+NAME_DISALLOWED_CHARS = frozenset("<>")
+NAME_RULE_MESSAGE = "{field} must contain a letter and no angle brackets or control characters"
 
 
 class SignupResult(DiscolikeModel):
@@ -38,15 +38,15 @@ def _body(*, email: str, first_name: str, last_name: str, agent: str | None) -> 
     return {"email": email, "first_name": first_name, "last_name": last_name, "agent": agent or DEFAULT_AGENT}
 
 
-def _is_name_character(char: str) -> bool:
-    return char.isalpha() or char in NAME_PUNCTUATION or unicodedata.category(char).startswith("M")
+def _is_disallowed_name_character(char: str) -> bool:
+    return char in NAME_DISALLOWED_CHARS or unicodedata.category(char).startswith("C")
 
 
 def validate_name(value: str, *, field: str) -> str:
     name = unicodedata.normalize("NFC", value).strip()
     if not name or len(name) > MAX_NAME_LENGTH:
         raise ValidationError(f"{field} must be between 1 and {MAX_NAME_LENGTH} characters")
-    if not all(_is_name_character(char) for char in name) or not any(char.isalpha() for char in name):
+    if any(_is_disallowed_name_character(char) for char in name) or not any(char.isalpha() for char in name):
         raise ValidationError(NAME_RULE_MESSAGE.format(field=field))
     return name
 

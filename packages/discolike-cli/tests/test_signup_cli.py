@@ -98,7 +98,7 @@ def test_signup_different_email_tty_confirm_proceeds(monkeypatch) -> None:
 
 
 def test_signup_rejected_name_exits_nonzero_with_message_on_stderr() -> None:
-    result = runner.invoke(app, ["signup", "--email", "jane@acme.com", "--first-name", "Jane2", "--last-name", "Doe"])
+    result = runner.invoke(app, ["signup", "--email", "jane@acme.com", "--first-name", "Jane<b>", "--last-name", "Doe"])
     assert result.exit_code != 0
     payload = json.loads(result.stderr)
-    assert "letters, spaces, hyphens, apostrophes and periods only" in payload["message"]
+    assert "must contain a letter and no angle brackets or control characters" in payload["message"]
