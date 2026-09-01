@@ -67,6 +67,12 @@ Requires Python 3.10+.
 
 ## Authentication
 
+No account yet? An agent (or you) can open one without a browser; the account owner confirms by email and logs in:
+
+```bash
+discolike signup --email jane@acme.com --first-name Jane --last-name Doe
+```
+
 Create an API key at [app.discolike.com/account/management/keys](https://app.discolike.com/account/management/keys), then use any of:
 
 ```bash
@@ -175,9 +181,10 @@ discolike match --file companies.csv --name-column company_name --wait
 discolike count --phrase-match "book a demo" --country US
 discolike company data stripe.com
 discolike extract https://stripe.com/enterprise
+discolike signup --email you@company.com --first-name You --last-name Person
 ```
 
-Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment` — plus `auth`, `company`, `contacts`, `discogen`, `queries`, `account`, `search-providers`, and `llm-providers` command groups.
+Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment`, `signup` — plus `auth`, `company`, `contacts`, `discogen`, `queries`, `account`, `search-providers`, and `llm-providers` command groups.
 
 ### CLI conventions
 
