@@ -18,6 +18,7 @@ KEYS_URL = "https://app.discolike.com/account/management/keys"
 AUTH_METHOD_API_KEY = "api_key"
 AUTH_METHOD_OAUTH = "oauth"
 OAUTH_CLIENT_KEY = "oauth_client"
+SIGNUP_EMAIL_KEY = "signup_email"
 
 NO_CREDENTIAL_MESSAGE = (
     "No API key found. Set the DISCOLIKE_API_KEY environment variable, pass api_key=..., "
@@ -101,6 +102,15 @@ def delete_oauth_client() -> None:
     config = load_config()
     config.pop(OAUTH_CLIENT_KEY, None)
     save_config(config)
+
+
+def load_signup_email() -> str | None:
+    email = load_config().get(SIGNUP_EMAIL_KEY)
+    return email if isinstance(email, str) else None
+
+
+def save_signup_email(email: str) -> None:
+    save_config({**load_config(), SIGNUP_EMAIL_KEY: email})
 
 
 def resolve_credential(*, api_key: str | None = None, auth: Credential | None = None) -> Credential:
