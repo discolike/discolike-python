@@ -73,7 +73,7 @@ No account yet? An agent (or you) can open one without a browser; the account ow
 discolike signup --email jane@acme.com --first-name Jane --last-name Doe
 ```
 
-The CLI remembers the last email signed up from this machine and asks before signing up a different one (`--yes` skips the prompt).
+The CLI remembers the last email signed up from this machine and asks before signing up a different one (`--yes` skips the prompt). `discolike auth login` asks first whether you already have an account and offers signup if not.
 
 Create an API key at [app.discolike.com/account/management/keys](https://app.discolike.com/account/management/keys), then use any of:
 
