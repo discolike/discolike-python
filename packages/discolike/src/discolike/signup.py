@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import unicodedata
 
 import httpx2
 
@@ -12,12 +13,17 @@ from discolike._config import load_signup_email
 from discolike._config import save_signup_email
 from discolike._exceptions import APIConnectionError
 from discolike._exceptions import DiscolikeError
+from discolike._exceptions import ValidationError
 from discolike._exceptions import raise_for_status
 from discolike._models import DiscolikeModel
 from discolike._version import __version__
 
 SIGNUP_PATH = "/public/signup"
 DEFAULT_AGENT = f"discolike-python/{__version__}"
+# PropelAuth's own cap, probed against the dev tenant: anything longer is a 400 there.
+MAX_NAME_LENGTH = 40
+NAME_PUNCTUATION = frozenset(" -.'\u2019")
+NAME_RULE_MESSAGE = "{field} may contain letters, spaces, hyphens, apostrophes and periods only"
 
 
 class SignupResult(DiscolikeModel):
@@ -30,6 +36,19 @@ class SignupResult(DiscolikeModel):
 
 def _body(*, email: str, first_name: str, last_name: str, agent: str | None) -> dict[str, str]:
     return {"email": email, "first_name": first_name, "last_name": last_name, "agent": agent or DEFAULT_AGENT}
+
+
+def _is_name_character(char: str) -> bool:
+    return char.isalpha() or char in NAME_PUNCTUATION or unicodedata.category(char).startswith("M")
+
+
+def validate_name(value: str, *, field: str) -> str:
+    name = unicodedata.normalize("NFC", value).strip()
+    if not name or len(name) > MAX_NAME_LENGTH:
+        raise ValidationError(f"{field} must be between 1 and {MAX_NAME_LENGTH} characters")
+    if not all(_is_name_character(char) for char in name) or not any(char.isalpha() for char in name):
+        raise ValidationError(NAME_RULE_MESSAGE.format(field=field))
+    return name
 
 
 def _check_email_change(email: str, allow_new_email: bool) -> None:
@@ -61,6 +80,8 @@ def signup(
 ) -> SignupResult:
     """Create a DiscoLike account for ``email``. No credential is returned; the person
     confirms by email and logs in at https://app.discolike.com."""
+    first_name = validate_name(first_name, field="first_name")
+    last_name = validate_name(last_name, field="last_name")
     _check_email_change(email, allow_new_email)
     client = http_client or httpx2.Client(base_url=base_url, timeout=timeout)
     try:
@@ -90,6 +111,8 @@ async def async_signup(
     http_client: httpx2.AsyncClient | None = None,
     allow_new_email: bool = False,
 ) -> SignupResult:
+    first_name = validate_name(first_name, field="first_name")
+    last_name = validate_name(last_name, field="last_name")
     _check_email_change(email, allow_new_email)
     client = http_client or httpx2.AsyncClient(base_url=base_url, timeout=timeout)
     try:

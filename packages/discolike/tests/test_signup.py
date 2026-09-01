@@ -6,6 +6,7 @@ from discolike import ValidationError
 from discolike import async_signup
 from discolike import signup
 from discolike._config import load_signup_email
+from discolike.signup import MAX_NAME_LENGTH
 from discolike.signup import SignupResult
 
 _RESPONSE = {
@@ -116,3 +117,95 @@ def test_signup_allow_new_email_updates_stored_email() -> None:
     )
     assert result.email == "other@acme.com"
     assert load_signup_email() == "other@acme.com"
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Jane",
+        "Mary-Jane",
+        "O'Brien",
+        "O\u2019Brien",
+        "St. John",
+        "José",
+        "Zoë",
+        "李",
+        "Jean Luc",
+        "J",
+        "x" * MAX_NAME_LENGTH,
+    ],
+)
+def test_accepted_names(name: str) -> None:
+    client = httpx2.Client(
+        base_url="https://api.test/v1",
+        transport=httpx2.MockTransport(lambda request: httpx2.Response(201, json=_RESPONSE)),
+    )
+    result = signup(email="jane@acme.com", first_name=name, last_name=name, http_client=client)
+    assert isinstance(result, SignupResult)
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["Jane2", "Jane<b>", "\U0001f600", "jane@acme.com", "Jane_Doe", "-", "", " ", "   ", "x" * (MAX_NAME_LENGTH + 1)],
+)
+def test_rejected_names(name: str) -> None:
+    def unexpected_call(request: httpx2.Request) -> httpx2.Response:
+        raise AssertionError("HTTP request should not have been made")
+
+    client = httpx2.Client(base_url="https://api.test/v1", transport=httpx2.MockTransport(unexpected_call))
+    with pytest.raises(ValidationError):
+        signup(email="jane@acme.com", first_name=name, last_name="Doe", http_client=client)
+
+
+def test_charset_rejection_names_the_rule() -> None:
+    client = httpx2.Client(
+        base_url="https://api.test/v1", transport=httpx2.MockTransport(lambda r: httpx2.Response(201))
+    )
+    with pytest.raises(ValidationError, match="letters, spaces, hyphens, apostrophes and periods only"):
+        signup(email="jane@acme.com", first_name="Jane2", last_name="Doe", http_client=client)
+
+
+def test_over_length_rejection_names_the_limit() -> None:
+    client = httpx2.Client(
+        base_url="https://api.test/v1", transport=httpx2.MockTransport(lambda r: httpx2.Response(201))
+    )
+    with pytest.raises(ValidationError, match=f"between 1 and {MAX_NAME_LENGTH} characters"):
+        signup(email="jane@acme.com", first_name="x" * (MAX_NAME_LENGTH + 1), last_name="Doe", http_client=client)
+
+
+def test_surrounding_whitespace_is_trimmed_before_request() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["body"] = request.read()
+        return httpx2.Response(201, json=_RESPONSE)
+
+    client = httpx2.Client(base_url="https://api.test/v1", transport=httpx2.MockTransport(handler))
+    signup(email="jane@acme.com", first_name="  Jane  ", last_name="Doe", http_client=client)
+    assert b'"first_name": "Jane"' in seen["body"] or b'"first_name":"Jane"' in seen["body"]
+
+
+def test_decomposed_name_is_normalized_to_nfc_before_request() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["body"] = request.read()
+        return httpx2.Response(201, json=_RESPONSE)
+
+    client = httpx2.Client(base_url="https://api.test/v1", transport=httpx2.MockTransport(handler))
+    decomposed = "José"
+    signup(email="jane@acme.com", first_name=decomposed, last_name="Doe", http_client=client)
+    body = seen["body"]
+    assert isinstance(body, bytes)
+    decoded = body.decode()
+    assert '"first_name": "José"' in decoded or '"first_name":"José"' in decoded
+
+
+def test_name_with_non_composing_mark_is_accepted() -> None:
+    client = httpx2.Client(
+        base_url="https://api.test/v1",
+        transport=httpx2.MockTransport(lambda request: httpx2.Response(201, json=_RESPONSE)),
+    )
+    name = "अनुज"
+    result = signup(email="jane@acme.com", first_name=name, last_name="Doe", http_client=client)
+    assert isinstance(result, SignupResult)

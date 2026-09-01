@@ -95,3 +95,10 @@ def test_signup_different_email_tty_confirm_proceeds(monkeypatch) -> None:
         )
     assert result.exit_code == 0, result.output
     assert sdk_signup.call_args.kwargs["allow_new_email"] is True
+
+
+def test_signup_rejected_name_exits_nonzero_with_message_on_stderr() -> None:
+    result = runner.invoke(app, ["signup", "--email", "jane@acme.com", "--first-name", "Jane2", "--last-name", "Doe"])
+    assert result.exit_code != 0
+    payload = json.loads(result.stderr)
+    assert "letters, spaces, hyphens, apostrophes and periods only" in payload["message"]
