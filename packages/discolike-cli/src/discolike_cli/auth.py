@@ -69,7 +69,7 @@ def _mask(key: str) -> str:
 
 
 def _was_passed_on_command_line(ctx: typer.Context, name: str) -> bool:
-    source = ctx.find_root().get_parameter_source(name)
+    source = ctx.get_parameter_source(name)
     return source is not None and source.name == "COMMANDLINE"
 
 
@@ -246,6 +246,8 @@ def login(
     ),
 ) -> None:
     """Log in via the browser (OAuth) or with an API key, verify, and save to the local config file."""
+    if method not in LOGIN_METHODS:
+        raise typer.BadParameter(f"must be one of {', '.join(LOGIN_METHODS)}", param_hint="--method")
     global_key_passed = ctx.obj.get("api_key") is not None and _global_key_source(ctx) == SOURCE_OPTION
     if (
         _is_interactive()
@@ -255,8 +257,6 @@ def login(
         and not typer.confirm(HAS_ACCOUNT_PROMPT, default=True)
     ):
         _offer_signup(ctx)
-    if method not in LOGIN_METHODS:
-        raise typer.BadParameter(f"must be one of {', '.join(LOGIN_METHODS)}", param_hint="--method")
     if api_key or global_key_passed or method == AUTH_METHOD_API_KEY:
         _api_key_login(ctx, api_key=api_key)
         return
