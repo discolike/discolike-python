@@ -36,7 +36,9 @@ def test_signup_posts_without_credentials() -> None:
     assert seen["path"] == "/v1/public/signup"
     assert seen["auth"] is None
     assert seen["key"] is None
-    assert b'"agent": "discolike-python/' in seen["body"] or b'"agent":"discolike-python/' in seen["body"]
+    body = seen["body"]
+    assert isinstance(body, bytes)
+    assert b'"agent": "discolike-python/' in body or b'"agent":"discolike-python/' in body
 
 
 def test_signup_agent_override() -> None:
@@ -199,7 +201,9 @@ def test_surrounding_whitespace_is_trimmed_before_request() -> None:
 
     client = httpx2.Client(base_url="https://api.test/v1", transport=httpx2.MockTransport(handler))
     signup(email="jane@acme.com", first_name="  Jane  ", last_name="Doe", http_client=client)
-    assert b'"first_name": "Jane"' in seen["body"] or b'"first_name":"Jane"' in seen["body"]
+    body = seen["body"]
+    assert isinstance(body, bytes)
+    assert b'"first_name": "Jane"' in body or b'"first_name":"Jane"' in body
 
 
 def test_decomposed_name_is_normalized_to_nfc_before_request() -> None:
