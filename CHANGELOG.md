@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- SDK: `CountParams.exclude_leadgen` now defaults to `False`, matching the platform's `/count` default — counts no longer drop suspected lead-gen sites unless you ask for it. Discover is unchanged.
+
 ## 0.3.1 (2026-09-02)
 
 - SDK: `discolike.signup()` / `discolike.async_signup()` create a DiscoLike account for a person from their work email and name, with no credential required. Returns `SignupResult` with the `next_step` text to relay.
