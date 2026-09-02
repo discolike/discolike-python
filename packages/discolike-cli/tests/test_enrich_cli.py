@@ -234,3 +234,40 @@ def test_segment_neither_domain_nor_file_exits_2(install_build_client: Callable[
     install_build_client(handler)
     result = runner.invoke(app, ["segment"])
     assert result.exit_code == 2
+
+
+def test_append_forwards_query_id(tmp_path, install_build_client: Callable[[Handler], None]) -> None:
+    domains_file = tmp_path / "domains.csv"
+    domains_file.write_text("domain\nacme.com\n")
+    captured: dict[str, httpx2.Request] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["request"] = request
+        return httpx2.Response(200, json=[{"domain": "acme.com"}])
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app, ["append", str(domains_file), "--dataset", "bizdata", "--query-id", "q1", "--query-id", "q2"]
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["request"].url.params.get_list("query_id") == ["q1", "q2"]
+
+
+def test_segment_forwards_query_id_for_domains_and_file(
+    tmp_path, install_build_client: Callable[[Handler], None]
+) -> None:
+    domains_file = tmp_path / "domains.csv"
+    domains_file.write_text("domain\nacme.com\n")
+    captured: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured.append(request)
+        return httpx2.Response(200, json={"task_id": "sg-1"})
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["segment", "--domain", "acme.com", "--query-id", "q1"])
+    assert result.exit_code == 0, result.output
+    result = runner.invoke(app, ["segment", "--file", str(domains_file), "--query-id", "q2"])
+    assert result.exit_code == 0, result.output
+    assert captured[0].url.params.get_list("query_id") == ["q1"]
+    assert captured[1].url.params.get_list("query_id") == ["q2"]

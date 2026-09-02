@@ -19,6 +19,7 @@ DEFAULT_WAIT_TIMEOUT_SECONDS = 900.0
 FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls back to JSON for non-tabular data)."
 WAIT_HELP = "Block until the job finishes, streaming progress to stderr."
 TIMEOUT_HELP = "Max seconds to wait with --wait."
+QUERY_ID_HELP = "Saved query ID whose domains are included alongside the file/--domain ones (repeatable)."
 
 
 @handle_errors
@@ -76,6 +77,7 @@ def append_command(
     file: pathlib.Path = typer.Argument(..., help="CSV of domains to enrich."),
     dataset: list[str] | None = typer.Option(None, "--dataset", help="Dataset to append (repeatable)."),
     domain_column: str | None = typer.Option(None, "--domain-column", help="Column in the CSV that holds domains."),
+    query_id: list[str] | None = typer.Option(None, "--query-id", help=QUERY_ID_HELP),
     csv: bool | None = typer.Option(
         None, "--csv/--no-csv", help="Request the enriched rows as CSV (written via --output)."
     ),
@@ -85,7 +87,9 @@ def append_command(
     """Enrich a CSV of domains with DiscoLike datasets."""
     from discolike_cli.main import get_client
 
-    request = build_request(AppendParams, _merge_params(None, dataset=dataset, domain_column=domain_column, csv=csv))
+    request = build_request(
+        AppendParams, _merge_params(None, dataset=dataset, domain_column=domain_column, query_id=query_id, csv=csv)
+    )
     result = get_client(ctx).append(request, file=file)
     if isinstance(result, bytes):
         if output is None:
@@ -102,6 +106,7 @@ def segment_command(
     domain: list[str] | None = typer.Option(None, "--domain", help="Domain to segment (repeatable)."),
     file: pathlib.Path | None = typer.Option(None, "--file", help="CSV of domains to segment (instead of --domain)."),
     domain_column: str | None = typer.Option(None, "--domain-column", help="Column in --file that holds domains."),
+    query_id: list[str] | None = typer.Option(None, "--query-id", help=QUERY_ID_HELP),
     max_segments: int | None = typer.Option(None, "--max-segments", help="Maximum number of segments to produce."),
     wait: bool = typer.Option(False, "--wait", help=WAIT_HELP),
     timeout: float = typer.Option(DEFAULT_WAIT_TIMEOUT_SECONDS, "--timeout", help=TIMEOUT_HELP),
@@ -116,11 +121,14 @@ def segment_command(
     client = get_client(ctx)
     if file is not None:
         request = build_request(
-            SegmentFileParams, _merge_params(None, domain_column=domain_column, max_segments=max_segments)
+            SegmentFileParams,
+            _merge_params(None, domain_column=domain_column, query_id=query_id, max_segments=max_segments),
         )
         job = client.segment_file(request, file=file)
     else:
         assert domain is not None
-        request = build_request(SegmentParams, _merge_params(None, domains=",".join(domain), max_segments=max_segments))
+        request = build_request(
+            SegmentParams, _merge_params(None, domains=",".join(domain), query_id=query_id, max_segments=max_segments)
+        )
         job = client.segment(request)
     run_job(job, wait=wait, timeout=timeout, fmt=fmt)

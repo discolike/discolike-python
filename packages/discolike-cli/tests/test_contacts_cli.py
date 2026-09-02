@@ -76,6 +76,15 @@ def test_contacts_search_sends_options_and_param_escape_hatch(install_build_clie
     ]
 
 
+def test_contacts_search_icp_text_is_removed(install_build_client: Callable[[Handler], None]) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json=[])
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["contacts", "search", "--icp-text", "X"])
+    assert result.exit_code == 2
+
+
 def test_contacts_search_forwards_negate_options(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, httpx2.QueryParams] = {}
 
@@ -111,15 +120,6 @@ def test_contacts_search_forwards_negate_options(install_build_client: Callable[
     assert params.get_list("negate_person_country") == ["FR"]
     assert params.get_list("negate_filter_industry") == ["GAMING_AND_ESPORTS"]
     assert params.get_list("negate_filter_country") == ["RU"]
-
-
-def test_contacts_search_icp_text_is_removed(install_build_client: Callable[[Handler], None]) -> None:
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        return httpx2.Response(200, json=[])
-
-    install_build_client(handler)
-    result = runner.invoke(app, ["contacts", "search", "--icp-text", "X"])
-    assert result.exit_code == 2
 
 
 def test_contacts_search_unknown_param_passes_through(install_build_client: Callable[[Handler], None]) -> None:
@@ -346,3 +346,156 @@ def test_contacts_generate_without_wait_prints_task_hint(install_build_client: C
     payload = json.loads(result.stdout)
     assert payload["task_id"] == "dg-1"
     assert payload["task_family"] == "discogen"
+
+
+NEW_CONTACT_FILTER_ARGS = [
+    "--name",
+    "Jane",
+    "--summary",
+    "scaled a sales org",
+    "--negate-summary",
+    "intern",
+    "--skills",
+    "SQL",
+    "--person-state",
+    "CA",
+    "--persona-id",
+    "7",
+    "--filter-state",
+    "TX",
+    "--negate-filter-state",
+    "NY",
+    "--email-validated",
+    "--has-phone",
+    "--no-has-mobile",
+    "--has-linkedin",
+    "--min-connections",
+    "500",
+    "--inclusion-query-id",
+    "q1",
+    "--exclusion-query-id",
+    "q2",
+    "--max-companies",
+    "10",
+    "--results-by-company",
+    "2",
+    "--include-search-contacts",
+    "--consensus",
+    "3",
+]
+
+
+def _assert_new_contact_filters(params: httpx2.QueryParams) -> None:
+    assert params.get("name") == "Jane"
+    assert params.get("summary") == "scaled a sales org"
+    assert params.get("negate_summary") == "intern"
+    assert params.get_list("skills") == ["SQL"]
+    assert params.get_list("person_state") == ["CA"]
+    assert params.get_list("persona_id") == ["7"]
+    assert params.get_list("filter_state") == ["TX"]
+    assert params.get_list("negate_filter_state") == ["NY"]
+    assert params.get("email_validated") == "true"
+    assert params.get("has_phone") == "true"
+    assert params.get("has_mobile") == "false"
+    assert params.get("has_linkedin") == "true"
+    assert params.get("min_connections") == "500"
+    assert params.get_list("inclusion_query_id") == ["q1"]
+    assert params.get_list("exclusion_query_id") == ["q2"]
+    assert params.get("max_companies") == "10"
+    assert params.get("results_by_company") == "2"
+    assert params.get("include_search_contacts") == "true"
+    assert params.get("consensus") == "3"
+
+
+def test_contacts_search_forwards_every_new_flag(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.QueryParams] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["params"] = request.url.params
+        return httpx2.Response(200, json=[])
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["contacts", "search", *NEW_CONTACT_FILTER_ARGS])
+    assert result.exit_code == 0, result.output
+    _assert_new_contact_filters(captured["params"])
+
+
+def test_contacts_count_forwards_every_new_flag(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.QueryParams] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["params"] = request.url.params
+        return httpx2.Response(200, json={"count": 1})
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["contacts", "count", *NEW_CONTACT_FILTER_ARGS, "--max-records", "20", "--offset", "5"])
+    assert result.exit_code == 0, result.output
+    params = captured["params"]
+    _assert_new_contact_filters(params)
+    assert params.get("max_records") == "20"
+    assert params.get("offset") == "5"
+
+
+def test_contacts_discover_forwards_every_new_flag(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"results": {}, "total_contacts": 0})
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["contacts", "discover", *NEW_CONTACT_FILTER_ARGS])
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {
+        "name": "Jane",
+        "summary": "scaled a sales org",
+        "negate_summary": "intern",
+        "skills": ["SQL"],
+        "person_state": ["CA"],
+        "persona_id": [7],
+        "filter_state": ["TX"],
+        "negate_filter_state": ["NY"],
+        "email_validated": True,
+        "has_phone": True,
+        "has_mobile": False,
+        "has_linkedin": True,
+        "min_connections": 500,
+        "inclusion_query_id": ["q1"],
+        "exclusion_query_id": ["q2"],
+        "max_companies": 10,
+        "results_by_company": 2,
+        "include_search_contacts": True,
+        "consensus": 3,
+    }
+
+
+def test_contacts_generate_forwards_full_and_partial_domains(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-9"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "contacts",
+            "generate",
+            "--icp-text",
+            "VPs of Marketing",
+            "--domain",
+            "acme.com",
+            "--full-domain",
+            "done.com",
+            "--partial-domain",
+            "half.com",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {
+        "icp_text": "VPs of Marketing",
+        "domains": ["acme.com"],
+        "full_domains": ["done.com"],
+        "partial_domains": ["half.com"],
+    }

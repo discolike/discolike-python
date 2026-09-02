@@ -118,6 +118,120 @@ def test_discover_icp_text_option_removed(install_build_client: Callable[[Handle
     assert result.exit_code == 2
 
 
+def test_discover_forwards_every_new_flag(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.QueryParams] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["params"] = request.url.params
+        return _discover_ok(request)
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "discover",
+            "--subdomain",
+            "shop",
+            "--negate-subdomain",
+            "blog",
+            "--language",
+            "en",
+            "--negate-language",
+            "de",
+            "--social",
+            "linkedin",
+            "--negate-social",
+            "tiktok",
+            "--start-date",
+            "2020-01-01",
+            "--min-similarity",
+            "40",
+            "--variance",
+            "MEDIUM",
+            "--consensus",
+            "3",
+            "--redirect",
+            "--no-exclude-leadgen",
+            "--retrieval",
+            "--enhanced",
+            "--include-search-domains",
+            "--auto-icp-text",
+            "--auto-phrase-match",
+            "--inclusion-query-id",
+            "q1",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    params = captured["params"]
+    assert params.get_list("subdomain") == ["shop"]
+    assert params.get_list("negate_subdomain") == ["blog"]
+    assert params.get_list("language") == ["en"]
+    assert params.get_list("negate_language") == ["de"]
+    assert params.get_list("social") == ["linkedin"]
+    assert params.get_list("negate_social") == ["tiktok"]
+    assert params.get("start_date") == "2020-01-01"
+    assert params.get("min_similarity") == "40"
+    assert params.get("variance") == "MEDIUM"
+    assert params.get("consensus") == "3"
+    assert params.get("redirect") == "true"
+    assert params.get("exclude_leadgen") == "false"
+    assert params.get("retrieval") == "true"
+    assert params.get("enhanced") == "true"
+    assert params.get("include_search_domains") == "true"
+    assert params.get("auto_icp_text") == "true"
+    assert params.get("auto_phrase_match") == "true"
+    assert params.get_list("inclusion_query_id") == ["q1"]
+
+
+def test_discover_rejects_invalid_variance(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_discover_ok)
+    result = runner.invoke(app, ["discover", "--variance", "BOGUS"])
+    assert result.exit_code == 2
+
+
+def test_count_forwards_every_new_flag(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.QueryParams] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["params"] = request.url.params
+        return _count_ok(request)
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "count",
+            "--subdomain",
+            "shop",
+            "--negate-subdomain",
+            "blog",
+            "--language",
+            "en",
+            "--negate-language",
+            "de",
+            "--social",
+            "linkedin",
+            "--negate-social",
+            "tiktok",
+            "--start-date",
+            "2020-01-01,2021-01-01",
+            "--no-redirect",
+            "--exclude-leadgen",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    params = captured["params"]
+    assert params.get_list("subdomain") == ["shop"]
+    assert params.get_list("negate_subdomain") == ["blog"]
+    assert params.get_list("language") == ["en"]
+    assert params.get_list("negate_language") == ["de"]
+    assert params.get_list("social") == ["linkedin"]
+    assert params.get_list("negate_social") == ["tiktok"]
+    assert params.get("start_date") == "2020-01-01,2021-01-01"
+    assert params.get("redirect") == "false"
+    assert params.get("exclude_leadgen") == "true"
+
+
 def test_count_sends_shared_filter_subset(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, httpx2.QueryParams] = {}
 
