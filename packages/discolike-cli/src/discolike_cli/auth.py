@@ -33,11 +33,12 @@ from discolike._oauth import OAuthError
 from discolike._oauth import build_authorization_url
 from discolike._oauth import discover
 from discolike._oauth import exchange_code
-from discolike._oauth import pkce_pair
 from discolike._oauth import register_client
 from discolike_cli._loopback import CallbackServer
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
+from discolike_cli.signup import _is_interactive
+from discolike_cli.signup import run_signup
 
 app = typer.Typer(help="Manage credentials: log in (browser or API key), check status, log out.")
 
@@ -55,12 +56,33 @@ LOGIN_METHODS = (AUTH_METHOD_OAUTH, AUTH_METHOD_API_KEY)
 DEAD_CLIENT_ERRORS = frozenset({"invalid_client", "unauthorized_client"})
 
 
+HAS_ACCOUNT_PROMPT = "Do you already have a DiscoLike account?"
+SIGNUP_FOLLOWUP_MESSAGE = "Confirm the email, then run `discolike auth login` again to sign in."
+
+
 class _DeadClientError(Exception):
     """The authorization server no longer recognises the registered client_id."""
 
 
 def _mask(key: str) -> str:
     return "…" + key[-MASKED_VISIBLE_CHARS:]
+
+
+def _was_passed_on_command_line(ctx: typer.Context, name: str) -> bool:
+    source = ctx.get_parameter_source(name)
+    return source is not None and source.name == "COMMANDLINE"
+
+
+def _offer_signup(ctx: typer.Context) -> None:
+    email = typer.prompt("Work email")
+    first_name = typer.prompt("First name")
+    last_name = typer.prompt("Last name")
+    base_url = str(ctx.obj.get("base_url") or DEFAULT_BASE_URL).rstrip("/")
+    run_signup(
+        email=email, first_name=first_name, last_name=last_name, agent=None, base_url=base_url, yes=False, fmt=None
+    )
+    typer.echo(SIGNUP_FOLLOWUP_MESSAGE)
+    raise typer.Exit(code=0)
 
 
 def _iso(epoch_seconds: float) -> str:
@@ -135,13 +157,11 @@ def _authorize(
     open_browser: bool,
     http: httpx2.Client,
 ) -> OAuthCredential:
-    verifier, challenge = pkce_pair()
     state = secrets.token_urlsafe(STATE_BYTES)
-    url = build_authorization_url(
+    url, verifier = build_authorization_url(
         metadata,
         client_id=registration.client_id,
         redirect_uri=registration.redirect_uri,
-        code_challenge=challenge,
         state=state,
         resource=resource,
     )
@@ -168,7 +188,6 @@ def _authorize(
             code_verifier=verifier,
             redirect_uri=registration.redirect_uri,
             resource=resource,
-            client=http,
         )
     except OAuthError as exc:
         if exc.error in DEAD_CLIENT_ERRORS:
@@ -230,6 +249,14 @@ def login(
     if method not in LOGIN_METHODS:
         raise typer.BadParameter(f"must be one of {', '.join(LOGIN_METHODS)}", param_hint="--method")
     global_key_passed = ctx.obj.get("api_key") is not None and _global_key_source(ctx) == SOURCE_OPTION
+    if (
+        _is_interactive()
+        and api_key is None
+        and not global_key_passed
+        and not _was_passed_on_command_line(ctx, "method")
+        and not typer.confirm(HAS_ACCOUNT_PROMPT, default=True)
+    ):
+        _offer_signup(ctx)
     if api_key or global_key_passed or method == AUTH_METHOD_API_KEY:
         _api_key_login(ctx, api_key=api_key)
         return

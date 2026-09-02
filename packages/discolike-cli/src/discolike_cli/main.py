@@ -18,6 +18,7 @@ from discolike_cli import enrich
 from discolike_cli import match
 from discolike_cli import providers
 from discolike_cli import queries
+from discolike_cli import signup
 
 app = typer.Typer(
     name="discolike",
@@ -70,3 +71,4 @@ app.command(name="extract")(company.extract_command)
 app.command(name="validate-icp")(enrich.validate_icp_command)
 app.command(name="append")(enrich.append_command)
 app.command(name="segment")(enrich.segment_command)
+app.command(name="signup")(signup.signup_command)

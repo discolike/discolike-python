@@ -23,7 +23,7 @@
   <a href="https://discolike.com">Website</a> ·
   <a href="https://docs.discolike.com">API Docs</a> ·
   <a href="https://app.discolike.com/account/management/keys">Get an API key</a> ·
-  <a href="https://auth.discolike.com/en/signup">Sign up</a> ·
+  <a href="https://discolike.com/signup">Sign up</a> ·
   <a href="https://calendly.com/discolike/introductory-call">Book a demo</a> ·
   <a href="https://discolike.com/blog/">Blog</a>
 </p>
@@ -66,6 +66,14 @@ uvx --from discolike-cli discolike --help
 Requires Python 3.10+.
 
 ## Authentication
+
+No account yet? An agent (or you) can open one without a browser; the account owner confirms by email and logs in:
+
+```bash
+discolike signup --email jane@acme.com --first-name Jane --last-name Doe
+```
+
+The CLI remembers the last email signed up from this machine and asks before signing up a different one (`--yes` skips the prompt). `discolike auth login` asks first whether you already have an account and offers signup if not.
 
 Create an API key at [app.discolike.com/account/management/keys](https://app.discolike.com/account/management/keys), then use any of:
 
@@ -175,9 +183,10 @@ discolike match --file companies.csv --name-column company_name --wait
 discolike count --phrase-match "book a demo" --country US
 discolike company data stripe.com
 discolike extract https://stripe.com/enterprise
+discolike signup --email you@company.com --first-name You --last-name Person
 ```
 
-Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment` — plus `auth`, `company`, `contacts`, `discogen`, `queries`, `account`, `search-providers`, and `llm-providers` command groups.
+Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment`, `signup` — plus `auth`, `company`, `contacts`, `discogen`, `queries`, `account`, `search-providers`, and `llm-providers` command groups.
 
 ### CLI conventions
 
@@ -288,7 +297,7 @@ Committed request models track the dev spec (`--spec-url https://api.dev.discoli
 ## Support & contact
 
 - **API documentation**: [docs.discolike.com](https://docs.discolike.com)
-- **Sign up**: [auth.discolike.com/en/signup](https://auth.discolike.com/en/signup)
+- **Sign up**: [discolike.com/signup](https://discolike.com/signup)
 - **Book a demo**: [calendly.com/discolike/introductory-call](https://calendly.com/discolike/introductory-call)
 - **LinkedIn**: [linkedin.com/company/discolike](https://www.linkedin.com/company/discolike/)
 - **Issues with this SDK**: [GitHub issues](https://github.com/Discolike/discolike-python/issues)

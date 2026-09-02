@@ -7,6 +7,7 @@ import threading
 import time
 from collections.abc import Callable
 from typing import Any
+from unittest.mock import patch
 from urllib.parse import parse_qs
 from urllib.parse import urlparse
 from urllib.request import urlopen
@@ -75,18 +76,18 @@ class FakeProvider:
         self.register_calls.append(redirect_uris)
         return "client-1"
 
-    def exchange_code(self, metadata: AuthServerMetadata, *, client: httpx2.Client, **kwargs: Any) -> OAuthCredential:
+    def exchange_code(self, metadata: AuthServerMetadata, **kwargs: Any) -> OAuthCredential:
         self.exchange_calls.append(kwargs)
         if self.exchange_failures:
             raise self.exchange_failures.pop(0)
         return CREDENTIAL
 
-    def build_authorization_url(self, metadata: AuthServerMetadata, **kwargs: Any) -> str:
-        url = self.real_build_authorization_url(metadata, **kwargs)
+    def build_authorization_url(self, metadata: AuthServerMetadata, **kwargs: Any) -> tuple[str, str]:
+        url, verifier = self.real_build_authorization_url(metadata, **kwargs)
         query = {key: values[0] for key, values in parse_qs(urlparse(url).query).items()}
         callback = f"{query['redirect_uri']}?{self.callback_query(query)}"
         threading.Thread(target=lambda: urlopen(callback).read(), daemon=True).start()  # noqa: S310 -- loopback test server
-        return url
+        return url, verifier
 
     def open(self, url: str) -> bool:
         self.opened_urls.append(url)
@@ -170,7 +171,9 @@ def test_login_timeout_exits_1(
 ) -> None:
     install_build_client(_usage_ok)
     monkeypatch.setattr(auth_module, "LOGIN_TIMEOUT_SECONDS", 0.2)
-    monkeypatch.setattr(auth_module, "build_authorization_url", lambda metadata, **kwargs: "https://auth.test/never")
+    monkeypatch.setattr(
+        auth_module, "build_authorization_url", lambda metadata, **kwargs: ("https://auth.test/never", "v")
+    )
     result = runner.invoke(app, ["auth", "login"])
     assert result.exit_code == 1
     assert "Timed out" in json.loads(result.stderr.splitlines()[-1])["message"]
@@ -409,3 +412,86 @@ def test_login_forged_error_callback_cannot_evict_stored_client(
     assert "state mismatch" in json.loads(result.stderr.splitlines()[-1])["message"]
     assert provider.register_calls == []
     assert load_oauth_client() == registration
+
+
+def test_login_tty_confirms_existing_account_runs_oauth(
+    provider: FakeProvider,
+    install_build_client: Callable[[Handler], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_build_client(_usage_ok)
+    monkeypatch.setattr(auth_module, "_is_interactive", lambda: True)
+    with patch("discolike_cli.auth.run_signup", autospec=True) as run_signup_mock:
+        result = runner.invoke(app, ["auth", "login"], input="y\n")
+    assert result.exit_code == 0, result.output
+    assert provider.discover_calls == [DEFAULT_BASE_URL]
+    run_signup_mock.assert_not_called()
+
+
+def test_login_tty_declines_account_runs_signup(
+    provider: FakeProvider,
+    install_build_client: Callable[[Handler], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_build_client(_usage_ok)
+    monkeypatch.setattr(auth_module, "_is_interactive", lambda: True)
+    with patch("discolike_cli.auth.run_signup", autospec=True, return_value=None) as run_signup_mock:
+        result = runner.invoke(app, ["auth", "login"], input="n\njane@acme.com\nJane\nDoe\n")
+    assert result.exit_code == 0, result.output
+    run_signup_mock.assert_called_once_with(
+        email="jane@acme.com",
+        first_name="Jane",
+        last_name="Doe",
+        agent=None,
+        base_url=DEFAULT_BASE_URL,
+        yes=False,
+        fmt=None,
+    )
+    assert "run `discolike auth login` again" in result.output
+    assert provider.discover_calls == []
+
+
+def test_login_with_api_key_skips_account_question(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_usage_ok)
+    with patch("discolike_cli.auth.typer.confirm", autospec=True) as confirm_mock:
+        result = runner.invoke(app, ["auth", "login", "--api-key", "dk-1"])
+    assert result.exit_code == 0, result.output
+    confirm_mock.assert_not_called()
+
+
+def test_login_with_global_api_key_skips_account_question(
+    install_build_client: Callable[[Handler], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_build_client(_usage_ok)
+    monkeypatch.setattr(auth_module, "_is_interactive", lambda: True)
+    with patch("discolike_cli.auth.typer.confirm", autospec=True) as confirm_mock:
+        result = runner.invoke(app, ["--api-key", "dk-global", "auth", "login"])
+    assert result.exit_code == 0, result.output
+    confirm_mock.assert_not_called()
+    assert json.loads(config_path().read_text())["api_key"] == "dk-global"
+
+
+def test_login_with_explicit_api_key_method_skips_account_question(
+    install_build_client: Callable[[Handler], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_build_client(_usage_ok)
+    monkeypatch.setattr(auth_module, "_is_interactive", lambda: True)
+    with patch("discolike_cli.auth.typer.confirm", autospec=True) as confirm_mock:
+        result = runner.invoke(app, ["auth", "login", "--method", "api_key", "--api-key", "dk-x"])
+    assert result.exit_code == 0, result.output
+    confirm_mock.assert_not_called()
+    assert json.loads(config_path().read_text())["api_key"] == "dk-x"
+
+
+def test_login_rejects_unknown_method_on_a_tty_without_asking(
+    provider: FakeProvider,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(auth_module, "_is_interactive", lambda: True)
+    with patch("discolike_cli.auth.typer.confirm", autospec=True) as confirm_mock:
+        result = runner.invoke(app, ["auth", "login", "--method", "bogus"])
+    assert result.exit_code == 2
+    confirm_mock.assert_not_called()
+    assert provider.discover_calls == []

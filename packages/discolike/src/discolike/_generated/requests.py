@@ -2576,7 +2576,7 @@ class AppendParams(DiscolikeRequest):
         Field(description="Return results as CSV instead of JSON.", title="Csv"),
     ] = False
     dataset: Annotated[
-        list[Literal["bizdata", "redirects", "domain_status", "growth", "vendors"]],
+        list[Literal["bizdata", "redirects", "domain_status", "growth", "vendors", "subdomains"]],
         Field(description="Datasets to append.", min_length=1, title="Dataset"),
     ]
     query_id: Annotated[

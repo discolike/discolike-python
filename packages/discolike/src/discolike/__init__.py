@@ -25,6 +25,9 @@ from discolike.resources.email import EmailJobResult
 from discolike.resources.email import EnumerationMatch
 from discolike.resources.email import EnumerationOutput
 from discolike.resources.email import ValidationOutput
+from discolike.signup import SignupResult
+from discolike.signup import async_signup
+from discolike.signup import signup
 
 __all__ = [
     "APIConnectionError",
@@ -51,7 +54,10 @@ __all__ = [
     "PlanAccessError",
     "RateLimitError",
     "ServerError",
+    "SignupResult",
     "ValidationError",
     "ValidationOutput",
     "__version__",
+    "async_signup",
+    "signup",
 ]

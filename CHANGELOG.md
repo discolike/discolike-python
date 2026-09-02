@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1 (2026-09-02)
+
+- SDK: `discolike.signup()` / `discolike.async_signup()` create a DiscoLike account for a person from their work email and name, with no credential required. Returns `SignupResult` with the `next_step` text to relay.
+- CLI: `discolike signup --email --first-name --last-name` does the same from the terminal, without `discolike auth login`. The CLI remembers the last email signed up from this machine and asks before signing up a different one (`--yes` skips the prompt). `discolike auth login` asks first whether you already have an account and offers signup if not.
+- SDK: `signup()` / `async_signup()` always post to `base_url` (the DiscoLike API by default); an injected `http_client=` is used as transport only, and its own base URL never redirects the signup request.
+- SDK: `AppendParams.dataset` accepts the new `subdomains` dataset — appends the subdomains observed for each domain (up to 300, most popular first).
+- SDK: OAuth token requests (PKCE authorization URL, code exchange, refresh) now go through [Authlib](https://authlib.org) 1.8.0's httpx2 client instead of hand-rolled request building; `authlib` is a new dependency. Bearer handling, proactive refresh, the single 401 replay, config persistence, and error types are unchanged. Refreshes use a dedicated token-endpoint client with a 30s timeout rather than the SDK's `http_client`, so proxies or transports configured on `http_client=` no longer apply to the token endpoint.
+
 ## 0.3.0 (2026-08-29)
 
 - SDK: OAuth login. `Discolike(auth=...)` / `AsyncDiscolike(auth=...)` accept an `ApiKeyCredential` or `OAuthCredential` (both exported from `discolike`); `api_key=`, `DISCOLIKE_API_KEY`, and the config file keep working unchanged, and `auth=` wins over all of them. OAuth credentials send `Authorization: Bearer`, refresh proactively within 60s of expiry and once more after a 401, and write rotated refresh tokens back to the config file when they were loaded from it (an injected `auth=` is never persisted). A refresh that fails raises `AuthenticationError("OAuth session expired; run `discolike auth login`")`. Config file gains the shape `{"auth_method": "oauth", "oauth": {...}}` next to the existing `api_key` shape.

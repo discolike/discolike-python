@@ -55,10 +55,12 @@ class Server:
 
 
 def sync_client(auth: DiscolikeAuth, handler) -> httpx2.Client:
+    auth._token_transport = httpx2.MockTransport(handler)
     return httpx2.Client(transport=httpx2.MockTransport(handler), base_url=API, auth=auth)
 
 
 def async_client(auth: DiscolikeAuth, handler) -> httpx2.AsyncClient:
+    auth._token_transport = httpx2.MockTransport(handler)
     return httpx2.AsyncClient(transport=httpx2.MockTransport(handler), base_url=API, auth=auth)
 
 
@@ -102,7 +104,8 @@ def test_refresh_request_shape() -> None:
     sync_client(DiscolikeAuth(make_oauth(expires_in=0)), server).get("/usage")
     token_request = server.token_calls[0]
     assert token_request.method == "POST"
-    assert token_request.headers["Content-Type"] == "application/x-www-form-urlencoded"
+    assert token_request.headers["Content-Type"].startswith("application/x-www-form-urlencoded")
+    assert token_request.headers["Accept"] == "application/json"
     assert token_request.content.decode() == "grant_type=refresh_token&refresh_token=rt-1&client_id=client-1"
 
 

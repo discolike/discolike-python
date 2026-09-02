@@ -1,27 +1,27 @@
 from __future__ import annotations
 
-import base64
-import hashlib
-import secrets
-import time
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import urlencode
 
 import httpx2
+from authlib.common.security import generate_token
+from authlib.integrations.httpx_client import AsyncOAuth2Client
+from authlib.integrations.httpx_client import OAuth2Client
+from authlib.oauth2.client import OAuth2Client as BaseOAuth2Client
 
 from discolike._credentials import OAuthCredential
 from discolike._exceptions import AuthenticationError
 
 OAUTH_SCOPE = "offline_access"
 REFRESH_LEEWAY_SECONDS = 60.0
+TOKEN_TIMEOUT_SECONDS = 30.0
 CLIENT_NAME = "discolike-cli"
 METADATA_PATH = "/.well-known/oauth-authorization-server"
 GRANT_TYPES = ["authorization_code", "refresh_token"]
 RESPONSE_TYPES = ["code"]
 PKCE_METHOD = "S256"
-PKCE_VERIFIER_BYTES = 32
-TOKEN_HEADERS = {"Accept": "application/json"}
+PKCE_VERIFIER_LENGTH = 64
+PUBLIC_CLIENT_AUTH = "none"
 TOKEN_KEYS = frozenset({"access_token", "refresh_token", "id_token"})
 SESSION_EXPIRED_MESSAGE = "OAuth session expired; run `discolike auth login`"
 
@@ -49,15 +49,6 @@ class AuthServerMetadata:
     issuer: str
 
 
-def _b64url(raw: bytes) -> str:
-    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
-
-
-def pkce_pair() -> tuple[str, str]:
-    verifier = _b64url(secrets.token_bytes(PKCE_VERIFIER_BYTES))
-    return verifier, _b64url(hashlib.sha256(verifier.encode("ascii")).digest())
-
-
 def _payload(response: httpx2.Response) -> dict[str, Any]:
     try:
         payload = response.json()
@@ -83,25 +74,58 @@ def _require(payload: dict[str, Any], key: str) -> str:
     return str(payload[key])
 
 
-def _redacted(payload: dict[str, Any]) -> dict[str, Any]:
-    return {key: value for key, value in payload.items() if key not in TOKEN_KEYS}
+class _StrictTokenParsing(BaseOAuth2Client):
+    """Authlib swallows HTTP status and non-`error` failures; raise the SDK's exceptions before it parses."""
+
+    def parse_response_token(self, resp: httpx2.Response) -> dict[str, Any]:
+        _payload(resp)
+        return super().parse_response_token(resp)
 
 
-def _credential_from_token_payload(
-    payload: dict[str, Any], *, client_id: str, token_endpoint: str, fallback_refresh_token: str | None
+class TokenClient(_StrictTokenParsing, OAuth2Client):
+    pass
+
+
+class AsyncTokenClient(_StrictTokenParsing, AsyncOAuth2Client):
+    pass
+
+
+def _client_kwargs(
+    *,
+    client_id: str,
+    redirect_uri: str | None = None,
+    scope: str | None = None,
+    transport: httpx2.BaseTransport | httpx2.AsyncBaseTransport | None = None,
+) -> dict[str, Any]:
+    kwargs: dict[str, Any] = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "scope": scope,
+        "code_challenge_method": PKCE_METHOD,
+        "token_endpoint_auth_method": PUBLIC_CLIENT_AUTH,
+        "timeout": TOKEN_TIMEOUT_SECONDS,
+    }
+    if transport is not None:
+        kwargs["transport"] = transport
+    return kwargs
+
+
+def _credential_from_token(
+    token: dict[str, Any], *, client_id: str, token_endpoint: str, fallback_refresh_token: str | None
 ) -> OAuthCredential:
     # Exceptions raised here may be logged by SDK consumers; never attach live tokens to them.
-    safe_payload = _redacted(payload)
-    refresh_token = payload.get("refresh_token") or fallback_refresh_token
+    safe_payload = {key: value for key, value in token.items() if key not in TOKEN_KEYS}
+    refresh_token = token.get("refresh_token") or fallback_refresh_token
     if not refresh_token:
         raise AuthenticationError("OAuth token response has no `refresh_token`", payload=safe_payload)
-    for key in ("access_token", "expires_in"):
-        if key not in payload:
-            raise AuthenticationError(f"OAuth server response is missing `{key}`", payload=safe_payload)
+    if "access_token" not in token:
+        raise AuthenticationError("OAuth server response is missing `access_token`", payload=safe_payload)
+    if "expires_at" not in token:
+        raise AuthenticationError("OAuth server response is missing `expires_in`", payload=safe_payload)
     return OAuthCredential(
-        access_token=str(payload["access_token"]),
+        access_token=str(token["access_token"]),
         refresh_token=str(refresh_token),
-        expires_at=time.time() + float(payload["expires_in"]),
+        expires_at=float(token["expires_at"]),
         client_id=client_id,
         token_endpoint=token_endpoint,
     )
@@ -123,35 +147,21 @@ def register_client(metadata: AuthServerMetadata, *, redirect_uris: list[str], c
         "redirect_uris": redirect_uris,
         "grant_types": GRANT_TYPES,
         "response_types": RESPONSE_TYPES,
-        "token_endpoint_auth_method": "none",
+        "token_endpoint_auth_method": PUBLIC_CLIENT_AUTH,
     }
     return _require(_payload(client.post(metadata.registration_endpoint, json=body)), "client_id")
 
 
 def build_authorization_url(
-    metadata: AuthServerMetadata,
-    *,
-    client_id: str,
-    redirect_uri: str,
-    code_challenge: str,
-    state: str,
-    resource: str,
-    scope: str = OAUTH_SCOPE,
-) -> str:
-    query = urlencode(
-        {
-            "response_type": "code",
-            "client_id": client_id,
-            "redirect_uri": redirect_uri,
-            "code_challenge": code_challenge,
-            "code_challenge_method": PKCE_METHOD,
-            "state": state,
-            "resource": resource,
-            "scope": scope,
-        }
-    )
-    separator = "&" if "?" in metadata.authorization_endpoint else "?"
-    return f"{metadata.authorization_endpoint}{separator}{query}"
+    metadata: AuthServerMetadata, *, client_id: str, redirect_uri: str, state: str, resource: str
+) -> tuple[str, str]:
+    """Returns the URL to open and the PKCE code verifier to present at `exchange_code`."""
+    code_verifier = generate_token(PKCE_VERIFIER_LENGTH)
+    with TokenClient(**_client_kwargs(client_id=client_id, redirect_uri=redirect_uri, scope=OAUTH_SCOPE)) as client:
+        url, _ = client.create_authorization_url(
+            metadata.authorization_endpoint, state=state, code_verifier=code_verifier, resource=resource
+        )
+    return str(url), code_verifier
 
 
 def exchange_code(
@@ -162,35 +172,44 @@ def exchange_code(
     code_verifier: str,
     redirect_uri: str,
     resource: str,
-    client: httpx2.Client,
+    transport: httpx2.BaseTransport | None = None,
 ) -> OAuthCredential:
-    form = {
-        "grant_type": "authorization_code",
-        "client_id": client_id,
-        "code": code,
-        "code_verifier": code_verifier,
-        "redirect_uri": redirect_uri,
-        "resource": resource,
-    }
-    response = client.post(metadata.token_endpoint, data=form, headers=TOKEN_HEADERS)
-    return _credential_from_token_payload(
-        _payload(response), client_id=client_id, token_endpoint=metadata.token_endpoint, fallback_refresh_token=None
+    kwargs = _client_kwargs(client_id=client_id, redirect_uri=redirect_uri, scope=OAUTH_SCOPE, transport=transport)
+    with TokenClient(**kwargs) as client:
+        token = client.fetch_token(metadata.token_endpoint, code=code, code_verifier=code_verifier, resource=resource)
+    return _credential_from_token(
+        token, client_id=client_id, token_endpoint=metadata.token_endpoint, fallback_refresh_token=None
     )
 
 
-def refresh_request(credential: OAuthCredential) -> httpx2.Request:
-    form = {
-        "grant_type": "refresh_token",
-        "refresh_token": credential.refresh_token,
-        "client_id": credential.client_id,
-    }
-    return httpx2.Request("POST", credential.token_endpoint, data=form, headers=TOKEN_HEADERS)
+def refresh(
+    credential: OAuthCredential, *, transport: httpx2.BaseTransport | httpx2.AsyncBaseTransport | None = None
+) -> OAuthCredential:
+    """Rotates the tokens; any failure means the session is gone and the user must log in again."""
+    try:
+        with TokenClient(**_client_kwargs(client_id=credential.client_id, transport=transport)) as client:
+            token = client.refresh_token(credential.token_endpoint, refresh_token=credential.refresh_token)
+        return _credential_from_token(
+            token,
+            client_id=credential.client_id,
+            token_endpoint=credential.token_endpoint,
+            fallback_refresh_token=credential.refresh_token,
+        )
+    except AuthenticationError as exc:
+        raise AuthenticationError(SESSION_EXPIRED_MESSAGE, status_code=exc.status_code, payload=exc.payload) from exc
 
 
-def parse_refresh_response(response: httpx2.Response, *, credential: OAuthCredential) -> OAuthCredential:
-    return _credential_from_token_payload(
-        _payload(response),
-        client_id=credential.client_id,
-        token_endpoint=credential.token_endpoint,
-        fallback_refresh_token=credential.refresh_token,
-    )
+async def refresh_async(
+    credential: OAuthCredential, *, transport: httpx2.BaseTransport | httpx2.AsyncBaseTransport | None = None
+) -> OAuthCredential:
+    try:
+        async with AsyncTokenClient(**_client_kwargs(client_id=credential.client_id, transport=transport)) as client:
+            token = await client.refresh_token(credential.token_endpoint, refresh_token=credential.refresh_token)
+        return _credential_from_token(
+            token,
+            client_id=credential.client_id,
+            token_endpoint=credential.token_endpoint,
+            fallback_refresh_token=credential.refresh_token,
+        )
+    except AuthenticationError as exc:
+        raise AuthenticationError(SESSION_EXPIRED_MESSAGE, status_code=exc.status_code, payload=exc.payload) from exc

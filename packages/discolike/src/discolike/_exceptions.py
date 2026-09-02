@@ -62,6 +62,7 @@ _STATUS_MAP: dict[int, type[DiscolikeError]] = {
     402: PlanAccessError,
     403: PlanAccessError,
     404: NotFoundError,
+    409: ValidationError,
     422: ValidationError,
 }
 
