@@ -32,7 +32,7 @@
 
 DiscoLike indexes **80M+ business websites worldwide**, analyzed in **50 languages** — roughly **3x the coverage of LinkedIn-dependent databases**. This repo gives you that index from Python or your terminal, as two packages: discover lookalike companies, size segments, enrich domain lists, match messy company names to domains, and find the right contacts.
 
-> **If you're a coding agent:** the fastest integration is the hosted MCP server — `https://api.discolike.com/v1/mcp` (streamable-http, OAuth; 48 tools). For scripting and pipelines use `pip install discolike` as a library; for the terminal use `pip install discolike-cli` or `uvx --from discolike-cli discolike`, auth via `DISCOLIKE_API_KEY`. Machine-readable API index: `https://docs.discolike.com/llms.txt`.
+> **If you're a coding agent:** you can go from no account to first call without a human at a browser — `discolike.signup()` (or `discolike signup`) opens an account from an email and name, the owner confirms by email, and `discolike auth login` mints a credential. The fastest integration once authenticated is the hosted MCP server — `https://api.discolike.com/v1/mcp` (streamable-http, OAuth; 48 tools). For scripting and pipelines use `pip install discolike` as a library; for the terminal use `pip install discolike-cli` or `uvx --from discolike-cli discolike`, auth via `DISCOLIKE_API_KEY`. Machine-readable API index: `https://docs.discolike.com/llms.txt`.
 
 <p align="center">
   <a href="https://discolike.com">
@@ -67,24 +67,56 @@ Requires Python 3.10+.
 
 ## Authentication
 
-No account yet? An agent (or you) can open one without a browser; the account owner confirms by email and logs in:
+Three ways in, in the order an agent hits them: open an account, log in, or use an API key.
+
+### Signup — no browser, no credential
 
 ```bash
-discolike signup --email jane@acme.com --first-name Jane --last-name Doe
-```
-
-The CLI remembers the last email signed up from this machine and asks before signing up a different one (`--yes` skips the prompt). `discolike auth login` asks first whether you already have an account and offers signup if not.
-
-Create an API key at [app.discolike.com/account/management/keys](https://app.discolike.com/account/management/keys), then use any of:
-
-```bash
-export DISCOLIKE_API_KEY="dl_..."   # environment variable
-discolike auth login                # or store it via the CLI
+discolike signup --email jane@acme.com --first-name Jane --last-name Doe --agent my-agent
 ```
 
 ```python
-client = Discolike(api_key="dl_...")  # or pass it explicitly
+from discolike import signup
+
+result = signup(email="jane@acme.com", first_name="Jane", last_name="Doe", agent="my-agent")
+print(result.next_step)  # relay this to the account owner
 ```
+
+`async_signup()` is the async twin. Nothing is returned that authenticates you: the account owner confirms by email and logs in at [app.discolike.com](https://app.discolike.com). `SignupResult` carries `status`, `email`, `org_domain`, `org_status`, and the `next_step` text to relay. Names are validated locally (1-40 characters, at least one letter, no angle brackets or control characters) before the request is sent.
+
+`--agent` / `agent=` records which agent or framework opened the account; it defaults to `discolike-python/<version>`. The email of the last signup from this machine is remembered — signing up a different one needs `--yes` on the CLI or `allow_new_email=True` in the SDK, so a looping agent cannot quietly open accounts in a stream of names.
+
+### Login
+
+```bash
+discolike auth login              # browser, PKCE authorization code, loopback redirect
+discolike auth login --no-browser # print the URL instead of opening one — headless boxes
+discolike auth login --port 8765  # pin the loopback port for SSH forwarding
+discolike auth login --method api_key   # paste an API key instead
+discolike auth status             # method, expiry, key source
+```
+
+`auth login` asks first whether you already have an account, and offers signup if not. The registered OAuth client is remembered per machine, so the consent screen appears once; `auth logout` drops the credential and keeps the registration.
+
+### API key
+
+Create one at [app.discolike.com/account/management/keys](https://app.discolike.com/account/management/keys), then use any of:
+
+```bash
+export DISCOLIKE_API_KEY="dl_..."   # environment variable
+discolike auth login --api-key dl_...  # or store it via the CLI
+```
+
+```python
+from discolike import ApiKeyCredential, Discolike
+
+client = Discolike()                      # env var, then CLI config file
+client = Discolike(api_key="dl_...")      # explicit key
+client = Discolike(auth=ApiKeyCredential(api_key="dl_..."))
+client = Discolike(auth=oauth_credential)  # an OAuthCredential — Bearer, refreshed proactively
+```
+
+`auth=` wins over `api_key=`, the environment, and the config file. OAuth credentials refresh within 60s of expiry and once more after a 401; a refresh that fails raises `AuthenticationError("OAuth session expired; run `discolike auth login`")`.
 
 ## Quickstart
 
@@ -218,6 +250,7 @@ Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `ap
 | `client.queries` | Saved inclusion/exclusion lists for reusable targeting |
 | `client.search_providers` / `client.llm_providers` | Manage BYOK search and LLM provider integrations for DiscoGen |
 | `client.account` | Usage and quota |
+| `discolike.signup()` / `async_signup()` | Open an account from an email and name, no credential required |
 | `discolike.requests` | Request models for every call — generated from the platform OpenAPI spec, validated locally before the request is sent |
 
 All responses are typed [Pydantic](https://docs.pydantic.dev/) models.
