@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.1
+## 0.3.1 (2026-09-02)
 
 - SDK: `discolike.signup()` / `discolike.async_signup()` create a DiscoLike account for a person from their work email and name, with no credential required. Returns `SignupResult` with the `next_step` text to relay.
 - CLI: `discolike signup --email --first-name --last-name` does the same from the terminal, without `discolike auth login`. The CLI remembers the last email signed up from this machine and asks before signing up a different one (`--yes` skips the prompt). `discolike auth login` asks first whether you already have an account and offers signup if not.
