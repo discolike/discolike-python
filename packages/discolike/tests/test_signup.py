@@ -230,3 +230,42 @@ def test_name_with_non_composing_mark_is_accepted() -> None:
     name = "अनुज"
     result = signup(email="jane@acme.com", first_name=name, last_name="Doe", http_client=client)
     assert isinstance(result, SignupResult)
+
+
+def test_signup_posts_to_base_url_not_the_injected_client_base_url() -> None:
+    seen: dict[str, str] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["url"] = str(request.url)
+        return httpx2.Response(201, json=_RESPONSE)
+
+    client = httpx2.Client(base_url="https://evil.test", transport=httpx2.MockTransport(handler))
+    signup(
+        email="jane@acme.com",
+        first_name="Jane",
+        last_name="Doe",
+        base_url="https://api.test/v1",
+        http_client=client,
+    )
+
+    assert seen["url"] == "https://api.test/v1/public/signup"
+
+
+@pytest.mark.anyio
+async def test_async_signup_posts_to_base_url_not_the_injected_client_base_url() -> None:
+    seen: dict[str, str] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["url"] = str(request.url)
+        return httpx2.Response(201, json=_RESPONSE)
+
+    client = httpx2.AsyncClient(base_url="https://evil.test", transport=httpx2.MockTransport(handler))
+    await async_signup(
+        email="jane@acme.com",
+        first_name="Jane",
+        last_name="Doe",
+        base_url="https://api.test/v1",
+        http_client=client,
+    )
+
+    assert seen["url"] == "https://api.test/v1/public/signup"

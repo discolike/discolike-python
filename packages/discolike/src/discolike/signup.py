@@ -34,6 +34,10 @@ class SignupResult(DiscolikeModel):
     next_step: str
 
 
+def _signup_url(base_url: str) -> str:
+    return f"{base_url.rstrip('/')}{SIGNUP_PATH}"
+
+
 def _body(*, email: str, first_name: str, last_name: str, agent: str | None) -> dict[str, str]:
     return {"email": email, "first_name": first_name, "last_name": last_name, "agent": agent or DEFAULT_AGENT}
 
@@ -83,10 +87,10 @@ def signup(
     first_name = validate_name(first_name, field="first_name")
     last_name = validate_name(last_name, field="last_name")
     _check_email_change(email, allow_new_email)
-    client = http_client or httpx2.Client(base_url=base_url, timeout=timeout)
+    client = http_client or httpx2.Client(timeout=timeout)
     try:
         response = client.post(
-            SIGNUP_PATH,
+            _signup_url(base_url),
             json=_body(email=email, first_name=first_name, last_name=last_name, agent=agent),
             headers={"User-Agent": DEFAULT_AGENT},
         )
@@ -114,10 +118,10 @@ async def async_signup(
     first_name = validate_name(first_name, field="first_name")
     last_name = validate_name(last_name, field="last_name")
     _check_email_change(email, allow_new_email)
-    client = http_client or httpx2.AsyncClient(base_url=base_url, timeout=timeout)
+    client = http_client or httpx2.AsyncClient(timeout=timeout)
     try:
         response = await client.post(
-            SIGNUP_PATH,
+            _signup_url(base_url),
             json=_body(email=email, first_name=first_name, last_name=last_name, agent=agent),
             headers={"User-Agent": DEFAULT_AGENT},
         )
