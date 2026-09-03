@@ -27,6 +27,7 @@ NEGATE_SOCIAL_HELP = "Exclude companies with this social profile (repeatable); s
 LANGUAGE_HELP = "Filter by site language as an ISO 639-1 code, e.g. en, de, pb, zt (repeatable)."
 NEGATE_LANGUAGE_HELP = "Exclude this site language (repeatable); same values as --language."
 EXCLUDE_LEADGEN_HELP = "Exclude suspected lead generation sites (on by default)."
+COUNT_EXCLUDE_LEADGEN_HELP = "Exclude suspected lead generation sites (off by default for count)."
 
 
 def _parse_param(raw: str) -> tuple[str, str | list[str]]:
@@ -196,7 +197,7 @@ def count_command(
     max_digital_footprint: int | None = typer.Option(None, help="Maximum digital footprint score."),
     redirect: bool | None = typer.Option(None, "--redirect/--no-redirect", help=REDIRECT_HELP),
     exclude_leadgen: bool | None = typer.Option(
-        None, "--exclude-leadgen/--no-exclude-leadgen", help=EXCLUDE_LEADGEN_HELP
+        None, "--exclude-leadgen/--no-exclude-leadgen", help=COUNT_EXCLUDE_LEADGEN_HELP
     ),
     fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
     param: list[str] | None = typer.Option(None, "--param", help=PARAM_HELP),
