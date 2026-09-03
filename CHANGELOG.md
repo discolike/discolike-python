@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- SDK (behavior change, no code change): company `address.state` now comes back from the API as the subdivision name ("California", "Tokyo") instead of the ISO code ("CA", "13"). `CompanyAddress.state` is still `str | None` and needs no migration, but anything joining or grouping on that value as a code has to resolve it. The contact's own `state` is unchanged and stays a code.
+- SDK: state filters accept a code or a name, resolved server-side against the countries you selected. Discover/count still take one `country` value, but that value may be a region alias (`EU`, `APAC`, `DACH`) and the state resolves against every member. Contacts state filters accept multiple countries and drop a value they cannot resolve rather than erroring.
+- SDK: `MatchCompanyParams.state` works for any country with subdivisions, not just the US, and takes a code or a name.
+- SDK: regenerated request models — the state field descriptions above now ship in `discolike.requests`.
+
 ## 0.3.2 (2026-09-02)
 
 - CLI: every SDK request field now has a flag — `discover`/`count` gain `--variance`, `--min-similarity`, `--consensus`, `--inclusion-query-id`, `--language`, `--social`, `--subdomain`, `--start-date`, `--redirect`, `--exclude-leadgen` and the `--auto-*` toggles; contacts `search`/`count`/`discover` gain the full filter set; `match` gains per-column flags for file mode and `--min-match-confidence`; `append`/`segment` take `--query-id`; `extract` accepts `--domain`. Dict-typed fields stay `--param` only.

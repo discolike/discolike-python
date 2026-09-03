@@ -205,12 +205,15 @@ class ContactsSearchParams(DiscolikeRequest):
     ] = None
     filter_state: Annotated[
         list[str] | None,
-        Field(description="Filter by company state/region.", title="Filter State"),
+        Field(
+            description="Filter by company state/region. Accepts ISO 3166-2 codes or names, resolved against the selected countries; a value that resolves under none is ignored.",
+            title="Filter State",
+        ),
     ] = None
     negate_filter_state: Annotated[
         list[str] | None,
         Field(
-            description="Exclude contacts at companies in specified states.",
+            description="Exclude contacts at companies in specified states. Same format as filter_state.",
             title="Negate Filter State",
         ),
     ] = None
@@ -345,7 +348,10 @@ class ContactsSearchParams(DiscolikeRequest):
     ] = None
     person_state: Annotated[
         list[str] | None,
-        Field(description="Filter by contact's state/region.", title="Person State"),
+        Field(
+            description="Filter by contact's state/region. Accepts ISO 3166-2 codes or names, resolved against the selected countries; a value that resolves under none is ignored.",
+            title="Person State",
+        ),
     ] = None
     has_email: Annotated[
         bool | None,
@@ -628,12 +634,15 @@ class ContactsCountParams(DiscolikeRequest):
     ] = None
     filter_state: Annotated[
         list[str] | None,
-        Field(description="Filter by company state/region.", title="Filter State"),
+        Field(
+            description="Filter by company state/region. Accepts ISO 3166-2 codes or names, resolved against the selected countries; a value that resolves under none is ignored.",
+            title="Filter State",
+        ),
     ] = None
     negate_filter_state: Annotated[
         list[str] | None,
         Field(
-            description="Exclude contacts at companies in specified states.",
+            description="Exclude contacts at companies in specified states. Same format as filter_state.",
             title="Negate Filter State",
         ),
     ] = None
@@ -768,7 +777,10 @@ class ContactsCountParams(DiscolikeRequest):
     ] = None
     person_state: Annotated[
         list[str] | None,
-        Field(description="Filter by contact's state/region.", title="Person State"),
+        Field(
+            description="Filter by contact's state/region. Accepts ISO 3166-2 codes or names, resolved against the selected countries; a value that resolves under none is ignored.",
+            title="Person State",
+        ),
     ] = None
     has_email: Annotated[
         bool | None,
@@ -1083,12 +1095,15 @@ class ContactFilters(DiscolikeRequest):
     ] = None
     filter_state: Annotated[
         list[str] | None,
-        Field(description="Filter by company state/region.", title="Filter State"),
+        Field(
+            description="Filter by company state/region. Accepts ISO 3166-2 codes or names, resolved against the selected countries; a value that resolves under none is ignored.",
+            title="Filter State",
+        ),
     ] = None
     negate_filter_state: Annotated[
         list[str] | None,
         Field(
-            description="Exclude contacts at companies in specified states.",
+            description="Exclude contacts at companies in specified states. Same format as filter_state.",
             title="Negate Filter State",
         ),
     ] = None
@@ -1223,7 +1238,10 @@ class ContactFilters(DiscolikeRequest):
     ] = None
     person_state: Annotated[
         list[str] | None,
-        Field(description="Filter by contact's state/region.", title="Person State"),
+        Field(
+            description="Filter by contact's state/region. Accepts ISO 3166-2 codes or names, resolved against the selected countries; a value that resolves under none is ignored.",
+            title="Person State",
+        ),
     ] = None
     has_email: Annotated[
         bool | None,
@@ -1695,7 +1713,7 @@ class DiscoverParams(DiscolikeRequest):
     state: Annotated[
         list[str] | None,
         Field(
-            description="Filter by state codes (up to 100). Not supported with multiple countries.",
+            description="Filter by ISO 3166-2 state codes or names (up to 100). Requires exactly one country value, which may be a region alias; the state is then resolved against every country the alias covers. A value that resolves under none is rejected.",
             max_length=100,
             title="State",
         ),
@@ -1703,7 +1721,7 @@ class DiscoverParams(DiscolikeRequest):
     negate_state: Annotated[
         list[str] | None,
         Field(
-            description="Exclude specified states from results (up to 100).",
+            description="Exclude specified states from results (up to 100). Same format and country rules as state.",
             max_length=100,
             title="Negate State",
         ),
@@ -2277,7 +2295,7 @@ class CountParams(DiscolikeRequest):
     state: Annotated[
         list[str] | None,
         Field(
-            description="Filter by state codes (up to 100). Not supported with multiple countries.",
+            description="Filter by ISO 3166-2 state codes or names (up to 100). Requires exactly one country value, which may be a region alias; the state is then resolved against every country the alias covers. A value that resolves under none is rejected.",
             max_length=100,
             title="State",
         ),
@@ -2285,7 +2303,7 @@ class CountParams(DiscolikeRequest):
     negate_state: Annotated[
         list[str] | None,
         Field(
-            description="Exclude specified states from results (up to 100).",
+            description="Exclude specified states from results (up to 100). Same format and country rules as state.",
             max_length=100,
             title="Negate State",
         ),
@@ -2650,7 +2668,10 @@ class MatchCompanyParams(DiscolikeRequest):
         ),
     ] = None
     city: Annotated[str | None, Field(description="City to augment the search", title="City")] = None
-    state: Annotated[str | None, Field(description="State code to augment the search", title="State")] = None
+    state: Annotated[
+        str | None,
+        Field(description="State code or name to augment the search", title="State"),
+    ] = None
     country: Annotated[
         str | None,
         Field(
@@ -2699,7 +2720,10 @@ class MatchBulkParams(DiscolikeRequest):
     ] = None
     state_column: Annotated[
         str | None,
-        Field(description="Column name containing states.", title="State Column"),
+        Field(
+            description="Column name containing states, as ISO 3166-2 codes or names.",
+            title="State Column",
+        ),
     ] = None
     country_column: Annotated[
         str | None,
