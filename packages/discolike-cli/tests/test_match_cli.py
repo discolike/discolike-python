@@ -217,3 +217,58 @@ def test_match_bulk_local_mode_sent_when_passed(tmp_path, install_build_client: 
     result = runner.invoke(app, ["match", "--file", str(names_file), "--local-mode"])
     assert result.exit_code == 0, result.output
     assert captured["request"].url.params.get("local_mode") == "true"
+
+
+def test_match_single_forwards_min_match_confidence(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.Request] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["request"] = request
+        return httpx2.Response(200, json={"domain": "acme.com"})
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["match", "Acme", "--min-match-confidence", "80"])
+    assert result.exit_code == 0, result.output
+    assert captured["request"].url.params.get("min_match_confidence") == "80"
+
+
+def test_match_bulk_forwards_column_flags_and_confidence(
+    tmp_path, install_build_client: Callable[[Handler], None]
+) -> None:
+    names_file = tmp_path / "names.csv"
+    names_file.write_text("name,phone,city,state,country,zip\nAcme,555,Austin,TX,US,78701\n")
+    captured: dict[str, httpx2.Request] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["request"] = request
+        return httpx2.Response(200, json={"task_id": "bm-6"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "match",
+            "--file",
+            str(names_file),
+            "--phone-column",
+            "phone",
+            "--city-column",
+            "city",
+            "--state-column",
+            "state",
+            "--country-column",
+            "country",
+            "--zip-code-column",
+            "zip",
+            "--min-match-confidence",
+            "75",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    params = captured["request"].url.params
+    assert params.get("phone_column") == "phone"
+    assert params.get("city_column") == "city"
+    assert params.get("state_column") == "state"
+    assert params.get("country_column") == "country"
+    assert params.get("zip_code_column") == "zip"
+    assert params.get("min_match_confidence") == "75"

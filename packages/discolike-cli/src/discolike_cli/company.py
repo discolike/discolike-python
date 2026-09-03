@@ -134,12 +134,17 @@ def public_links(
 @handle_errors
 def extract_command(
     ctx: typer.Context,
-    url: str = typer.Argument(..., help="Page URL to extract content from"),
+    url: str | None = typer.Argument(None, help="Page URL to extract content from"),
+    domain: str | None = typer.Option(
+        None, "--domain", help="Bare domain to extract instead of URL (alias for https://DOMAIN, served from cache)."
+    ),
     fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
 ) -> None:
-    """Extract page content from a URL."""
+    """Extract page content from a URL or a bare domain."""
     from discolike_cli.main import get_client
 
-    emit(
-        get_client(ctx).companies.extract(build_request(CompaniesExtractParams, _merge_params(None, url=url))), fmt=fmt
-    )
+    if (url is None) == (domain is None):
+        raise typer.BadParameter("Provide exactly one of URL or --domain")
+
+    request = build_request(CompaniesExtractParams, _merge_params(None, url=url, domain=domain))
+    emit(get_client(ctx).companies.extract(request), fmt=fmt)

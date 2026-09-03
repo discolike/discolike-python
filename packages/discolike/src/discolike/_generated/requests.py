@@ -2535,10 +2535,10 @@ class CountParams(DiscolikeRequest):
     exclude_leadgen: Annotated[
         bool | None,
         Field(
-            description="Exclude suspected lead generation sites. Filters out profiles with score <= 25 that also lack phone, email, and social media presence.",
+            description="Exclude suspected lead generation sites. Filters out profiles with score <= 25 that also lack phone, email, and social media presence. Defaults to false for counts so they are not narrower than the filters given.",
             title="Exclude Leadgen",
         ),
-    ] = True
+    ] = False
 
 
 class FindEmailRequest(DiscolikeRequest):

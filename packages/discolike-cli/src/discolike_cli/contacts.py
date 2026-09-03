@@ -25,6 +25,25 @@ WAIT_HELP = "Block until the job finishes, streaming progress to stderr."
 TIMEOUT_HELP = "Max seconds to wait with --wait."
 PARAM_HELP = "Extra key=value query parameter forwarded to the SDK (repeatable)."
 JOBSTART_DATE_HELP = "Job start date filter: min date or 'min,max' range, e.g. 2025-01-01 or 2025-01-01,2025-06-30."
+SUMMARY_HELP = "Filter by profile summary text (semantic search)."
+NEGATE_SUMMARY_HELP = "Exclude contacts matching this summary description."
+NAME_HELP = "Filter by contact name (partial match supported)."
+SKILLS_HELP = "Filter by skill (repeatable)."
+FILTER_STATE_HELP = "Filter by company state/region (repeatable)."
+NEGATE_FILTER_STATE_HELP = "Exclude contacts at companies in this state (repeatable)."
+PERSON_STATE_HELP = "Filter by contact state/region (repeatable)."
+PERSONA_ID_HELP = "Filter by persona ID (repeatable)."
+EMAIL_VALIDATED_HELP = "Only contacts with (or without) a validated email address."
+HAS_PHONE_HELP = "Only contacts with (or without) a phone number."
+HAS_MOBILE_HELP = "Only contacts with (or without) a mobile phone number."
+HAS_LINKEDIN_HELP = "Only contacts with (or without) a LinkedIn profile."
+MIN_CONNECTIONS_HELP = "Minimum LinkedIn connections required."
+INCLUSION_QUERY_ID_HELP = "Include only contacts from companies in this saved query (repeatable)."
+EXCLUSION_QUERY_ID_HELP = "Exclude contacts from companies in this saved query (repeatable)."
+MAX_COMPANIES_HELP = "Maximum number of enriched companies to return; cannot be combined with --max-records."
+RESULTS_BY_COMPANY_HELP = "Maximum contacts per company domain (default 5; 0 removes the cap)."
+INCLUDE_SEARCH_CONTACTS_HELP = "Include contacts from the search index (broader coverage)."
+CONSENSUS_HELP = "Number of query vectors to combine for consensus search."
 
 app = typer.Typer(
     help="Find contacts: search and count by filters, look up or match individuals, and run bulk/generative discovery jobs."
@@ -42,20 +61,43 @@ def search_command(
     negate_department: list[str] | None = typer.Option(None, help="Exclude departments (repeatable)."),
     title: list[str] | None = typer.Option(None, help="Filter by job title (repeatable)."),
     negate_title: list[str] | None = typer.Option(None, help="Exclude job titles (repeatable)."),
+    name: str | None = typer.Option(None, help=NAME_HELP),
+    summary: str | None = typer.Option(None, help=SUMMARY_HELP),
+    negate_summary: str | None = typer.Option(None, help=NEGATE_SUMMARY_HELP),
+    skills: list[str] | None = typer.Option(None, help=SKILLS_HELP),
     domain: list[str] | None = typer.Option(None, help="Filter by company domain (repeatable)."),
     person_country: list[str] | None = typer.Option(None, help="Filter by contact country (repeatable)."),
     negate_person_country: list[str] | None = typer.Option(None, help="Exclude contact countries (repeatable)."),
+    person_state: list[str] | None = typer.Option(None, help=PERSON_STATE_HELP),
+    persona_id: list[int] | None = typer.Option(None, help=PERSONA_ID_HELP),
     filter_industry: list[str] | None = typer.Option(None, help="Filter by company industry (repeatable)."),
     negate_filter_industry: list[str] | None = typer.Option(None, help="Exclude company industries (repeatable)."),
     filter_country: list[str] | None = typer.Option(None, help="Filter by company country (repeatable)."),
     negate_filter_country: list[str] | None = typer.Option(None, help="Exclude company countries (repeatable)."),
+    filter_state: list[str] | None = typer.Option(None, help=FILTER_STATE_HELP),
+    negate_filter_state: list[str] | None = typer.Option(None, help=NEGATE_FILTER_STATE_HELP),
     employee_range: str | None = typer.Option(None, help="Company employee range, e.g. 50-200."),
     has_email: bool | None = typer.Option(
         None, "--has-email/--no-has-email", help="Only contacts with (or without) an email address."
     ),
+    email_validated: bool | None = typer.Option(
+        None, "--email-validated/--no-email-validated", help=EMAIL_VALIDATED_HELP
+    ),
+    has_phone: bool | None = typer.Option(None, "--has-phone/--no-has-phone", help=HAS_PHONE_HELP),
+    has_mobile: bool | None = typer.Option(None, "--has-mobile/--no-has-mobile", help=HAS_MOBILE_HELP),
+    has_linkedin: bool | None = typer.Option(None, "--has-linkedin/--no-has-linkedin", help=HAS_LINKEDIN_HELP),
+    min_connections: int | None = typer.Option(None, help=MIN_CONNECTIONS_HELP),
     jobstart_date: str | None = typer.Option(None, "--jobstart-date", help=JOBSTART_DATE_HELP),
+    inclusion_query_id: list[str] | None = typer.Option(None, help=INCLUSION_QUERY_ID_HELP),
+    exclusion_query_id: list[str] | None = typer.Option(None, help=EXCLUSION_QUERY_ID_HELP),
     max_records: int | None = typer.Option(None, help="Maximum number of contacts to return."),
+    max_companies: int | None = typer.Option(None, help=MAX_COMPANIES_HELP),
     offset: int | None = typer.Option(None, help="Number of records to skip for pagination."),
+    results_by_company: int | None = typer.Option(None, help=RESULTS_BY_COMPANY_HELP),
+    include_search_contacts: bool | None = typer.Option(
+        None, "--include-search-contacts/--no-include-search-contacts", help=INCLUDE_SEARCH_CONTACTS_HELP
+    ),
+    consensus: int | None = typer.Option(None, help=CONSENSUS_HELP),
     fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
     param: list[str] | None = typer.Option(None, "--param", help=PARAM_HELP),
 ) -> None:
@@ -71,18 +113,37 @@ def search_command(
         negate_department=negate_department,
         title=title,
         negate_title=negate_title,
+        name=name,
+        summary=summary,
+        negate_summary=negate_summary,
+        skills=skills,
         domain=domain,
         person_country=person_country,
         negate_person_country=negate_person_country,
+        person_state=person_state,
+        persona_id=persona_id,
         filter_industry=filter_industry,
         negate_filter_industry=negate_filter_industry,
         filter_country=filter_country,
         negate_filter_country=negate_filter_country,
+        filter_state=filter_state,
+        negate_filter_state=negate_filter_state,
         employee_range=employee_range,
         has_email=has_email,
+        email_validated=email_validated,
+        has_phone=has_phone,
+        has_mobile=has_mobile,
+        has_linkedin=has_linkedin,
+        min_connections=min_connections,
         jobstart_date=jobstart_date,
+        inclusion_query_id=inclusion_query_id,
+        exclusion_query_id=exclusion_query_id,
         max_records=max_records,
+        max_companies=max_companies,
         offset=offset,
+        results_by_company=results_by_company,
+        include_search_contacts=include_search_contacts,
+        consensus=consensus,
     )
     emit(get_client(ctx).contacts.search(build_request(ContactsSearchParams, kwargs)), fmt=fmt)
 
@@ -98,18 +159,43 @@ def count_command(
     negate_department: list[str] | None = typer.Option(None, help="Exclude departments (repeatable)."),
     title: list[str] | None = typer.Option(None, help="Filter by job title (repeatable)."),
     negate_title: list[str] | None = typer.Option(None, help="Exclude job titles (repeatable)."),
+    name: str | None = typer.Option(None, help=NAME_HELP),
+    summary: str | None = typer.Option(None, help=SUMMARY_HELP),
+    negate_summary: str | None = typer.Option(None, help=NEGATE_SUMMARY_HELP),
+    skills: list[str] | None = typer.Option(None, help=SKILLS_HELP),
     domain: list[str] | None = typer.Option(None, help="Filter by company domain (repeatable)."),
     person_country: list[str] | None = typer.Option(None, help="Filter by contact country (repeatable)."),
     negate_person_country: list[str] | None = typer.Option(None, help="Exclude contact countries (repeatable)."),
+    person_state: list[str] | None = typer.Option(None, help=PERSON_STATE_HELP),
+    persona_id: list[int] | None = typer.Option(None, help=PERSONA_ID_HELP),
     filter_industry: list[str] | None = typer.Option(None, help="Filter by company industry (repeatable)."),
     negate_filter_industry: list[str] | None = typer.Option(None, help="Exclude company industries (repeatable)."),
     filter_country: list[str] | None = typer.Option(None, help="Filter by company country (repeatable)."),
     negate_filter_country: list[str] | None = typer.Option(None, help="Exclude company countries (repeatable)."),
+    filter_state: list[str] | None = typer.Option(None, help=FILTER_STATE_HELP),
+    negate_filter_state: list[str] | None = typer.Option(None, help=NEGATE_FILTER_STATE_HELP),
     employee_range: str | None = typer.Option(None, help="Company employee range, e.g. 50-200."),
     has_email: bool | None = typer.Option(
         None, "--has-email/--no-has-email", help="Only contacts with (or without) an email address."
     ),
+    email_validated: bool | None = typer.Option(
+        None, "--email-validated/--no-email-validated", help=EMAIL_VALIDATED_HELP
+    ),
+    has_phone: bool | None = typer.Option(None, "--has-phone/--no-has-phone", help=HAS_PHONE_HELP),
+    has_mobile: bool | None = typer.Option(None, "--has-mobile/--no-has-mobile", help=HAS_MOBILE_HELP),
+    has_linkedin: bool | None = typer.Option(None, "--has-linkedin/--no-has-linkedin", help=HAS_LINKEDIN_HELP),
+    min_connections: int | None = typer.Option(None, help=MIN_CONNECTIONS_HELP),
     jobstart_date: str | None = typer.Option(None, "--jobstart-date", help=JOBSTART_DATE_HELP),
+    inclusion_query_id: list[str] | None = typer.Option(None, help=INCLUSION_QUERY_ID_HELP),
+    exclusion_query_id: list[str] | None = typer.Option(None, help=EXCLUSION_QUERY_ID_HELP),
+    max_records: int | None = typer.Option(None, help="Maximum number of contacts to count (20-10000)."),
+    max_companies: int | None = typer.Option(None, help=MAX_COMPANIES_HELP),
+    offset: int | None = typer.Option(None, help="Number of records to skip for pagination."),
+    results_by_company: int | None = typer.Option(None, help=RESULTS_BY_COMPANY_HELP),
+    include_search_contacts: bool | None = typer.Option(
+        None, "--include-search-contacts/--no-include-search-contacts", help=INCLUDE_SEARCH_CONTACTS_HELP
+    ),
+    consensus: int | None = typer.Option(None, help=CONSENSUS_HELP),
     fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
     param: list[str] | None = typer.Option(None, "--param", help=PARAM_HELP),
 ) -> None:
@@ -125,16 +211,37 @@ def count_command(
         negate_department=negate_department,
         title=title,
         negate_title=negate_title,
+        name=name,
+        summary=summary,
+        negate_summary=negate_summary,
+        skills=skills,
         domain=domain,
         person_country=person_country,
         negate_person_country=negate_person_country,
+        person_state=person_state,
+        persona_id=persona_id,
         filter_industry=filter_industry,
         negate_filter_industry=negate_filter_industry,
         filter_country=filter_country,
         negate_filter_country=negate_filter_country,
+        filter_state=filter_state,
+        negate_filter_state=negate_filter_state,
         employee_range=employee_range,
         has_email=has_email,
+        email_validated=email_validated,
+        has_phone=has_phone,
+        has_mobile=has_mobile,
+        has_linkedin=has_linkedin,
+        min_connections=min_connections,
         jobstart_date=jobstart_date,
+        inclusion_query_id=inclusion_query_id,
+        exclusion_query_id=exclusion_query_id,
+        max_records=max_records,
+        max_companies=max_companies,
+        offset=offset,
+        results_by_company=results_by_company,
+        include_search_contacts=include_search_contacts,
+        consensus=consensus,
     )
     emit(get_client(ctx).contacts.count(build_request(ContactsCountParams, kwargs)), fmt=fmt)
 
@@ -220,19 +327,37 @@ def discover_command(
     negate_department: list[str] | None = typer.Option(None, help="Exclude departments (repeatable)."),
     title: list[str] | None = typer.Option(None, help="Filter by job title (repeatable)."),
     negate_title: list[str] | None = typer.Option(None, help="Exclude job titles (repeatable)."),
+    name: str | None = typer.Option(None, help=NAME_HELP),
+    summary: str | None = typer.Option(None, help=SUMMARY_HELP),
+    negate_summary: str | None = typer.Option(None, help=NEGATE_SUMMARY_HELP),
+    skills: list[str] | None = typer.Option(None, help=SKILLS_HELP),
     domain: list[str] | None = typer.Option(None, help="Filter by company domain (repeatable)."),
     person_country: list[str] | None = typer.Option(None, help="Filter by contact country (repeatable)."),
     negate_person_country: list[str] | None = typer.Option(None, help="Exclude contact countries (repeatable)."),
+    person_state: list[str] | None = typer.Option(None, help=PERSON_STATE_HELP),
+    persona_id: list[int] | None = typer.Option(None, help=PERSONA_ID_HELP),
     filter_industry: list[str] | None = typer.Option(None, help="Filter by company industry (repeatable)."),
     negate_filter_industry: list[str] | None = typer.Option(None, help="Exclude company industries (repeatable)."),
     filter_country: list[str] | None = typer.Option(None, help="Filter by company country (repeatable)."),
     negate_filter_country: list[str] | None = typer.Option(None, help="Exclude company countries (repeatable)."),
+    filter_state: list[str] | None = typer.Option(None, help=FILTER_STATE_HELP),
+    negate_filter_state: list[str] | None = typer.Option(None, help=NEGATE_FILTER_STATE_HELP),
     employee_range: str | None = typer.Option(None, help="Company employee range, e.g. 50-200."),
     has_email: bool | None = typer.Option(
         None, "--has-email/--no-has-email", help="Only contacts with (or without) an email address."
     ),
+    email_validated: bool | None = typer.Option(
+        None, "--email-validated/--no-email-validated", help=EMAIL_VALIDATED_HELP
+    ),
+    has_phone: bool | None = typer.Option(None, "--has-phone/--no-has-phone", help=HAS_PHONE_HELP),
+    has_mobile: bool | None = typer.Option(None, "--has-mobile/--no-has-mobile", help=HAS_MOBILE_HELP),
+    has_linkedin: bool | None = typer.Option(None, "--has-linkedin/--no-has-linkedin", help=HAS_LINKEDIN_HELP),
+    min_connections: int | None = typer.Option(None, help=MIN_CONNECTIONS_HELP),
     jobstart_date: str | None = typer.Option(None, "--jobstart-date", help=JOBSTART_DATE_HELP),
+    inclusion_query_id: list[str] | None = typer.Option(None, help=INCLUSION_QUERY_ID_HELP),
+    exclusion_query_id: list[str] | None = typer.Option(None, help=EXCLUSION_QUERY_ID_HELP),
     max_records: int | None = typer.Option(None, help="Maximum number of contacts to return."),
+    max_companies: int | None = typer.Option(None, help=MAX_COMPANIES_HELP),
     offset: int | None = typer.Option(None, help="Number of records to skip for pagination."),
     results_by_company: int | None = typer.Option(
         None, "--results-by-company", help="Maximum contacts returned per company."
@@ -258,17 +383,33 @@ def discover_command(
         negate_department=negate_department,
         title=title,
         negate_title=negate_title,
+        name=name,
+        summary=summary,
+        negate_summary=negate_summary,
+        skills=skills,
         domain=domain,
         person_country=person_country,
         negate_person_country=negate_person_country,
+        person_state=person_state,
+        persona_id=persona_id,
         filter_industry=filter_industry,
         negate_filter_industry=negate_filter_industry,
         filter_country=filter_country,
         negate_filter_country=negate_filter_country,
+        filter_state=filter_state,
+        negate_filter_state=negate_filter_state,
         employee_range=employee_range,
         has_email=has_email,
+        email_validated=email_validated,
+        has_phone=has_phone,
+        has_mobile=has_mobile,
+        has_linkedin=has_linkedin,
+        min_connections=min_connections,
         jobstart_date=jobstart_date,
+        inclusion_query_id=inclusion_query_id,
+        exclusion_query_id=exclusion_query_id,
         max_records=max_records,
+        max_companies=max_companies,
         offset=offset,
         results_by_company=results_by_company,
         include_search_contacts=include_search_contacts,
@@ -283,6 +424,12 @@ def generate_command(
     ctx: typer.Context,
     icp_text: str = typer.Option(..., "--icp-text", help="ICP description used to generate contacts."),
     domain: list[str] = typer.Option(..., "--domain", help="Target company domain (repeatable)."),
+    full_domain: list[str] | None = typer.Option(
+        None, "--full-domain", help="Domain to send as full_domains to the generation job (repeatable)."
+    ),
+    partial_domain: list[str] | None = typer.Option(
+        None, "--partial-domain", help="Domain to send as partial_domains to the generation job (repeatable)."
+    ),
     context_mode: str | None = typer.Option(None, "--context-mode", help="Context mode for generation."),
     integration_id: str | None = typer.Option(None, "--integration-id", help="Integration ID to use for generation."),
     search_provider_id: str | None = typer.Option(
@@ -310,6 +457,8 @@ def generate_command(
             None,
             icp_text=icp_text,
             domains=domain,
+            full_domains=full_domain,
+            partial_domains=partial_domain,
             context_mode=context_mode,
             integration_id=integration_id,
             search_provider_id=search_provider_id,

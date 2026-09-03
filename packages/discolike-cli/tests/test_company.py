@@ -144,3 +144,27 @@ def test_extract_hits_extract_endpoint_with_url(install_build_client: Callable[[
     assert request.url.path == "/v1/extract"
     assert request.url.params.get("url") == "https://acme.com/about"
     assert json.loads(result.stdout) == {"text": "hello", "language": "en"}
+
+
+def test_extract_domain_option_replaces_url(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.Request] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["request"] = request
+        return httpx2.Response(200, json={"text": "hello", "language": "en"})
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["extract", "--domain", "acme.com"])
+    assert result.exit_code == 0, result.output
+    params = captured["request"].url.params
+    assert params.get("domain") == "acme.com"
+    assert "url" not in params
+
+
+def test_extract_requires_exactly_one_of_url_or_domain(install_build_client: Callable[[Handler], None]) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={})
+
+    install_build_client(handler)
+    assert runner.invoke(app, ["extract"]).exit_code == 2
+    assert runner.invoke(app, ["extract", "https://acme.com", "--domain", "acme.com"]).exit_code == 2

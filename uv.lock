@@ -374,7 +374,7 @@ dev = [
 
 [[package]]
 name = "discolike-cli"
-version = "0.3.1"
+version = "0.3.2"
 source = { editable = "packages/discolike-cli" }
 dependencies = [
     { name = "discolike" },
