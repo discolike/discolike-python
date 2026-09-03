@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.2 (2026-09-02)
 
 - CLI: every SDK request field now has a flag — `discover`/`count` gain `--variance`, `--min-similarity`, `--consensus`, `--inclusion-query-id`, `--language`, `--social`, `--subdomain`, `--start-date`, `--redirect`, `--exclude-leadgen` and the `--auto-*` toggles; contacts `search`/`count`/`discover` gain the full filter set; `match` gains per-column flags for file mode and `--min-match-confidence`; `append`/`segment` take `--query-id`; `extract` accepts `--domain`. Dict-typed fields stay `--param` only.
 - SDK: `CountParams.exclude_leadgen` now defaults to `False`, matching the platform's `/count` default — counts no longer drop suspected lead-gen sites unless you ask for it. Discover is unchanged.
