@@ -60,7 +60,12 @@ def test_binary_garbage_config_returns_empty(isolated_config) -> None:
 
 def _oauth_credential() -> OAuthCredential:
     return OAuthCredential(
-        access_token="at", refresh_token="rt", expires_at=1.0, client_id="c", token_endpoint="https://t/token"
+        access_token="at",
+        refresh_token="rt",
+        expires_at=1.0,
+        client_id="c",
+        token_endpoint="https://t/token",
+        resource="https://api.example.com/v1",
     )
 
 
@@ -74,8 +79,28 @@ def test_save_and_load_oauth_credential(isolated_config) -> None:
         "expires_at": 1.0,
         "client_id": "c",
         "token_endpoint": "https://t/token",
+        "resource": "https://api.example.com/v1",
     }
     assert load_credential() == _oauth_credential()
+
+
+def test_load_oauth_credential_saved_before_resource_was_stored(isolated_config) -> None:
+    """Config written by 0.3.x has no `resource`; it must still load, and refresh then omits the field."""
+    save_config(
+        {
+            "auth_method": "oauth",
+            "oauth": {
+                "access_token": "at",
+                "refresh_token": "rt",
+                "expires_at": 1.0,
+                "client_id": "c",
+                "token_endpoint": "https://t/token",
+            },
+        }
+    )
+    loaded = load_credential()
+    assert isinstance(loaded, OAuthCredential)
+    assert loaded.resource is None
 
 
 def test_save_api_key_credential_keeps_legacy_shape(isolated_config) -> None:

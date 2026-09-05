@@ -18,6 +18,9 @@ class OAuthCredential:
     expires_at: float
     client_id: str
     token_endpoint: str
+    # RFC 8707 resource the token was issued for; resent on refresh so an authorization server with a
+    # default resource cannot re-bind the refreshed token. None for credentials stored before 0.3.3.
+    resource: str | None = None
 
     def expires_within(self, seconds: float, *, now: float | None = None) -> bool:
         current = time.time() if now is None else now
@@ -31,6 +34,7 @@ class OAuthCredential:
             expires_at=float(data["expires_at"]),
             client_id=str(data["client_id"]),
             token_endpoint=str(data["token_endpoint"]),
+            resource=str(data["resource"]) if data.get("resource") else None,
         )
 
     def to_config(self) -> dict[str, Any]:

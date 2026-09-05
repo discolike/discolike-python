@@ -142,6 +142,7 @@ def test_exchange_code_posts_form_and_builds_credential() -> None:
     assert credential.refresh_token == "rt"
     assert credential.client_id == "client-abc"
     assert credential.token_endpoint == METADATA.token_endpoint
+    assert credential.resource == BASE_URL
     assert int(before) + 3600 <= credential.expires_at <= time.time() + 3600
 
 
@@ -293,3 +294,49 @@ def test_credential_config_roundtrip_and_expiry() -> None:
     assert OAuthCredential.from_config(credential.to_config()) == credential
     assert credential.expires_within(60, now=950.0)
     assert not credential.expires_within(60, now=900.0)
+
+
+def test_refresh_sends_resource_and_keeps_it_on_rotated_credential() -> None:
+    """Without `resource` a server with a default resource may re-bind the refreshed token elsewhere."""
+    credential = OAuthCredential(
+        access_token="old",
+        refresh_token="rt-old",
+        expires_at=0.0,
+        client_id="c",
+        token_endpoint=METADATA.token_endpoint,
+        resource=BASE_URL,
+    )
+    seen: list[httpx2.Request] = []
+
+    def rotating(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, json={"access_token": "new", "refresh_token": "rt-new", "expires_in": 60})
+
+    rotated = refresh(credential, transport=transport_for(rotating))
+    assert form(seen[0]) == {
+        "grant_type": "refresh_token",
+        "refresh_token": "rt-old",
+        "client_id": "c",
+        "resource": BASE_URL,
+    }
+    assert rotated.resource == BASE_URL
+
+
+async def test_refresh_async_sends_resource_and_keeps_it_on_rotated_credential() -> None:
+    credential = OAuthCredential(
+        access_token="old",
+        refresh_token="rt-old",
+        expires_at=0.0,
+        client_id="c",
+        token_endpoint=METADATA.token_endpoint,
+        resource=BASE_URL,
+    )
+    seen: list[httpx2.Request] = []
+
+    def rotating(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, json={"access_token": "new", "refresh_token": "rt-new", "expires_in": 60})
+
+    rotated = await refresh_async(credential, transport=transport_for(rotating))
+    assert form(seen[0])["resource"] == BASE_URL
+    assert rotated.resource == BASE_URL
