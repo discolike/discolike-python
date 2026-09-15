@@ -159,8 +159,8 @@ Common errors:
     "validate-icp": f"""\
 Output (success, exit 0):
 {_JOB_SUBMITTED}
-  With --wait: one row per domain:
-    [{{"domain": <string>, "fit": "yes"|"partial"|"no", "reasoning": <string>, ...}}]
+  With --wait: the results object keyed by domain:
+    {{<domain>: {{"Fit": "yes"|"no", "Confidence": "high"|"medium"|"low", "Reasoning": <string>}}, ...}}
   Runs on the account's own LLM provider key.
 
 {_JOB_ERRORS}
@@ -168,8 +168,10 @@ Output (success, exit 0):
     "segment": f"""\
 Output (success, exit 0):
 {_JOB_SUBMITTED}
-  With --wait: clusters with a generated description and a probability per domain:
-    {{"segments": [{{"name": <string>, "description": <string>, "domains": [...]}}], ...}}
+  With --wait: one BizData row per active domain, plus its cluster:
+    [{{"domain", "name", "score", "segment_id": <int, -1 = unclustered>,
+      "segment_description": <string>, "probability": <0-1>, ...}}]
+  Closed or unindexed input domains are omitted.
 
 {_JOB_ERRORS}
 """,
@@ -208,8 +210,11 @@ Common errors:
     "contacts generate": f"""\
 Output (success, exit 0):
 {_JOB_SUBMITTED}
-  With --wait: candidates per domain, every email verified before it is shown:
-    {{<domain>: [{{"name", "title", "email", "linkedin", ...}}], ...}}
+  With --wait: results keyed by domain, zero or more candidate rows each:
+    {{<domain>: [{{"name", "title", "department", "seniority", "email", "linkedin_url",
+      "skills", "phone": [{{"phone", "type"}}], "email_pattern", "email_pattern_confidence",
+      "email_pattern_guess"}}], ...}}
+  Rows are candidates; email is set only when publicly verifiable.
   Runs live web search on the account's own LLM and search provider keys; no platform billing.
 
 {_JOB_ERRORS}
