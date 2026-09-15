@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+import pathlib
 
 import typer
 
@@ -9,10 +10,12 @@ from discolike.requests import DiscoGenPersonaProcessRequest
 from discolike.requests import DiscoGenProcessRequest
 from discolike_cli._help import ContractCommand
 from discolike_cli._help import epilog
+from discolike_cli._inputs import merge_domains
 from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
 from discolike_cli._output import run_job
+from discolike_cli.discover import DOMAINS_FILE_HELP
 from discolike_cli.discover import _merge_params
 
 DEFAULT_WAIT_TIMEOUT_SECONDS = 900.0
@@ -48,7 +51,8 @@ class TaskFamily(str, enum.Enum):
 def run_command(
     ctx: typer.Context,
     query: str = typer.Option(..., "--query", help=QUERY_HELP),
-    domain: list[str] = typer.Option(..., "--domain", help="Company domain to research (repeatable)."),
+    domain: list[str] | None = typer.Option(None, "--domain", help="Company domain to research (repeatable)."),
+    domains_file: pathlib.Path | None = typer.Option(None, "--domains-file", help=DOMAINS_FILE_HELP),
     integration_id: str | None = typer.Option(None, "--integration-id", help=INTEGRATION_ID_HELP),
     web_search: bool | None = typer.Option(None, "--web-search/--no-web-search", help=WEB_SEARCH_HELP),
     context_mode: str | None = typer.Option(None, "--context-mode", help=CONTEXT_MODE_HELP),
@@ -64,12 +68,15 @@ def run_command(
     """Run a DiscoGen research query across company domains (async job)."""
     from discolike_cli.main import get_client
 
+    if not domain and domains_file is None:
+        raise typer.BadParameter("Provide --domain or --domains-file")
+
     request = build_request(
         DiscoGenProcessRequest,
         _merge_params(
             None,
             query=query,
-            domains=domain,
+            domains=merge_domains(domain, domains_file),
             integration_id=integration_id,
             web_search=web_search,
             context_mode=context_mode,

@@ -13,9 +13,11 @@ from discolike.requests import SaveResultsRequest
 from discolike.requests import UpdateQueryRequest
 from discolike_cli._help import ContractCommand
 from discolike_cli._help import epilog
+from discolike_cli._inputs import merge_domains
 from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
+from discolike_cli.discover import DOMAINS_FILE_HELP
 from discolike_cli.discover import _merge_params
 
 FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls back to JSON for non-tabular data)."
@@ -56,6 +58,7 @@ def create_exclusion_list_command(
     ctx: typer.Context,
     name: str = typer.Option(..., "--name", help="Name for the new exclusion list."),
     domain: list[str] | None = typer.Option(None, "--domain", help="Domain to exclude (repeatable)."),
+    domains_file: Path | None = typer.Option(None, "--domains-file", help=DOMAINS_FILE_HELP),
     persona_id: list[int] | None = typer.Option(None, "--persona-id", help="Persona ID to exclude (repeatable)."),
     tag: list[str] | None = typer.Option(None, "--tag", help="Tag to attach to the list (repeatable)."),
 ) -> None:
@@ -64,7 +67,9 @@ def create_exclusion_list_command(
 
     request = build_request(
         CreateExclusionListRequest,
-        _merge_params(None, query_name=name, domains=domain, persona_ids=persona_id, tags=tag),
+        _merge_params(
+            None, query_name=name, domains=merge_domains(domain, domains_file), persona_ids=persona_id, tags=tag
+        ),
     )
     emit(get_client(ctx).queries.create_exclusion_list(request))
 
