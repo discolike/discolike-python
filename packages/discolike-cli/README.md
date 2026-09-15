@@ -35,7 +35,19 @@ discolike company data stripe.com
 discolike extract https://stripe.com/enterprise
 ```
 
-Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment` — plus `auth`, `company`, `contacts`, `discogen`, `queries`, `account`, `search-providers`, and `llm-providers` command groups.
+Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment` — plus `auth`, `bulk`, `company`, `contacts`, `discogen`, `queries`, `account`, `search-providers`, and `llm-providers` command groups.
+
+### Volume pulls
+
+`discolike bulk` walks past the 10,000-per-search ceiling and pulls contacts for a whole domain list into one CSV, with checkpoint and resume:
+
+```bash
+discolike bulk companies --params-file form.json --max-companies 50000 --run-name agencies --out companies.csv
+discolike bulk estimate  --domains-file companies.csv --per-company 10          # free size check
+discolike bulk contacts  --domains-file companies.csv --per-company 10 --summary "growth marketing" --out contacts.csv
+```
+
+`companies` saves each page as an exclusion list (`<run-name>-round-N`) and excludes it from the next page; rerunning with the same `--out` resumes from the CSV. `contacts` slices the domain list at `10000 / per-company` domains per call and records finished slices in `<out>.checkpoint`. Both keep one call in flight under `--rate-limit` (default 10/min, the Pro rate on `/discover` and `/contacts`), retry on 429/5xx, and print a JSON summary at the end. Filters come from `--params-file`, `--param` and the common flags; the paging fields are managed for you.
 
 ### Conventions
 

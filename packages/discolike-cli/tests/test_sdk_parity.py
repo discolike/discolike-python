@@ -26,6 +26,9 @@ DELIBERATELY_OMITTED: dict[str, frozenset[str]] = {
     "ContactFilters": frozenset({"icp_text"}),
     "FindEmailBatchRequest": frozenset({"source_query_id", "refs", "round"}),
 }
+# ``discolike bulk`` takes the full vocabulary through --params-file / --param and manages the paging
+# fields itself; its flags are the handful a volume run needs, not one per SDK field.
+PARAMS_FILE_SITES = frozenset({"bulk.companies_command", "bulk.estimate_command", "bulk.contacts_command"})
 DICT_ONLY_FIELDS: dict[str, frozenset[str]] = {
     "ContactGenerateRequest": frozenset({"initial_contact_counts"}),
     "DiscoGenProcessRequest": frozenset({"previous_discogen_data"}),
@@ -80,7 +83,7 @@ def _build_request_sites() -> Iterator[tuple[str, str, set[str]]]:
                 yield f"{source_file.stem}.{function.name}", call.args[0].id, forwarded
 
 
-SITES = list(_build_request_sites())
+SITES = [site for site in _build_request_sites() if site[0] not in PARAMS_FILE_SITES]
 
 
 @pytest.mark.parametrize(("site", "model_name", "forwarded"), SITES, ids=[f"{s}->{m}" for s, m, _ in SITES])
