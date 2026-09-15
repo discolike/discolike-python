@@ -39,6 +39,9 @@ class CompanyProfile(DiscolikeModel):
     start_date: str | None = None
     end_date: str | None = None
     address: CompanyAddress | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    geo_precision: str | None = None
     phones: list[str] | None = None
     public_emails: list[str] | None = None
     domain_associations: list[str] = pydantic.Field(default_factory=list)
@@ -48,9 +51,6 @@ class CompanyProfile(DiscolikeModel):
     keywords: dict[str, float] = pydantic.Field(default_factory=dict)
     industry_groups: dict[str, float] = pydantic.Field(default_factory=dict)
     sub_industry: dict[str, float] | None = None
-    lat: float | None = None
-    lon: float | None = None
-    geo_precision: str | None = None
     employees: str | None = None
     revenue_range: str | None = None
     business_model: dict[str, float] = pydantic.Field(default_factory=dict)

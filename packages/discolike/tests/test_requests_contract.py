@@ -5,7 +5,7 @@ from discolike.requests import DiscoverParams
 from discolike.resources.companies import CompanyProfile
 
 NEW_FILTERS = ("sub_industry", "negate_sub_industry", "lat", "lon", "radius")
-NEW_OUTPUTS = ("sub_industry", "lat", "lon", "geo_precision")
+NEW_OUTPUTS = ("sub_industry", "latitude", "longitude", "geo_precision")
 
 
 SUB_INDUSTRY = ["ROOFING", "CONSTRUCTION/ROOFING"]
@@ -83,14 +83,14 @@ class TestCompanyProfile:
             {
                 "domain": "acme.com",
                 "sub_industry": {"ROOFING": 0.92, "FOUNDRIES": 0.11},
-                "lat": 40.7128,
-                "lon": -74.006,
+                "latitude": 40.7128,
+                "longitude": -74.006,
                 "geo_precision": "city",
             }
         )
         assert profile.sub_industry == {"ROOFING": 0.92, "FOUNDRIES": 0.11}
-        assert isinstance(profile.lat, float)
-        assert isinstance(profile.lon, float)
-        assert profile.lat == 40.7128
-        assert profile.lon == -74.006
+        assert isinstance(profile.latitude, float)
+        assert isinstance(profile.longitude, float)
+        assert profile.latitude == 40.7128
+        assert profile.longitude == -74.006
         assert profile.geo_precision == "city"
