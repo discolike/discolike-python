@@ -1411,6 +1411,13 @@ class ContactGenerateRequest(DiscolikeRequest):
     full_domains: Annotated[list[str] | None, Field(title="Full Domains")] = None
     partial_domains: Annotated[list[str] | None, Field(title="Partial Domains")] = None
     initial_contact_counts: Annotated[dict[str, int] | None, Field(title="Initial Contact Counts")] = None
+    find_emails: Annotated[
+        bool | None,
+        Field(
+            description="After discovery, run every contact that has a name but no email through the email finder (same as the app's Verify step) and fill `email` / `email_status` on the row before the task completes. Found addresses are billed under the finder's own rules; nothing else is.",
+            title="Find Emails",
+        ),
+    ] = False
 
 
 class DiscoGenProcessRequest(DiscolikeRequest):
