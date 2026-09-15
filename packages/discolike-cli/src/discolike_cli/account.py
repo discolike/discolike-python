@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import typer
 
+from discolike_cli._help import ContractCommand
+from discolike_cli._help import epilog
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
 
@@ -10,7 +12,7 @@ FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls
 app = typer.Typer(help="Account usage and quota.")
 
 
-@app.command("usage")
+@app.command("usage", cls=ContractCommand, epilog=epilog("account usage"))
 @handle_errors
 def usage_command(
     ctx: typer.Context,

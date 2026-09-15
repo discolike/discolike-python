@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from importlib.metadata import version as package_version
 from typing import Any
 
@@ -19,6 +20,10 @@ from discolike_cli import match
 from discolike_cli import providers
 from discolike_cli import queries
 from discolike_cli import signup
+from discolike_cli._help import MAIN_EPILOG
+from discolike_cli._help import ContractCommand
+from discolike_cli._help import ContractGroup
+from discolike_cli._help import epilog
 
 app = typer.Typer(
     name="discolike",
@@ -30,7 +35,14 @@ app = typer.Typer(
         "company names to domains, and find the right contacts — from your terminal.\n\n"
         "Docs: https://docs.discolike.com · Keys: https://app.discolike.com/account/management/keys"
     ),
+    epilog=MAIN_EPILOG,
+    cls=ContractGroup,
 )
+
+
+def _stdout_is_tty() -> bool:
+    return sys.stdout.isatty()
+
 
 build_client = Discolike
 
@@ -45,7 +57,11 @@ def main(
     version: bool = typer.Option(False, "--version", help="Print CLI and SDK versions and exit."),
 ) -> None:
     if version:
-        typer.echo(f"🪩 discolike-cli {package_version('discolike-cli')} (discolike {sdk_version})")
+        cli_version = package_version("discolike-cli")
+        if _stdout_is_tty():
+            typer.echo(f"🪩 discolike-cli {cli_version} (discolike {sdk_version})")
+        else:
+            typer.echo(cli_version)
         raise typer.Exit
     ctx.obj = {"api_key": api_key, "base_url": base_url}
 
@@ -64,11 +80,11 @@ app.add_typer(queries.app, name="queries")
 app.add_typer(account.app, name="account")
 app.add_typer(providers.search_providers_app, name="search-providers")
 app.add_typer(providers.llm_providers_app, name="llm-providers")
-app.command(name="discover")(discover.discover_command)
-app.command(name="count")(discover.count_command)
-app.command(name="match")(match.match_command)
-app.command(name="extract")(company.extract_command)
-app.command(name="validate-icp")(enrich.validate_icp_command)
-app.command(name="append")(enrich.append_command)
-app.command(name="segment")(enrich.segment_command)
-app.command(name="signup")(signup.signup_command)
+app.command(name="discover", cls=ContractCommand, epilog=epilog("discover"))(discover.discover_command)
+app.command(name="count", cls=ContractCommand, epilog=epilog("count"))(discover.count_command)
+app.command(name="match", cls=ContractCommand, epilog=epilog("match"))(match.match_command)
+app.command(name="extract", cls=ContractCommand, epilog=epilog("extract"))(company.extract_command)
+app.command(name="validate-icp", cls=ContractCommand, epilog=epilog("validate-icp"))(enrich.validate_icp_command)
+app.command(name="append", cls=ContractCommand, epilog=epilog("append"))(enrich.append_command)
+app.command(name="segment", cls=ContractCommand, epilog=epilog("segment"))(enrich.segment_command)
+app.command(name="signup", cls=ContractCommand, epilog=epilog("signup"))(signup.signup_command)

@@ -8,13 +8,20 @@ import pydantic
 import pytest
 import typer
 
+from discolike import APIConnectionError
 from discolike import AuthenticationError
+from discolike import DiscolikeError
+from discolike import JobFailedError
+from discolike import JobTimeoutError
+from discolike import NotFoundError
+from discolike import PlanAccessError
 from discolike import RateLimitError
 from discolike import ServerError
 from discolike import ValidationError
 from discolike.requests import DiscoverParams
 from discolike.requests import MatchCompanyParams
 from discolike.resources.discovery import Company
+from discolike_cli._output import ERROR_CODES
 from discolike_cli._output import EXIT_CODES
 from discolike_cli._output import build_request
 from discolike_cli._output import emit
@@ -160,7 +167,13 @@ def test_fail_writes_stderr_json_and_returns_typer_exit(capsys: pytest.CaptureFi
     assert result.exit_code == 2
     captured = capsys.readouterr()
     payload = json.loads(captured.err)
-    assert payload == {"error": "ValidationError", "message": "bad field", "status_code": 400}
+    assert payload == {
+        "error": "ValidationError",
+        "code": "validation_error",
+        "message": "bad field",
+        "status_code": 400,
+        "exit_code": 2,
+    }
     assert captured.out == ""
 
 
@@ -295,3 +308,33 @@ def test_handle_errors_maps_pydantic_validation_error_to_exit_2(capsys: pytest.C
     assert payload["status_code"] is None
     assert "name" in payload["message"]
     assert "min_match_confidence" in payload["message"]
+
+
+@pytest.mark.parametrize(
+    ("exc", "code", "exit_code"),
+    [
+        (ValidationError("bad", status_code=400), "validation_error", 2),
+        (AuthenticationError("no key"), "auth_required", 3),
+        (AuthenticationError("bad key", status_code=401), "auth_invalid", 3),
+        (AuthenticationError("forbidden", status_code=403), "auth_invalid", 3),
+        (PlanAccessError("upgrade", status_code=403), "plan_access", 3),
+        (RateLimitError("slow", status_code=429, retry_after=1.0), "rate_limited", 4),
+        (APIConnectionError("down"), "network_error", 5),
+        (NotFoundError("nope", status_code=404), "not_found", 6),
+        (ServerError("boom", status_code=500), "server_error", 1),
+        (JobFailedError("failed"), "job_failed", 1),
+        (JobTimeoutError("slow job"), "job_timeout", 1),
+    ],
+)
+def test_fail_emits_stable_code_and_exit_code(
+    exc: DiscolikeError, code: str, exit_code: int, capsys: pytest.CaptureFixture[str]
+) -> None:
+    result = fail(exc)
+    payload = json.loads(capsys.readouterr().err)
+    assert payload["code"] == code
+    assert payload["exit_code"] == exit_code
+    assert result.exit_code == exit_code
+
+
+def test_error_codes_cover_every_exit_code_type() -> None:
+    assert set(EXIT_CODES) <= set(ERROR_CODES)

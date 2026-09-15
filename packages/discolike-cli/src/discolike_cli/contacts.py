@@ -12,6 +12,8 @@ from discolike.requests import ContactsCountParams
 from discolike.requests import ContactsLookupParams
 from discolike.requests import ContactsMatchParams
 from discolike.requests import ContactsSearchParams
+from discolike_cli._help import ContractCommand
+from discolike_cli._help import epilog
 from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
@@ -50,7 +52,7 @@ app = typer.Typer(
 )
 
 
-@app.command("search")
+@app.command("search", cls=ContractCommand, epilog=epilog("contacts search"))
 @handle_errors
 def search_command(
     ctx: typer.Context,
@@ -418,7 +420,7 @@ def discover_command(
     emit(get_client(ctx).contacts.discover(build_request(ContactFilters, kwargs)), fmt=fmt)
 
 
-@app.command("generate")
+@app.command("generate", cls=ContractCommand, epilog=epilog("contacts generate"))
 @handle_errors
 def generate_command(
     ctx: typer.Context,

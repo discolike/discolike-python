@@ -19,9 +19,12 @@ from rich.table import Table
 from discolike._exceptions import APIConnectionError
 from discolike._exceptions import AuthenticationError
 from discolike._exceptions import DiscolikeError
+from discolike._exceptions import JobFailedError
+from discolike._exceptions import JobTimeoutError
 from discolike._exceptions import NotFoundError
 from discolike._exceptions import PlanAccessError
 from discolike._exceptions import RateLimitError
+from discolike._exceptions import ServerError
 from discolike._exceptions import ValidationError
 from discolike._models import DiscolikeModel
 
@@ -39,6 +42,29 @@ EXIT_CODES: dict[type, int] = {
     NotFoundError: 6,
 }
 DEFAULT_EXIT_CODE = 1
+
+# Stable, snake_case error codes for agents and scripts to branch on. The class
+# name in `error` is kept for backwards compatibility; `code` is the contract.
+ERROR_CODES: dict[type, str] = {
+    ValidationError: "validation_error",
+    AuthenticationError: "auth_invalid",
+    PlanAccessError: "plan_access",
+    RateLimitError: "rate_limited",
+    APIConnectionError: "network_error",
+    NotFoundError: "not_found",
+    ServerError: "server_error",
+    JobFailedError: "job_failed",
+    JobTimeoutError: "job_timeout",
+}
+DEFAULT_ERROR_CODE = "error"
+AUTH_REQUIRED_CODE = "auth_required"
+
+
+def error_code(exc: DiscolikeError) -> str:
+    # No status code on an AuthenticationError means no credential was found at all.
+    if isinstance(exc, AuthenticationError) and exc.status_code is None:
+        return AUTH_REQUIRED_CODE
+    return ERROR_CODES.get(type(exc), DEFAULT_ERROR_CODE)
 
 
 class _JobStatusLike(Protocol):
@@ -111,15 +137,18 @@ def emit(data: Any, *, fmt: str | None = None) -> None:  # noqa: ANN401 -- accep
 
 
 def fail(exc: DiscolikeError) -> typer.Exit:
+    exit_code = EXIT_CODES.get(type(exc), DEFAULT_EXIT_CODE)
     payload: dict[str, Any] = {
         "error": type(exc).__name__,
+        "code": error_code(exc),
         "message": str(exc),
         "status_code": exc.status_code,
+        "exit_code": exit_code,
     }
     if isinstance(exc, RateLimitError) and exc.retry_after is not None:
         payload["retry_after"] = exc.retry_after
     print(json.dumps(payload), file=sys.stderr)
-    return typer.Exit(code=EXIT_CODES.get(type(exc), DEFAULT_EXIT_CODE))
+    return typer.Exit(code=exit_code)
 
 
 def _accepts_list(model: type[pydantic.BaseModel], name: str) -> bool:

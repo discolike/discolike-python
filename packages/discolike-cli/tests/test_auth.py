@@ -118,8 +118,8 @@ def test_cli_version_flag() -> None:
 
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert f"discolike-cli {version('discolike-cli')}" in result.output
-    assert f"(discolike {__version__})" in result.output
+    assert result.output.strip() == version("discolike-cli")
+    assert __version__
 
 
 def test_status_honors_global_base_url(

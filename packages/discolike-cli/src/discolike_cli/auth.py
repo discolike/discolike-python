@@ -34,6 +34,8 @@ from discolike._oauth import build_authorization_url
 from discolike._oauth import discover
 from discolike._oauth import exchange_code
 from discolike._oauth import register_client
+from discolike_cli._help import ContractCommand
+from discolike_cli._help import epilog
 from discolike_cli._loopback import CallbackServer
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
@@ -228,7 +230,7 @@ def _api_key_login(ctx: typer.Context, *, api_key: str | None) -> None:
     print(json.dumps({"logged_in": True, "source": AUTH_METHOD_API_KEY}), file=sys.stderr)
 
 
-@app.command()
+@app.command(cls=ContractCommand, epilog=epilog("auth login"))
 @handle_errors
 def login(
     ctx: typer.Context,
@@ -269,7 +271,7 @@ def login(
     )
 
 
-@app.command()
+@app.command(cls=ContractCommand, epilog=epilog("auth status"))
 @handle_errors
 def status(ctx: typer.Context) -> None:
     """Show which credential is in use (option, env, or config) and verify it against the API."""

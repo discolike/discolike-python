@@ -11,6 +11,8 @@ from discolike.requests import CreateExclusionListRequest
 from discolike.requests import QueriesListParams
 from discolike.requests import SaveResultsRequest
 from discolike.requests import UpdateQueryRequest
+from discolike_cli._help import ContractCommand
+from discolike_cli._help import epilog
 from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
@@ -48,7 +50,7 @@ def list_command(
     emit(get_client(ctx).queries.list(request), fmt=fmt)
 
 
-@app.command("create-exclusion-list")
+@app.command("create-exclusion-list", cls=ContractCommand, epilog=epilog("queries create-exclusion-list"))
 @handle_errors
 def create_exclusion_list_command(
     ctx: typer.Context,
