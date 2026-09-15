@@ -5,8 +5,13 @@ from importlib.metadata import version as package_version
 from typing import Any
 
 import typer
+from typer._click.exceptions import Abort
+from typer._click.exceptions import ClickException
+from typer._click.exceptions import NoArgsIsHelpError
+from typer._click.exceptions import UsageError
 
 from discolike import Discolike
+from discolike import ValidationError
 from discolike import __version__ as sdk_version
 from discolike_cli import account
 from discolike_cli import auth
@@ -24,6 +29,7 @@ from discolike_cli._help import MAIN_EPILOG
 from discolike_cli._help import ContractCommand
 from discolike_cli._help import ContractGroup
 from discolike_cli._help import epilog
+from discolike_cli._output import fail
 
 app = typer.Typer(
     name="discolike",
@@ -80,6 +86,35 @@ app.add_typer(queries.app, name="queries")
 app.add_typer(account.app, name="account")
 app.add_typer(providers.search_providers_app, name="search-providers")
 app.add_typer(providers.llm_providers_app, name="llm-providers")
+KEYBOARD_INTERRUPT_EXIT_CODE = 130
+
+
+def run(argv: list[str] | None = None) -> None:
+    """Console entry point: every failure, parser errors included, honours the JSON envelope.
+
+    Click's standalone mode prints its own usage text on a bad flag or value; running the app
+    with ``standalone_mode=False`` lets us route those through ``fail()`` so agents always see
+    ``{"code": "validation_error", ...}`` on stderr with exit 2. Help, ``--version``, and the
+    bare-invocation help screen keep click's behaviour.
+    """
+    try:
+        result = app(args=argv, prog_name="discolike", standalone_mode=False)
+    except NoArgsIsHelpError as exc:
+        exc.show()
+        sys.exit(exc.exit_code)
+    except UsageError as exc:
+        message = exc.format_message()
+        if exc.ctx is not None:
+            message = f"{message} (see `{exc.ctx.command_path} --help`)"
+        sys.exit(fail(ValidationError(message)).exit_code)
+    except ClickException as exc:
+        exc.show()
+        sys.exit(exc.exit_code)
+    except (Abort, KeyboardInterrupt):
+        sys.exit(KEYBOARD_INTERRUPT_EXIT_CODE)
+    sys.exit(result if isinstance(result, int) else 0)
+
+
 app.command(name="discover", cls=ContractCommand, epilog=epilog("discover"))(discover.discover_command)
 app.command(name="count", cls=ContractCommand, epilog=epilog("count"))(discover.count_command)
 app.command(name="match", cls=ContractCommand, epilog=epilog("match"))(match.match_command)

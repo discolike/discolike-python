@@ -18,6 +18,7 @@ from discolike import PlanAccessError
 from discolike import RateLimitError
 from discolike import ServerError
 from discolike import ValidationError
+from discolike._config import NO_CREDENTIAL_MESSAGE
 from discolike.requests import DiscoverParams
 from discolike.requests import MatchCompanyParams
 from discolike.resources.discovery import Company
@@ -314,7 +315,9 @@ def test_handle_errors_maps_pydantic_validation_error_to_exit_2(capsys: pytest.C
     ("exc", "code", "exit_code"),
     [
         (ValidationError("bad", status_code=400), "validation_error", 2),
-        (AuthenticationError("no key"), "auth_required", 3),
+        (AuthenticationError(NO_CREDENTIAL_MESSAGE), "auth_required", 3),
+        (AuthenticationError("OAuth token response has no `refresh_token`"), "auth_invalid", 3),
+        (AuthenticationError("OAuth session expired; run `discolike auth login`"), "auth_invalid", 3),
         (AuthenticationError("bad key", status_code=401), "auth_invalid", 3),
         (AuthenticationError("forbidden", status_code=403), "auth_invalid", 3),
         (PlanAccessError("upgrade", status_code=403), "plan_access", 3),

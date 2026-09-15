@@ -33,8 +33,9 @@ def test_login_with_api_key_option_verifies_and_saves(install_build_client: Call
     assert json.loads(config_path().read_text())["api_key"] == "dk-1"
     mode = stat.S_IMODE(config_path().stat().st_mode)
     assert mode == 0o600
-    payload = json.loads(result.stderr)
+    payload = json.loads(result.stdout)
     assert payload["logged_in"] is True
+    assert result.stderr == ""
 
 
 def test_login_prompts_for_key_when_not_given(install_build_client: Callable[[Handler], None]) -> None:

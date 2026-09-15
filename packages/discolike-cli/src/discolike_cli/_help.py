@@ -252,9 +252,10 @@ Common errors:
 """,
     "auth login": """\
 Output (success, exit 0):
-  Browser (default): {"logged_in": true, "method": "oauth", "expires_at": <ISO 8601>} on stderr.
-  --api-key KEY:     {"logged_in": true, "source": "api_key"} on stderr.
+  Browser (default): {"logged_in": true, "method": "oauth", "expires_at": <ISO 8601>}
+  --api-key KEY:     {"logged_in": true, "source": "api_key"}
   The credential is saved to the config file; later commands read it automatically.
+  Progress lines (the URL to open, browser wait) go to stderr; only the JSON above is on stdout.
   Headless: --no-browser prints the URL to open; --port pins the loopback port for SSH.
 
 Common errors:

@@ -16,6 +16,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from discolike._config import NO_CREDENTIAL_MESSAGE
 from discolike._exceptions import APIConnectionError
 from discolike._exceptions import AuthenticationError
 from discolike._exceptions import DiscolikeError
@@ -61,8 +62,9 @@ AUTH_REQUIRED_CODE = "auth_required"
 
 
 def error_code(exc: DiscolikeError) -> str:
-    # No status code on an AuthenticationError means no credential was found at all.
-    if isinstance(exc, AuthenticationError) and exc.status_code is None:
+    # The SDK raises the same exception class both when no credential exists and when a stored
+    # OAuth credential fails to refresh; only the former is "run `discolike auth login`" territory.
+    if isinstance(exc, AuthenticationError) and str(exc) == NO_CREDENTIAL_MESSAGE:
         return AUTH_REQUIRED_CODE
     return ERROR_CODES.get(type(exc), DEFAULT_ERROR_CODE)
 
