@@ -232,6 +232,41 @@ def test_count_forwards_every_new_flag(install_build_client: Callable[[Handler],
     assert params.get("exclude_leadgen") == "true"
 
 
+def test_count_forwards_sub_industry_and_geo_flags(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.QueryParams] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["params"] = request.url.params
+        return _count_ok(request)
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "count",
+            "--sub-industry",
+            "ROOFING",
+            "--negate-sub-industry",
+            "FOUNDRIES",
+            "--negate-sub-industry",
+            "SCAFFOLDING",
+            "--lat",
+            "40.7128",
+            "--lon",
+            "-74.006",
+            "--radius",
+            "30mi",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    params = captured["params"]
+    assert params.get_list("sub_industry") == ["ROOFING"]
+    assert params.get_list("negate_sub_industry") == ["FOUNDRIES", "SCAFFOLDING"]
+    assert params.get("lat") == "40.7128"
+    assert params.get("lon") == "-74.006"
+    assert params.get("radius") == "30mi"
+
+
 def test_count_sends_shared_filter_subset(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, httpx2.QueryParams] = {}
 
@@ -251,6 +286,41 @@ def test_count_param_without_equals_exits_2(install_build_client: Callable[[Hand
     install_build_client(_count_ok)
     result = runner.invoke(app, ["count", "--param", "bogus"])
     assert result.exit_code == 2
+
+
+def test_discover_forwards_sub_industry_and_geo_flags(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.QueryParams] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["params"] = request.url.params
+        return _discover_ok(request)
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "discover",
+            "--sub-industry",
+            "ROOFING",
+            "--sub-industry",
+            "CONSTRUCTION/ROOFING",
+            "--negate-sub-industry",
+            "FOUNDRIES",
+            "--lat",
+            "40.7128",
+            "--lon",
+            "-74.006",
+            "--radius",
+            "30mi",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    params = captured["params"]
+    assert params.get_list("sub_industry") == ["ROOFING", "CONSTRUCTION/ROOFING"]
+    assert params.get_list("negate_sub_industry") == ["FOUNDRIES"]
+    assert params.get("lat") == "40.7128"
+    assert params.get("lon") == "-74.006"
+    assert params.get("radius") == "30mi"
 
 
 def test_discover_unauthorized_exits_3(install_build_client: Callable[[Handler], None]) -> None:
