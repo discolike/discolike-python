@@ -1692,47 +1692,6 @@ class DiscoverParams(DiscolikeRequest):
             title="Negate Category",
         ),
     ] = None
-    sub_industry: Annotated[
-        list[str] | None,
-        Field(
-            description="Filter by sub-industry, a second-level label scoped to an industry category. Accepts a bare label (ROOFING) or a parent-qualified key (CONSTRUCTION/ROOFING), case-insensitive, up to 50 values. A bare label whose parent category is unambiguous adds that parent to the category filter. Call list-industry-categories for the label list.",
-            max_length=50,
-            title="Sub Industry",
-        ),
-    ] = None
-    negate_sub_industry: Annotated[
-        list[str] | None,
-        Field(
-            description="Exclude specified sub-industries. Same format as sub_industry; does not affect the category filter.",
-            max_length=50,
-            title="Negate Sub Industry",
-        ),
-    ] = None
-    lat: Annotated[
-        float | None,
-        Field(
-            description="Latitude of the search centre. Must be supplied together with lon.",
-            ge=-90.0,
-            le=90.0,
-            title="Lat",
-        ),
-    ] = None
-    lon: Annotated[
-        float | None,
-        Field(
-            description="Longitude of the search centre. Must be supplied together with lat.",
-            ge=-180.0,
-            le=180.0,
-            title="Lon",
-        ),
-    ] = None
-    radius: Annotated[
-        str | None,
-        Field(
-            description="Search radius around lat/lon: a number optionally suffixed with km or mi (50km, 30mi, 50). A bare number is kilometres. Defaults to 50km when lat/lon are supplied, maximum 1000km.",
-            title="Radius",
-        ),
-    ] = None
     min_digital_footprint: Annotated[
         int | None,
         Field(
@@ -2136,6 +2095,47 @@ class DiscoverParams(DiscolikeRequest):
             title="Icp Prompt",
         ),
     ] = None
+    lat: Annotated[
+        float | None,
+        Field(
+            description="Latitude of the search centre. Must be supplied together with lon.",
+            ge=-90.0,
+            le=90.0,
+            title="Lat",
+        ),
+    ] = None
+    lon: Annotated[
+        float | None,
+        Field(
+            description="Longitude of the search centre. Must be supplied together with lat.",
+            ge=-180.0,
+            le=180.0,
+            title="Lon",
+        ),
+    ] = None
+    radius: Annotated[
+        str | None,
+        Field(
+            description="Search radius around lat/lon: a number optionally suffixed with km or mi (50km, 30mi, 50). A bare number is kilometres. Defaults to 50km when lat/lon are supplied, maximum 1000km.",
+            title="Radius",
+        ),
+    ] = None
+    sub_industry: Annotated[
+        list[str] | None,
+        Field(
+            description="Filter by sub-industry, a second-level label scoped to an industry category. Accepts a bare label (ROOFING) or a parent-qualified key (CONSTRUCTION/ROOFING), case-insensitive, up to 50 values. A bare label whose parent category is unambiguous adds that parent to the category filter. Call list-industry-categories for the label list.",
+            max_length=50,
+            title="Sub Industry",
+        ),
+    ] = None
+    negate_sub_industry: Annotated[
+        list[str] | None,
+        Field(
+            description="Exclude specified sub-industries. Same format as sub_industry; does not affect the category filter.",
+            max_length=50,
+            title="Negate Sub Industry",
+        ),
+    ] = None
 
 
 class CountParams(DiscolikeRequest):
@@ -2313,47 +2313,6 @@ class CountParams(DiscolikeRequest):
         Field(
             description="Exclude specified industry categories. Valid values: ACCOUNTING, ADVERTISING_AND_MARKETING, AGRICULTURE_AND_NATURAL_RESOURCES, ALCOHOL_AND_TOBACCO, AUTOMOTIVE, BIG_DATA_AND_ANALYTICS, BIOTECHNOLOGY, BLOCKCHAIN_AND_CRYPTOCURRENCY, BUSINESS_PRODUCTS_AND_SERVICES, CLOUD_COMPUTING, COMPUTER_HARDWARE_AND_SEMICONDUCTORS, CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES, CONSTRUCTION, CONSUMER_PRODUCTS, CONSUMER_SERVICES, CYBERSECURITY, DEFENSE_AND_AEROSPACE, E-COMMERCE, EDUCATION, ENERGY, ENGINEERING, ENTERTAINMENT, ENVIRONMENTAL_SERVICES, FASHION_TEXTILE_AND_APPAREL, FINANCIAL_SERVICES, FOOD_AND_BEVERAGE, GAMING_AND_ESPORTS, GOVERNMENT_SERVICES, HEALTHCARE, HOSPITALITY, HUMAN_RESOURCES, INSURANCE, IT_SERVICES, LEGAL, MANUFACTURING, MEDIA, MINING_AND_METALS, NONPROFIT_AND_PHILANTHROPY, OIL_AND_GAS, PHARMACEUTICALS, PRIVATE_EQUITY_AND_VENTURE_CAPITAL, REAL_ESTATE, RENEWABLE_ENERGY, RESTAURANTS, RETAIL, SAAS, SECURITY, SOFTWARE, SPORTS_AND_RECREATION, SUPPLY_CHAIN_AND_PROCUREMENT, TELECOMMUNICATIONS, TRAVEL, WELLNESS_AND_LIFESTYLE.",
             title="Negate Category",
-        ),
-    ] = None
-    sub_industry: Annotated[
-        list[str] | None,
-        Field(
-            description="Filter by sub-industry, a second-level label scoped to an industry category. Accepts a bare label (ROOFING) or a parent-qualified key (CONSTRUCTION/ROOFING), case-insensitive, up to 50 values. A bare label whose parent category is unambiguous adds that parent to the category filter. Call list-industry-categories for the label list.",
-            max_length=50,
-            title="Sub Industry",
-        ),
-    ] = None
-    negate_sub_industry: Annotated[
-        list[str] | None,
-        Field(
-            description="Exclude specified sub-industries. Same format as sub_industry; does not affect the category filter.",
-            max_length=50,
-            title="Negate Sub Industry",
-        ),
-    ] = None
-    lat: Annotated[
-        float | None,
-        Field(
-            description="Latitude of the search centre. Must be supplied together with lon.",
-            ge=-90.0,
-            le=90.0,
-            title="Lat",
-        ),
-    ] = None
-    lon: Annotated[
-        float | None,
-        Field(
-            description="Longitude of the search centre. Must be supplied together with lat.",
-            ge=-180.0,
-            le=180.0,
-            title="Lon",
-        ),
-    ] = None
-    radius: Annotated[
-        str | None,
-        Field(
-            description="Search radius around lat/lon: a number optionally suffixed with km or mi (50km, 30mi, 50). A bare number is kilometres. Defaults to 50km when lat/lon are supplied, maximum 1000km.",
-            title="Radius",
         ),
     ] = None
     min_digital_footprint: Annotated[
@@ -2639,6 +2598,47 @@ class CountParams(DiscolikeRequest):
             title="Exclude Leadgen",
         ),
     ] = False
+    lat: Annotated[
+        float | None,
+        Field(
+            description="Latitude of the search centre. Must be supplied together with lon.",
+            ge=-90.0,
+            le=90.0,
+            title="Lat",
+        ),
+    ] = None
+    lon: Annotated[
+        float | None,
+        Field(
+            description="Longitude of the search centre. Must be supplied together with lat.",
+            ge=-180.0,
+            le=180.0,
+            title="Lon",
+        ),
+    ] = None
+    radius: Annotated[
+        str | None,
+        Field(
+            description="Search radius around lat/lon: a number optionally suffixed with km or mi (50km, 30mi, 50). A bare number is kilometres. Defaults to 50km when lat/lon are supplied, maximum 1000km.",
+            title="Radius",
+        ),
+    ] = None
+    sub_industry: Annotated[
+        list[str] | None,
+        Field(
+            description="Filter by sub-industry, a second-level label scoped to an industry category. Accepts a bare label (ROOFING) or a parent-qualified key (CONSTRUCTION/ROOFING), case-insensitive, up to 50 values. A bare label whose parent category is unambiguous adds that parent to the category filter. Call list-industry-categories for the label list.",
+            max_length=50,
+            title="Sub Industry",
+        ),
+    ] = None
+    negate_sub_industry: Annotated[
+        list[str] | None,
+        Field(
+            description="Exclude specified sub-industries. Same format as sub_industry; does not affect the category filter.",
+            max_length=50,
+            title="Negate Sub Industry",
+        ),
+    ] = None
 
 
 class FindEmailRequest(DiscolikeRequest):
