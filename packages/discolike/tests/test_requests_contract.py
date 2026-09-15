@@ -94,3 +94,15 @@ class TestCompanyProfile:
         assert profile.latitude == 40.7128
         assert profile.longitude == -74.006
         assert profile.geo_precision == "city"
+
+    def test_the_pre_rename_coordinate_keys_still_parse(self) -> None:
+        profile = CompanyProfile.model_validate({"domain": "acme.com", "lat": 40.7128, "lon": -74.006})
+
+        assert profile.latitude == 40.7128
+        assert profile.longitude == -74.006
+
+    def test_coordinates_serialize_under_their_full_names(self) -> None:
+        profile = CompanyProfile.model_validate({"domain": "acme.com", "lat": 40.7128, "lon": -74.006})
+
+        assert profile.to_dict()["latitude"] == 40.7128
+        assert profile.to_dict()["longitude"] == -74.006
