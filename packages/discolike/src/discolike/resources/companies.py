@@ -47,6 +47,10 @@ class CompanyProfile(DiscolikeModel):
     description: str | None = None
     keywords: dict[str, float] = pydantic.Field(default_factory=dict)
     industry_groups: dict[str, float] = pydantic.Field(default_factory=dict)
+    sub_industry: dict[str, float] | None = None
+    lat: float | None = None
+    lon: float | None = None
+    geo_precision: str | None = None
     employees: str | None = None
     revenue_range: str | None = None
     business_model: dict[str, float] = pydantic.Field(default_factory=dict)

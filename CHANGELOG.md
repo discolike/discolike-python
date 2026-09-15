@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- SDK: discover and count take `sub_industry` / `negate_sub_industry` (217 second-level labels scoped to their parent industry category; a bare label like `ROOFING` adds `CONSTRUCTION` to `category` server-side) and `lat` / `lon` / `radius` (`50km`, `30mi`, or a bare number meaning kilometres; defaults to 50km).
+- SDK: `CompanyProfile` gains `sub_industry` (label:confidence, `None` when the domain was never scored against its category's sub-labels), `lat`, `lon` and `geo_precision`.
+- CLI: `discover` and `count` gain `--sub-industry`, `--negate-sub-industry`, `--lat`, `--lon`, `--radius`.
 - SDK (behavior change, no code change): company `address.state` now comes back from the API as the subdivision name ("California", "Tokyo") instead of the ISO code ("CA", "13"). `CompanyAddress.state` is still `str | None` and needs no migration, but anything joining or grouping on that value as a code has to resolve it. The contact's own `state` is unchanged and stays a code.
 - SDK: state filters accept a code or a name, resolved server-side against the countries you selected. Discover/count still take one `country` value, but that value may be a region alias (`EU`, `APAC`, `DACH`) and the state resolves against every member. Contacts state filters accept multiple countries and drop a value they cannot resolve rather than erroring.
 - SDK: `MatchCompanyParams.state` works for any country with subdivisions, not just the US, and takes a code or a name.
