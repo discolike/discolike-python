@@ -44,7 +44,12 @@ class _BboxProbe(DiscolikeRequest):
 
 @pytest.mark.parametrize(
     "value",
-    ["40.4,-74.3,41.0,-73.7", "-90,-180,90,180", "-10,170,10,-170", "0,0,0,0"],
+    [
+        "40.4,-74.3,41.0,-73.7",
+        "-90,-180,90,180",
+        "-10,170,10,-170",
+        "40.4, -74.3, 41.0, -73.7",
+    ],
 )
 def test_bbox_accepts_valid_boxes(value: str) -> None:
     assert _BboxProbe(bbox=value).to_wire() == {"bbox": value}
@@ -53,17 +58,21 @@ def test_bbox_accepts_valid_boxes(value: str) -> None:
 @pytest.mark.parametrize(
     ("value", "message"),
     [
-        ("40.4,-74.3,41.0", "min_lat,min_lon,max_lat,max_lon"),
-        ("40.4,-74.3,41.0,-73.7,1", "min_lat,min_lon,max_lat,max_lon"),
-        ("40.4,-74.3,41.0,east", "four numbers"),
-        ("-91,0,10,1", "min_lat must be between"),
-        ("0,0,90.5,1", "max_lat must be between"),
-        ("0,-180.5,10,1", "min_lon must be between"),
-        ("0,0,10,180.5", "max_lon must be between"),
-        ("41,-74,40,-73", "min_lat must not exceed max_lat"),
+        ("40.4,-74.3,41.0", "expected 4 values"),
+        ("40.4,-74.3,41.0,-73.7,1", "expected 4 values"),
+        ("40.4,-74.3,41.0,east", "must be a number"),
+        ("nan,-74.3,41.0,-73.7", "must be finite"),
+        ("-inf,-74.3,41.0,-73.7", "must be finite"),
+        ("-91,0,10,1", "latitudes must satisfy"),
+        ("0,0,90.5,1", "latitudes must satisfy"),
+        ("41,-74,40,-73", "latitudes must satisfy"),
+        ("0,0,0,1", "latitudes must satisfy"),
+        ("0,-180.5,10,1", "longitudes must be between"),
+        ("0,0,10,180.5", "longitudes must be between"),
+        ("0,10,1,10", "min_lon and max_lon must differ"),
     ],
 )
-def test_bbox_rejects_out_of_range_and_malformed_boxes(value: str, message: str) -> None:
+def test_bbox_rejects_boxes_the_platform_would_reject(value: str, message: str) -> None:
     with pytest.raises(pydantic.ValidationError, match=message):
         _BboxProbe(bbox=value)
 
