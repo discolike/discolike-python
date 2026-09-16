@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import csv
 import functools
+import hashlib
+import json
 import pathlib
 import sys
 import time
@@ -168,7 +170,7 @@ def companies_command(
         pathlib.Path("companies.csv"), help="CSV to append each page to; resumes if present."
     ),
     overwrite: bool = typer.Option(False, "--overwrite", help=OVERWRITE_HELP),
-    rate_limit: int = typer.Option(DEFAULT_RATE_LIMIT_PER_MINUTE, help=RATE_LIMIT_HELP),
+    rate_limit: int = typer.Option(DEFAULT_RATE_LIMIT_PER_MINUTE, min=1, help=RATE_LIMIT_HELP),
 ) -> None:
     """Walk the company index past 10,000 results, one exclusion list per page, appending to a CSV."""
     base = _drop_managed(
@@ -205,8 +207,12 @@ def companies_command(
 
     def arm_exclusion(domains: list[str], label: str) -> None:
         if len(domains) < MIN_EXCLUSION_LIST:
+            # Short tails ride on exclude_domain (100 max); once enough pile up they become a saved list too.
             inline_excludes.extend(domains)
-            return
+            if len(inline_excludes) < MIN_EXCLUSION_LIST:
+                return
+            domains, label = list(inline_excludes), f"{label}-tails"
+            inline_excludes.clear()
         request = CreateExclusionListRequest(query_name=label, domains=domains)
         result = _call_with_retry(limiter, functools.partial(client.queries.create_exclusion_list, request))
         exclusion_ids.append(str(result.query_id))
@@ -349,6 +355,25 @@ def _flatten(company: dict[str, Any], contact: dict[str, Any]) -> dict[str, Any]
     }
 
 
+def _checkpoint_fingerprint(domains: list[str], per_company: int, filters: dict[str, Any]) -> str:
+    """Identity of a contacts pull: same domains in the same order, same slice size, same filters."""
+    payload = json.dumps(
+        {"domains": domains, "per_company": per_company, "filters": filters}, sort_keys=True, default=str
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()[:16]
+
+
+def _read_checkpoint(path: pathlib.Path, fingerprint: str) -> set[int]:
+    """Slice indexes already pulled, refusing a checkpoint written for different inputs."""
+    lines = path.read_text().split()
+    if not lines or lines[0] != f"fingerprint={fingerprint}":
+        raise typer.BadParameter(
+            f"{path} was written for a different domains file, --per-company or filters; "
+            "pass --overwrite to start clean or point --out elsewhere"
+        )
+    return {int(line) for line in lines[1:]}
+
+
 def _persona_ids_in(path: pathlib.Path) -> set[str]:
     """Rows already in the CSV, so a rerun after a lost checkpoint never writes a persona twice."""
     if not path.exists():
@@ -384,7 +409,9 @@ def estimate_command(
     exclusion_query_id: list[str] | None = typer.Option(None, help=EXCLUSION_QUERY_ID_HELP),
     param: list[str] | None = typer.Option(None, "--param", help=PARAM_HELP),
     params_file: pathlib.Path | None = typer.Option(None, help=PARAMS_FILE_HELP),
-    rate_limit: int = typer.Option(COUNT_RATE_LIMIT_PER_MINUTE, help="Calls per minute on the free /contacts/count."),
+    rate_limit: int = typer.Option(
+        COUNT_RATE_LIMIT_PER_MINUTE, min=1, help="Calls per minute on the free /contacts/count."
+    ),
 ) -> None:
     """Size a contact pull for free: matching contacts across the domain list, and the cap at --per-company."""
     domains = read_domains_file(domains_file)
@@ -416,7 +443,10 @@ def estimate_command(
         total += count.count or 0
         _log(f"  probed {min((index + 1) * COUNT_SLICE, len(domains)):,}/{len(domains):,} companies")
     capped = min(total, len(domains) * per_company)
-    _log(f"{len(domains):,} companies | {total:,} matching contacts | ~{capped:,} at {per_company}/company")
+    _log(
+        f"{len(domains):,} companies | {total:,} matching contacts | at most {capped:,} at {per_company}/company "
+        "(upper bound: the cap is applied to the total, a company with fewer matches pulls fewer)"
+    )
     emit(
         {"companies": len(domains), "contacts_available": total, "contacts_capped": capped, "per_company": per_company}
     )
@@ -447,7 +477,7 @@ def contacts_command(
         pathlib.Path("contacts.csv"), help="CSV to append to; <out>.checkpoint tracks slices."
     ),
     overwrite: bool = typer.Option(False, "--overwrite", help=OVERWRITE_HELP),
-    rate_limit: int = typer.Option(DEFAULT_RATE_LIMIT_PER_MINUTE, help=RATE_LIMIT_HELP),
+    rate_limit: int = typer.Option(DEFAULT_RATE_LIMIT_PER_MINUTE, min=1, help=RATE_LIMIT_HELP),
 ) -> None:
     """Pull up to --per-company contacts for every domain in the file into one CSV, resumable by slice."""
     domains = read_domains_file(domains_file)
@@ -476,9 +506,10 @@ def contacts_command(
     if overwrite:
         checkpoint.unlink(missing_ok=True)
         out.unlink(missing_ok=True)
+    fingerprint = _checkpoint_fingerprint(domains, per_company, base)
     done: set[int] = set()
     if checkpoint.exists():
-        done = {int(line) for line in checkpoint.read_text().split() if line.strip()}
+        done = _read_checkpoint(checkpoint, fingerprint)
         _log(f"resuming: {len(done)}/{len(slices)} slices already pulled")
     todo = [(index, batch) for index, batch in slices if index not in done]
     _log(f"{len(domains):,} companies | {len(slices)} slice(s) of {per_call} | {len(todo)} to run")
@@ -491,6 +522,8 @@ def contacts_command(
         writer = csv.DictWriter(handle, fieldnames=CONTACT_COLUMNS, extrasaction="ignore")
         if handle.tell() == 0:
             writer.writeheader()
+        if checkpoint_handle.tell() == 0:
+            checkpoint_handle.write(f"fingerprint={fingerprint}\n")
         for index, batch in todo:
             request = build_request(
                 ContactFilters,
@@ -507,8 +540,9 @@ def contacts_command(
                 for company in (payload.get("results") or {}).values()
                 for contact in (company.get("contacts") or [])
             ]
-            fresh = [row for row in rows if str(row["persona_id"]) not in seen_personas]
-            seen_personas.update(str(row["persona_id"]) for row in fresh)
+            # A contact without a persona_id cannot be deduplicated by id, so it is always written.
+            fresh = [row for row in rows if row["persona_id"] is None or str(row["persona_id"]) not in seen_personas]
+            seen_personas.update(str(row["persona_id"]) for row in fresh if row["persona_id"] is not None)
             writer.writerows(fresh)
             handle.flush()
             checkpoint_handle.write(f"{index}\n")

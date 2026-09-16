@@ -12,8 +12,10 @@ import httpx2
 import pytest
 from typer.testing import CliRunner
 
+from discolike_cli import bulk
 from discolike_cli.main import app
 from discolike_testkit import Handler
+from discolike_testkit import plain_output
 
 runner = CliRunner()
 NO_LIMIT = ["--rate-limit", "1000000"]
@@ -24,6 +26,28 @@ def _companies(prefix: str, count: int) -> list[dict[str, Any]]:
         {"domain": f"{prefix}{i}.com", "name": f"{prefix.upper()} {i}", "employees": "11-50", "similarity": 0.9}
         for i in range(count)
     ]
+
+
+def _fingerprint(domains: list[str], per_company: int) -> str:
+    """The checkpoint stamp for a contacts pull with only the default filters."""
+    filters = bulk._contact_filters(
+        None,
+        None,
+        icp_prompt=None,
+        summary=None,
+        negate_summary=None,
+        seniority=None,
+        negate_seniority=None,
+        department=None,
+        negate_department=None,
+        title=None,
+        negate_title=None,
+        person_country=None,
+        person_state=None,
+        has_email=True,
+        exclusion_query_id=None,
+    )
+    return f"fingerprint={bulk._checkpoint_fingerprint(domains, per_company, filters)}"
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -367,6 +391,9 @@ def test_bulk_contacts_slices_domains_and_flattens_rows(
     assert bodies[0]["max_records"] == 10000
     assert bodies[2]["max_records"] == 5000
     assert bodies[0]["summary"] == "growth"
+    stamp, *indexes = (tmp_path / "contacts.csv.checkpoint").read_text().split()
+    assert stamp.startswith("fingerprint=")
+    assert indexes == ["0", "1", "2"]
     assert bodies[0]["negate_summary"] == "bookkeeping"
     assert bodies[0]["has_email"] is True
     assert "offset" not in bodies[0]
@@ -382,7 +409,6 @@ def test_bulk_contacts_slices_domains_and_flattens_rows(
     assert rows[0]["industry"] == "ACCOUNTING;LEGAL"
     assert rows[0]["domain"] == "d0.com"
     assert rows[0]["company_name"] == "D0.COM"
-    assert (tmp_path / "contacts.csv.checkpoint").read_text().split() == ["0", "1", "2"]
 
     summary = json.loads(result.stdout)
     assert summary["companies"] == 250
@@ -399,7 +425,7 @@ def test_bulk_contacts_resume_skips_checkpointed_slices(
     domains.write_text("domain\n" + "".join(f"{d}\n" for d in all_domains))
     out = tmp_path / "contacts.csv"
     out.write_text("persona_id,domain\n1,a.com\n")
-    (tmp_path / "contacts.csv.checkpoint").write_text("0\n1\n")
+    (tmp_path / "contacts.csv.checkpoint").write_text(f"{_fingerprint(all_domains, 100)}\n0\n1\n")
     recorder = Recorder(contacts_discover=[_discover_payload(all_domains[200:201], 1, start=200)])
     install_build_client(recorder)
     result = runner.invoke(
@@ -408,7 +434,7 @@ def test_bulk_contacts_resume_skips_checkpointed_slices(
     )
     assert result.exit_code == 0, result.output
     assert [b["domain"] for b in recorder.bodies("/v1/contacts/discover")] == [all_domains[200:]]
-    assert (tmp_path / "contacts.csv.checkpoint").read_text().split() == ["0", "1", "2"]
+    assert (tmp_path / "contacts.csv.checkpoint").read_text().split() == [_fingerprint(all_domains, 100), "0", "1", "2"]
     assert out.read_text().splitlines()[1] == "1,a.com"  # existing rows kept, header not repeated
     summary = json.loads(result.stdout)
     assert summary["slices_run"] == 1
@@ -508,3 +534,93 @@ def test_bulk_contacts_resume_dedupes_against_rows_already_in_csv(
     result = runner.invoke(app, ["bulk", "contacts", "--domains-file", str(domains), "--out", str(out), *NO_LIMIT])
     assert result.exit_code == 0, result.output
     assert [row["persona_id"] for row in _read_csv(out)] == ["0", "1"]
+
+
+def test_bulk_contacts_refuses_checkpoint_written_for_other_inputs(
+    install_build_client: Callable[[Handler], None], tmp_path: Path
+) -> None:
+    domains = tmp_path / "companies.csv"
+    domains.write_text("domain\na.com\nb.com\n")
+    out = tmp_path / "contacts.csv"
+    out.write_text("persona_id,domain\n0,a.com\n")
+    (tmp_path / "contacts.csv.checkpoint").write_text(f"{_fingerprint(['a.com'], 100)}\n0\n")  # b.com added since
+    recorder = Recorder(contacts_discover=[_discover_payload(["a.com", "b.com"], 1)])
+    install_build_client(recorder)
+    result = runner.invoke(app, ["bulk", "contacts", "--domains-file", str(domains), "--out", str(out), *NO_LIMIT])
+    assert result.exit_code == 2, result.output
+    assert "written for a different domains file" in plain_output(result.output)
+    assert recorder.requests == []  # nothing billed, nothing skipped
+    # --per-company changes the slicing, so the same domains still refuse to resume
+    (tmp_path / "contacts.csv.checkpoint").write_text(f"{_fingerprint(['a.com', 'b.com'], 50)}\n0\n")
+    result = runner.invoke(app, ["bulk", "contacts", "--domains-file", str(domains), "--out", str(out), *NO_LIMIT])
+    assert result.exit_code == 2, result.output
+    # --overwrite discards it
+    result = runner.invoke(
+        app, ["bulk", "contacts", "--domains-file", str(domains), "--out", str(out), "--overwrite", *NO_LIMIT]
+    )
+    assert result.exit_code == 0, result.output
+    assert len(_read_csv(out)) == 2
+
+
+def test_bulk_contacts_writes_every_contact_without_persona_id(
+    install_build_client: Callable[[Handler], None], tmp_path: Path
+) -> None:
+    domains = tmp_path / "companies.csv"
+    domains.write_text("domain\na.com\n")
+    payload = _discover_payload(["a.com"], 3)
+    for contact in payload["results"]["a.com"]["contacts"]:
+        contact["persona_id"] = None
+    recorder = Recorder(contacts_discover=[payload])
+    install_build_client(recorder)
+    result = runner.invoke(
+        app, ["bulk", "contacts", "--domains-file", str(domains), "--out", str(tmp_path / "c.csv"), *NO_LIMIT]
+    )
+    assert result.exit_code == 0, result.output
+    assert [row["email"] for row in _read_csv(tmp_path / "c.csv")] == ["p0@a.com", "p1@a.com", "p2@a.com"]
+
+
+def test_bulk_companies_consolidates_inline_tails_into_a_saved_list(
+    install_build_client: Callable[[Handler], None], tmp_path: Path
+) -> None:
+    # Every page is 20 companies of which only 10 are net-new: each tail is too short for a saved list on
+    # its own, so tails ride on exclude_domain until two of them together reach the 20-domain minimum.
+    pages = [
+        _companies("a", 20),
+        [*_companies("a", 10), *_companies("b", 10)],
+        [*_companies("b", 10), *_companies("c", 10)],
+        [*_companies("c", 10), *_companies("d", 10)],
+        [],
+    ]
+    recorder = Recorder(discover=pages, queries_exclusion_list=[{"query_id": "q1"}, {"query_id": "q2"}])
+    install_build_client(recorder)
+    result = runner.invoke(
+        app,
+        ["bulk", "companies", "--icp-prompt", "x", "--page-size", "20", "--out", str(tmp_path / "c.csv"), *NO_LIMIT],
+    )
+    assert result.exit_code == 0, result.output
+    lists = recorder.bodies("/v1/queries/exclusion-list")
+    assert [sorted(body["domains"]) for body in lists] == [
+        sorted(c["domain"] for c in _companies("a", 20)),
+        sorted(c["domain"] for c in [*_companies("b", 10), *_companies("c", 10)]),
+    ]
+    assert lists[1]["query_name"] == "bulk-round-3-tails"
+    calls = recorder.params("/v1/discover")
+    assert calls[2].get_list("exclude_domain") == [c["domain"] for c in _companies("b", 10)]
+    assert calls[3].get_list("exclusion_query_id") == ["q1", "q2"]
+    assert calls[3].get_list("exclude_domain") == []  # consolidated, nothing inline
+    assert calls[4].get_list("exclude_domain") == [c["domain"] for c in _companies("d", 10)]
+    assert len(_read_csv(tmp_path / "c.csv")) == 50
+
+
+@pytest.mark.parametrize("command", [["companies", "--icp-prompt", "x"], ["estimate"], ["contacts"]])
+def test_bulk_rejects_non_positive_rate_limit(
+    install_build_client: Callable[[Handler], None], tmp_path: Path, command: list[str]
+) -> None:
+    domains = tmp_path / "companies.csv"
+    domains.write_text("domain\na.com\n")
+    recorder = Recorder()
+    install_build_client(recorder)
+    extra = [] if command[0] == "companies" else ["--domains-file", str(domains)]
+    result = runner.invoke(app, ["bulk", *command, *extra, "--out", str(tmp_path / "c.csv"), "--rate-limit", "0"])
+    assert result.exit_code == 2, result.output
+    assert recorder.requests == []
