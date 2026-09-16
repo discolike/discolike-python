@@ -27,3 +27,10 @@ discolike company data stripe.com --format json
 
 # agent_signup_to_first_search.py: open an account for a person, no auth needed
 discolike signup --email jane@acme.com --first-name Jane --last-name Doe --agent cookbook
+
+# Volume: every company that matches, then N contacts at each, checkpointed and resumable.
+# form.json is a JSON object of API parameter names (an app Discover form copied over); count is free.
+discolike count --params-file form.json --format json
+discolike bulk companies --params-file form.json --max-companies 50000 --run-name agencies --out companies.csv
+discolike bulk estimate --domains-file companies.csv --per-company 10 --summary "growth marketing lead"   # free
+discolike bulk contacts --domains-file companies.csv --per-company 10 --summary "growth marketing lead" --out contacts.csv
