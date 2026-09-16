@@ -206,7 +206,7 @@ class ContactsSearchParams(DiscolikeRequest):
     filter_state: Annotated[
         list[str] | None,
         Field(
-            description="Filter by company state/region. Accepts ISO 3166-2 codes or names, resolved against the selected countries; a value that resolves under none is ignored.",
+            description="Filter by company state/region. Accepts ISO 3166-2 codes or names, listed at https://docs.discolike.com/states/, resolved against the selected countries; a value that resolves under none is ignored.",
             title="Filter State",
         ),
     ] = None
@@ -349,7 +349,7 @@ class ContactsSearchParams(DiscolikeRequest):
     person_state: Annotated[
         list[str] | None,
         Field(
-            description="Filter by contact's state/region. Accepts ISO 3166-2 codes or names, resolved against the selected countries; a value that resolves under none is ignored.",
+            description="Filter by contact's state/region. Accepts ISO 3166-2 codes or names, listed at https://docs.discolike.com/states/, resolved against the selected countries; a value that resolves under none is ignored.",
             title="Person State",
         ),
     ] = None
@@ -635,7 +635,7 @@ class ContactsCountParams(DiscolikeRequest):
     filter_state: Annotated[
         list[str] | None,
         Field(
-            description="Filter by company state/region. Accepts ISO 3166-2 codes or names, resolved against the selected countries; a value that resolves under none is ignored.",
+            description="Filter by company state/region. Accepts ISO 3166-2 codes or names, listed at https://docs.discolike.com/states/, resolved against the selected countries; a value that resolves under none is ignored.",
             title="Filter State",
         ),
     ] = None
@@ -778,7 +778,7 @@ class ContactsCountParams(DiscolikeRequest):
     person_state: Annotated[
         list[str] | None,
         Field(
-            description="Filter by contact's state/region. Accepts ISO 3166-2 codes or names, resolved against the selected countries; a value that resolves under none is ignored.",
+            description="Filter by contact's state/region. Accepts ISO 3166-2 codes or names, listed at https://docs.discolike.com/states/, resolved against the selected countries; a value that resolves under none is ignored.",
             title="Person State",
         ),
     ] = None
@@ -1096,7 +1096,7 @@ class ContactFilters(DiscolikeRequest):
     filter_state: Annotated[
         list[str] | None,
         Field(
-            description="Filter by company state/region. Accepts ISO 3166-2 codes or names, resolved against the selected countries; a value that resolves under none is ignored.",
+            description="Filter by company state/region. Accepts ISO 3166-2 codes or names, listed at https://docs.discolike.com/states/, resolved against the selected countries; a value that resolves under none is ignored.",
             title="Filter State",
         ),
     ] = None
@@ -1239,7 +1239,7 @@ class ContactFilters(DiscolikeRequest):
     person_state: Annotated[
         list[str] | None,
         Field(
-            description="Filter by contact's state/region. Accepts ISO 3166-2 codes or names, resolved against the selected countries; a value that resolves under none is ignored.",
+            description="Filter by contact's state/region. Accepts ISO 3166-2 codes or names, listed at https://docs.discolike.com/states/, resolved against the selected countries; a value that resolves under none is ignored.",
             title="Person State",
         ),
     ] = None
@@ -1692,6 +1692,54 @@ class DiscoverParams(DiscolikeRequest):
             title="Negate Category",
         ),
     ] = None
+    sub_industry: Annotated[
+        list[str] | None,
+        Field(
+            description="Filter by sub-industry, a second-level label scoped to an industry category. Accepts a bare label (ROOFING) or a parent-qualified key (CONSTRUCTION/ROOFING), case-insensitive, up to 50 values. A bare label whose parent category is unambiguous adds that parent to the category filter. Call list-industry-categories for the label list.",
+            max_length=50,
+            title="Sub Industry",
+        ),
+    ] = None
+    negate_sub_industry: Annotated[
+        list[str] | None,
+        Field(
+            description="Exclude specified sub-industries. Same format as sub_industry; does not affect the category filter.",
+            max_length=50,
+            title="Negate Sub Industry",
+        ),
+    ] = None
+    lat: Annotated[
+        float | None,
+        Field(
+            description="Latitude of the search centre. Must be supplied together with lon.",
+            ge=-90.0,
+            le=90.0,
+            title="Lat",
+        ),
+    ] = None
+    lon: Annotated[
+        float | None,
+        Field(
+            description="Longitude of the search centre. Must be supplied together with lat.",
+            ge=-180.0,
+            le=180.0,
+            title="Lon",
+        ),
+    ] = None
+    radius: Annotated[
+        str | None,
+        Field(
+            description="Search radius around lat/lon: a number optionally suffixed with km or mi (50km, 30mi, 50). A bare number is kilometres. Defaults to 50km when lat/lon are supplied, maximum 1000km.",
+            title="Radius",
+        ),
+    ] = None
+    bbox: Annotated[
+        str | None,
+        Field(
+            description="Bounding box as min_lat,min_lon,max_lat,max_lon. Longitudes may wrap the antimeridian (min_lon above max_lon). Mutually exclusive with lat/lon/radius.",
+            title="Bbox",
+        ),
+    ] = None
     min_digital_footprint: Annotated[
         int | None,
         Field(
@@ -1713,7 +1761,7 @@ class DiscoverParams(DiscolikeRequest):
     state: Annotated[
         list[str] | None,
         Field(
-            description="Filter by ISO 3166-2 state codes or names (up to 100). Requires exactly one country value, which may be a region alias; the state is then resolved against every country the alias covers. A value that resolves under none is rejected.",
+            description="Filter by ISO 3166-2 state codes or names (up to 100), listed at https://docs.discolike.com/states/. Requires exactly one country value, which may be a region alias; the state is then resolved against every country the alias covers. A value that resolves under none is rejected.",
             max_length=100,
             title="State",
         ),
@@ -2274,6 +2322,54 @@ class CountParams(DiscolikeRequest):
             title="Negate Category",
         ),
     ] = None
+    sub_industry: Annotated[
+        list[str] | None,
+        Field(
+            description="Filter by sub-industry, a second-level label scoped to an industry category. Accepts a bare label (ROOFING) or a parent-qualified key (CONSTRUCTION/ROOFING), case-insensitive, up to 50 values. A bare label whose parent category is unambiguous adds that parent to the category filter. Call list-industry-categories for the label list.",
+            max_length=50,
+            title="Sub Industry",
+        ),
+    ] = None
+    negate_sub_industry: Annotated[
+        list[str] | None,
+        Field(
+            description="Exclude specified sub-industries. Same format as sub_industry; does not affect the category filter.",
+            max_length=50,
+            title="Negate Sub Industry",
+        ),
+    ] = None
+    lat: Annotated[
+        float | None,
+        Field(
+            description="Latitude of the search centre. Must be supplied together with lon.",
+            ge=-90.0,
+            le=90.0,
+            title="Lat",
+        ),
+    ] = None
+    lon: Annotated[
+        float | None,
+        Field(
+            description="Longitude of the search centre. Must be supplied together with lat.",
+            ge=-180.0,
+            le=180.0,
+            title="Lon",
+        ),
+    ] = None
+    radius: Annotated[
+        str | None,
+        Field(
+            description="Search radius around lat/lon: a number optionally suffixed with km or mi (50km, 30mi, 50). A bare number is kilometres. Defaults to 50km when lat/lon are supplied, maximum 1000km.",
+            title="Radius",
+        ),
+    ] = None
+    bbox: Annotated[
+        str | None,
+        Field(
+            description="Bounding box as min_lat,min_lon,max_lat,max_lon. Longitudes may wrap the antimeridian (min_lon above max_lon). Mutually exclusive with lat/lon/radius.",
+            title="Bbox",
+        ),
+    ] = None
     min_digital_footprint: Annotated[
         int | None,
         Field(
@@ -2295,7 +2391,7 @@ class CountParams(DiscolikeRequest):
     state: Annotated[
         list[str] | None,
         Field(
-            description="Filter by ISO 3166-2 state codes or names (up to 100). Requires exactly one country value, which may be a region alias; the state is then resolved against every country the alias covers. A value that resolves under none is rejected.",
+            description="Filter by ISO 3166-2 state codes or names (up to 100), listed at https://docs.discolike.com/states/. Requires exactly one country value, which may be a region alias; the state is then resolved against every country the alias covers. A value that resolves under none is rejected.",
             max_length=100,
             title="State",
         ),
@@ -2570,6 +2666,27 @@ class FindEmailRequest(DiscolikeRequest):
 
 
 class FindEmailBatchRequest(DiscolikeRequest):
+    source_query_id: Annotated[
+        str | None,
+        Field(
+            description="Saved query id whose stored contacts receive these verdicts",
+            title="Source Query Id",
+        ),
+    ] = None
+    refs: Annotated[
+        list[str] | None,
+        Field(
+            description="Contact row ids, one per request, aligned by index (requires source_query_id)",
+            title="Refs",
+        ),
+    ] = None
+    round: Annotated[
+        Literal["verify", "escalate"] | None,
+        Field(
+            description="verify = first pass, escalate = re-check of unproven",
+            title="Round",
+        ),
+    ] = "verify"
     requests: Annotated[
         list[FindEmailRequest],
         Field(

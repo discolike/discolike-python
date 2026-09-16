@@ -137,6 +137,30 @@ for company in companies:
     print(company.domain, company.name, company.similarity)
 ```
 
+Narrow to a sub-industry within a radius of a point:
+
+```python
+from discolike import Discolike
+from discolike.requests import DiscoverParams
+
+client = Discolike()
+
+roofers = client.discover(
+    DiscoverParams(
+        sub_industry=["ROOFING"],
+        lat=30.2672,
+        lon=-97.7431,
+        radius="50mi",
+        max_records=25,
+    )
+)
+for company in roofers:
+    print(company.domain, company.name, company.sub_industry)
+```
+
+A bare `ROOFING` resolves to `CONSTRUCTION/ROOFING` and adds `CONSTRUCTION` to the category filter
+server-side; pass the qualified form yourself if you would rather be explicit.
+
 Run DiscoGen research over a set of domains and wait for the result:
 
 ```python

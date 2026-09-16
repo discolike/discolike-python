@@ -60,6 +60,79 @@ CODEGEN_ARGS = [
 ]
 
 
+_SUB_INDUSTRY_DESCRIPTION = (
+    "Filter by sub-industry, a second-level label scoped to an industry category. Accepts a bare label (ROOFING) "
+    "or a parent-qualified key (CONSTRUCTION/ROOFING), case-insensitive, up to 50 values. A bare label whose "
+    "parent category is unambiguous adds that parent to the category filter. Call list-industry-categories for "
+    "the label list."
+)
+_RADIUS_DESCRIPTION = (
+    "Search radius around lat/lon: a number optionally suffixed with km or mi (50km, 30mi, 50). A bare number is "
+    "kilometres. Defaults to 50km when lat/lon are supplied, maximum 1000km."
+)
+_BBOX_DESCRIPTION = (
+    "Bounding box as min_lat,min_lon,max_lat,max_lon. Longitudes may wrap the antimeridian (min_lon above "
+    "max_lon). Mutually exclusive with lat/lon/radius."
+)
+_GEO_PROPERTIES: dict[str, dict[str, Any]] = {
+    "lat": {
+        "type": "number",
+        "minimum": -90.0,
+        "maximum": 90.0,
+        "nullable": True,
+        "description": "Latitude of the search centre. Must be supplied together with lon.",
+        "title": "Lat",
+    },
+    "lon": {
+        "type": "number",
+        "minimum": -180.0,
+        "maximum": 180.0,
+        "nullable": True,
+        "description": "Longitude of the search centre. Must be supplied together with lat.",
+        "title": "Lon",
+    },
+    "radius": {"type": "string", "nullable": True, "description": _RADIUS_DESCRIPTION, "title": "Radius"},
+    "bbox": {"type": "string", "nullable": True, "description": _BBOX_DESCRIPTION, "title": "Bbox"},
+}
+_SUB_INDUSTRY_PROPERTIES: dict[str, dict[str, Any]] = {
+    "sub_industry": {
+        "type": "array",
+        "items": {"type": "string"},
+        "maxItems": 50,
+        "nullable": True,
+        "description": _SUB_INDUSTRY_DESCRIPTION,
+        "title": "Sub Industry",
+    },
+    "negate_sub_industry": {
+        "type": "array",
+        "items": {"type": "string"},
+        "maxItems": 50,
+        "nullable": True,
+        "description": (
+            "Exclude specified sub-industries. Same format as sub_industry; does not affect the category filter."
+        ),
+        "title": "Negate Sub Industry",
+    },
+}
+
+# Properties the SDK ships before the deployed spec has them. Merged in only while the spec
+# lacks them, so each entry clears itself once the platform release lands -- generation prints
+# the ones that have, to be deleted here.
+PENDING_PROPERTIES: dict[str, dict[str, dict[str, Any]]] = {
+    "DiscoverParams": _GEO_PROPERTIES,
+    "CountParams": _GEO_PROPERTIES,
+}
+
+# Properties generated from this schema rather than the spec's, whatever the spec says. The
+# platform's sub-industry enum lists parent-qualified keys only; a bare label reaches it through
+# a server-side normalizer with no client-side counterpart, so generating that enum would reject
+# values the API accepts.
+PROPERTY_OVERRIDES: dict[str, dict[str, dict[str, Any]]] = {
+    "DiscoverParams": _SUB_INDUSTRY_PROPERTIES,
+    "CountParams": _SUB_INDUSTRY_PROPERTIES,
+}
+
+
 @dataclass(frozen=True)
 class Route:
     class_name: str
@@ -191,8 +264,25 @@ def normalize_schema(schema: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in schema.items() if key != "additionalProperties"} | {"properties": properties}
 
 
+def apply_overlays(*, kept: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    for name, properties in PENDING_PROPERTIES.items():
+        if (schema := kept.get(name)) is None:
+            continue
+        existing = schema.setdefault("properties", {})
+        for prop, prop_schema in properties.items():
+            if prop in existing:
+                print(f"note: the spec now has {name}.{prop}; drop it from PENDING_PROPERTIES")
+                continue
+            existing[prop] = copy.deepcopy(prop_schema)
+    for name, properties in PROPERTY_OVERRIDES.items():
+        if (schema := kept.get(name)) is None:
+            continue
+        schema.setdefault("properties", {}).update(copy.deepcopy(properties))
+    return kept
+
+
 def build_codegen_spec(*, spec: dict[str, Any], routes: list[Route]) -> dict[str, Any]:
-    kept = prune(spec=spec, requested=request_schemas(spec=spec, routes=routes))
+    kept = apply_overlays(kept=prune(spec=spec, requested=request_schemas(spec=spec, routes=routes)))
     return {
         "openapi": "3.1.0",
         "info": {"title": "discolike request models", "version": "0"},
