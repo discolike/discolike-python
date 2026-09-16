@@ -18,6 +18,6 @@ export DISCOLIKE_API_KEY="dl_..."   # create one at https://app.discolike.com/ac
 | [`discover_and_enrich.py`](discover_and_enrich.py) | Discovers companies for an ICP, then runs a DiscoGen research prompt over them (needs a BYOK LLM provider) | `python examples/discover_and_enrich.py --icp "Cybersecurity for SMBs" --country US --query "What is their pricing model?"` |
 | [`find_emails_from_csv.py`](find_emails_from_csv.py) | Finds verified work emails for a CSV of first name, last name, domain in batches of 500; only status `found` bills | `python examples/find_emails_from_csv.py people.csv --output emails.csv` |
 | [`match_crm_contacts.py`](match_crm_contacts.py) | Matches a messy CRM contact export to DiscoLike persona IDs with resumable checkpointing | `python examples/match_crm_contacts.py contacts.csv --output matched.csv` |
-| [`cli_recipes.sh`](cli_recipes.sh) | The same searches as `discolike discover`, `discolike count`, `discolike contacts search`, and `discolike signup` one-liners | `bash examples/cli_recipes.sh` |
+| [`cli_recipes.sh`](cli_recipes.sh) | The same searches as `discolike discover`, `discolike count`, `discolike contacts search`, and `discolike signup` one-liners, plus a `discolike bulk` volume pull | `bash examples/cli_recipes.sh` |
 
 Every script prints `--help`. Employee ranges are `min,max` strings such as `51,200`; countries are ISO-2 codes or region aliases like `EU`, `DACH`, `APAC`.

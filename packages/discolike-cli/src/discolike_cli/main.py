@@ -15,6 +15,7 @@ from discolike import ValidationError
 from discolike import __version__ as sdk_version
 from discolike_cli import account
 from discolike_cli import auth
+from discolike_cli import bulk
 from discolike_cli import company
 from discolike_cli import contacts
 from discolike_cli import discogen
@@ -78,6 +79,7 @@ def get_client(ctx: typer.Context) -> Discolike:
 
 
 app.add_typer(auth.app, name="auth")
+app.add_typer(bulk.app, name="bulk")
 app.add_typer(company.app, name="company")
 app.add_typer(contacts.app, name="contacts")
 app.add_typer(discogen.app, name="discogen")
