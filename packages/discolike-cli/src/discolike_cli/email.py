@@ -116,6 +116,15 @@ def find_batch_command(
     contact: list[str] | None = typer.Option(
         None, "--contact", help='Inline contact as "first_name,last_name,domain" (repeatable).'
     ),
+    source_query_id: str | None = typer.Option(
+        None, "--source-query-id", help="Saved query ID whose stored contacts receive these verdicts."
+    ),
+    ref: list[str] | None = typer.Option(
+        None, "--ref", help="Contact row ID in the saved query, one per contact in order (requires --source-query-id)."
+    ),
+    round_: str | None = typer.Option(
+        None, "--round", help="verify (first pass, the default) or escalate (re-check of unproven addresses)."
+    ),
     wait: bool = typer.Option(False, "--wait/--no-wait", help=WAIT_HELP),
     timeout: float = typer.Option(DEFAULT_WAIT_TIMEOUT_SECONDS, "--timeout", help=TIMEOUT_HELP),
     fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
@@ -131,8 +140,17 @@ def find_batch_command(
         raise typer.BadParameter("provide --contacts-file and/or at least one --contact")
     if len(contacts) > MAX_BATCH_CONTACTS:
         raise typer.BadParameter(f"a batch holds at most {MAX_BATCH_CONTACTS} contacts, got {len(contacts)}")
+    if ref and source_query_id is None:
+        raise typer.BadParameter("--ref requires --source-query-id")
+    if ref and len(ref) != len(contacts):
+        raise typer.BadParameter(f"one --ref per contact: got {len(ref)} refs for {len(contacts)} contacts")
 
-    batch = get_client(ctx).email.find_batch(build_request(FindEmailBatchRequest, {"requests": contacts}))
+    batch = get_client(ctx).email.find_batch(
+        build_request(
+            FindEmailBatchRequest,
+            _merge_params(None, requests=contacts, source_query_id=source_query_id, refs=ref, round=round_),
+        )
+    )
     if not wait:
         emit({"batch_id": batch.batch_id, "hint": f"fetch with: discolike email results {batch.batch_id}"})
         return

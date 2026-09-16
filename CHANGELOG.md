@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- SDK: request models regenerated from the deployed spec. `FindEmailBatchRequest` gains `source_query_id`, `refs` (contact row ids aligned with `requests`), and `round` (`verify`, the default, or `escalate`) so a batch's verdicts write back onto a saved query's stored contacts; `state` filters and columns now document ISO 3166-2 codes or names.
+- CLI: `email find-batch --source-query-id`, `--ref` (repeatable, one per contact, requires `--source-query-id`), `--round`.
+
 ## 0.3.2 (2026-09-02)
 
 - CLI: every SDK request field now has a flag — `discover`/`count` gain `--variance`, `--min-similarity`, `--consensus`, `--inclusion-query-id`, `--language`, `--social`, `--subdomain`, `--start-date`, `--redirect`, `--exclude-leadgen` and the `--auto-*` toggles; contacts `search`/`count`/`discover` gain the full filter set; `match` gains per-column flags for file mode and `--min-match-confidence`; `append`/`segment` take `--query-id`; `extract` accepts `--domain`. Dict-typed fields stay `--param` only.

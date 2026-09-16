@@ -308,3 +308,50 @@ def test_email_job_unauthorized_exits_3(install_build_client: Callable[[Handler]
     assert result.exit_code == 3
     payload = json.loads(result.stderr)
     assert payload["error"] == "AuthenticationError"
+
+
+def test_email_find_batch_writeback_fields(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.Request] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["request"] = request
+        return httpx2.Response(200, json={"batch_id": "eb-4"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "email", "find-batch",
+            "--contact", "Jane,Doe,acme.com", "--contact", "John,Smith,beta.com",
+            "--source-query-id", "q-1", "--ref", "row-1", "--ref", "row-2", "--round", "escalate",
+        ],
+    )  # fmt: skip
+    assert result.exit_code == 0, result.output
+    body = json.loads(captured["request"].content)
+    assert body["source_query_id"] == "q-1"
+    assert body["refs"] == ["row-1", "row-2"]
+    assert body["round"] == "escalate"
+
+
+def test_email_find_batch_refs_must_match_contacts(install_build_client: Callable[[Handler], None]) -> None:
+    calls: list[str] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        calls.append(request.url.path)
+        return httpx2.Response(200, json={"batch_id": "eb-5"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        ["email", "find-batch", "--contact", "Jane,Doe,acme.com", "--source-query-id", "q-1", "--ref", "a", "--ref", "b"],
+    )  # fmt: skip
+    assert result.exit_code != 0
+    assert "one --ref per contact" in result.output
+    assert calls == []
+
+
+def test_email_find_batch_refs_require_source_query_id(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(lambda request: httpx2.Response(200, json={"batch_id": "eb-6"}))
+    result = runner.invoke(app, ["email", "find-batch", "--contact", "Jane,Doe,acme.com", "--ref", "a"])
+    assert result.exit_code != 0
+    assert "--ref requires --source-query-id" in result.output
