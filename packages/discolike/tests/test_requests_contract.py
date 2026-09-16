@@ -4,7 +4,7 @@ from discolike.requests import CountParams
 from discolike.requests import DiscoverParams
 from discolike.resources.companies import CompanyProfile
 
-NEW_FILTERS = ("sub_industry", "negate_sub_industry", "lat", "lon", "radius", "bbox")
+NEW_FILTERS = ("sub_industry", "negate_sub_industry", "lat", "lon", "radius", "geo", "bbox")
 NEW_OUTPUTS = ("sub_industry", "latitude", "longitude", "geo_precision")
 
 
@@ -14,6 +14,8 @@ LAT = 40.7128
 LON = -74.006
 RADIUS = "30mi"
 BBOX = "40.4,-74.3,41.0,-73.7"
+BBOXES = ["40.4,-74.3,41.0,-73.7", "51.2,-0.5,51.7,0.3"]
+GEO = ["30.27,-97.74,10km", "52.52,13.405"]
 
 
 class TestGeneratedRequests:
@@ -56,10 +58,31 @@ class TestGeneratedRequests:
         assert wire["radius"] == "30mi"
 
     def test_discover_params_serialize_bbox_onto_the_wire(self) -> None:
-        assert DiscoverParams(bbox=BBOX).to_wire()["bbox"] == BBOX
+        assert DiscoverParams(bbox=BBOX).to_wire()["bbox"] == [BBOX]
 
     def test_count_params_serialize_bbox_onto_the_wire(self) -> None:
-        assert CountParams(bbox=BBOX).to_wire()["bbox"] == BBOX
+        assert CountParams(bbox=BBOX).to_wire()["bbox"] == [BBOX]
+
+    def test_discover_params_serialize_several_boxes_onto_the_wire(self) -> None:
+        assert DiscoverParams(bbox=BBOXES).to_wire()["bbox"] == BBOXES
+
+    def test_count_params_serialize_several_boxes_onto_the_wire(self) -> None:
+        assert CountParams(bbox=BBOXES).to_wire()["bbox"] == BBOXES
+
+    def test_discover_params_serialize_geo_onto_the_wire(self) -> None:
+        assert DiscoverParams(geo=GEO).to_wire()["geo"] == GEO
+
+    def test_count_params_serialize_geo_onto_the_wire(self) -> None:
+        assert CountParams(geo=GEO).to_wire()["geo"] == GEO
+
+    def test_a_single_geo_circle_may_be_a_bare_string(self) -> None:
+        assert DiscoverParams(geo="30.27,-97.74").to_wire()["geo"] == ["30.27,-97.74"]
+
+    def test_geo_and_bbox_and_a_lat_lon_centre_combine(self) -> None:
+        wire = DiscoverParams(geo=GEO, bbox=BBOXES, lat=LAT, lon=LON, radius=RADIUS).to_wire()
+        assert wire["geo"] == GEO
+        assert wire["bbox"] == BBOXES
+        assert wire["lat"] == LAT
 
     def test_unset_new_filters_are_dropped_by_exclude_unset(self) -> None:
         wire = DiscoverParams(icp_prompt="widgets").to_wire()

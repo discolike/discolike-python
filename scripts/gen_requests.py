@@ -70,9 +70,18 @@ _RADIUS_DESCRIPTION = (
     "Search radius around lat/lon: a number optionally suffixed with km or mi (50km, 30mi, 50). A bare number is "
     "kilometres. Defaults to 50km when lat/lon are supplied, maximum 1000km."
 )
+_SHAPE_UNION_SENTENCE = (
+    "Repeatable: every geo circle, every bbox and the lat/lon/radius centre are OR'd together, up to 10 "
+    "shapes in total."
+)
+_GEO_DESCRIPTION = (
+    "A circular area to search, written lat,lon or lat,lon,radius (30.27,-97.74 or 30.27,-97.74,30mi). The "
+    "radius is a number optionally suffixed with km or mi, a bare number meaning kilometres; it defaults to "
+    "50km and may not exceed 1000km. " + _SHAPE_UNION_SENTENCE
+)
 _BBOX_DESCRIPTION = (
     "Bounding box as min_lat,min_lon,max_lat,max_lon. Longitudes may wrap the antimeridian (min_lon above "
-    "max_lon). Mutually exclusive with lat/lon/radius."
+    "max_lon). " + _SHAPE_UNION_SENTENCE
 )
 _GEO_PROPERTIES: dict[str, dict[str, Any]] = {
     "lat": {
@@ -92,7 +101,20 @@ _GEO_PROPERTIES: dict[str, dict[str, Any]] = {
         "title": "Lon",
     },
     "radius": {"type": "string", "nullable": True, "description": _RADIUS_DESCRIPTION, "title": "Radius"},
-    "bbox": {"type": "string", "nullable": True, "description": _BBOX_DESCRIPTION, "title": "Bbox"},
+    "geo": {
+        "type": "array",
+        "items": {"type": "string"},
+        "nullable": True,
+        "description": _GEO_DESCRIPTION,
+        "title": "Geo",
+    },
+    "bbox": {
+        "type": "array",
+        "items": {"type": "string"},
+        "nullable": True,
+        "description": _BBOX_DESCRIPTION,
+        "title": "Bbox",
+    },
 }
 _SUB_INDUSTRY_PROPERTIES: dict[str, dict[str, Any]] = {
     "sub_industry": {

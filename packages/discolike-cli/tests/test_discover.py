@@ -349,6 +349,53 @@ def test_discover_forwards_bbox(install_build_client: Callable[[Handler], None])
     assert captured["params"].get("bbox") == "40.4,-74.3,41.0,-73.7"
 
 
+def test_discover_forwards_several_geo_shapes(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.QueryParams] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["params"] = request.url.params
+        return _discover_ok(request)
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "discover",
+            "--geo",
+            "30.27,-97.74,10km",
+            "--geo",
+            "52.52,13.405",
+            "--bbox",
+            "40.4,-74.3,41.0,-73.7",
+            "--bbox",
+            "51.2,-0.5,51.7,0.3",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    params = captured["params"]
+    assert params.get_list("geo") == ["30.27,-97.74,10km", "52.52,13.405"]
+    assert params.get_list("bbox") == ["40.4,-74.3,41.0,-73.7", "51.2,-0.5,51.7,0.3"]
+
+
+def test_count_forwards_several_geo_shapes(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.QueryParams] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["params"] = request.url.params
+        return _count_ok(request)
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["count", "--geo", "30.27,-97.74", "--geo", "52.52,13.405,30mi"])
+    assert result.exit_code == 0, result.output
+    assert captured["params"].get_list("geo") == ["30.27,-97.74", "52.52,13.405,30mi"]
+
+
+def test_discover_rejects_a_bad_geo_circle(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_discover_ok)
+    result = runner.invoke(app, ["discover", "--geo", "30.27,-97.74,0km"])
+    assert result.exit_code != 0
+
+
 def test_discover_rejects_out_of_range_bbox(install_build_client: Callable[[Handler], None]) -> None:
     install_build_client(_discover_ok)
     result = runner.invoke(app, ["discover", "--bbox", "40.4,-74.3,91.0,-73.7"])

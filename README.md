@@ -161,6 +161,21 @@ for company in roofers:
 A bare `ROOFING` resolves to `CONSTRUCTION/ROOFING` and adds `CONSTRUCTION` to the category filter
 server-side; pass the qualified form yourself if you would rather be explicit.
 
+One query can cover several areas at once. `geo` takes `lat,lon` or `lat,lon,radius` and `bbox` takes
+`min_lat,min_lon,max_lat,max_lon`; both are lists, and every circle, every box and the `lat`/`lon`
+centre are OR'd together, up to 10 shapes:
+
+```python
+austin_dallas_and_houston = client.discover(
+    DiscoverParams(
+        sub_industry=["ROOFING"],
+        geo=["30.2672,-97.7431,30mi", "32.7767,-96.797,30mi"],
+        bbox=["29.6,-95.7,30.1,-95.0"],
+        max_records=25,
+    )
+)
+```
+
 Run DiscoGen research over a set of domains and wait for the result:
 
 ```python

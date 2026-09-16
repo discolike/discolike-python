@@ -1733,10 +1733,17 @@ class DiscoverParams(DiscolikeRequest):
             title="Radius",
         ),
     ] = None
-    bbox: Annotated[
-        str | None,
+    geo: Annotated[
+        list[str] | None,
         Field(
-            description="Bounding box as min_lat,min_lon,max_lat,max_lon. Longitudes may wrap the antimeridian (min_lon above max_lon). Mutually exclusive with lat/lon/radius.",
+            description="A circular area to search, written lat,lon or lat,lon,radius (30.27,-97.74 or 30.27,-97.74,30mi). The radius is a number optionally suffixed with km or mi, a bare number meaning kilometres; it defaults to 50km and may not exceed 1000km. Repeatable: every geo circle, every bbox and the lat/lon/radius centre are OR'd together, up to 10 shapes in total.",
+            title="Geo",
+        ),
+    ] = None
+    bbox: Annotated[
+        list[str] | None,
+        Field(
+            description="Bounding box as min_lat,min_lon,max_lat,max_lon. Longitudes may wrap the antimeridian (min_lon above max_lon). Repeatable: every geo circle, every bbox and the lat/lon/radius centre are OR'd together, up to 10 shapes in total.",
             title="Bbox",
         ),
     ] = None
@@ -2363,10 +2370,17 @@ class CountParams(DiscolikeRequest):
             title="Radius",
         ),
     ] = None
-    bbox: Annotated[
-        str | None,
+    geo: Annotated[
+        list[str] | None,
         Field(
-            description="Bounding box as min_lat,min_lon,max_lat,max_lon. Longitudes may wrap the antimeridian (min_lon above max_lon). Mutually exclusive with lat/lon/radius.",
+            description="A circular area to search, written lat,lon or lat,lon,radius (30.27,-97.74 or 30.27,-97.74,30mi). The radius is a number optionally suffixed with km or mi, a bare number meaning kilometres; it defaults to 50km and may not exceed 1000km. Repeatable: every geo circle, every bbox and the lat/lon/radius centre are OR'd together, up to 10 shapes in total.",
+            title="Geo",
+        ),
+    ] = None
+    bbox: Annotated[
+        list[str] | None,
+        Field(
+            description="Bounding box as min_lat,min_lon,max_lat,max_lon. Longitudes may wrap the antimeridian (min_lon above max_lon). Repeatable: every geo circle, every bbox and the lat/lon/radius centre are OR'd together, up to 10 shapes in total.",
             title="Bbox",
         ),
     ] = None
