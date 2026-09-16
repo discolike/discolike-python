@@ -4,7 +4,7 @@ from discolike.requests import CountParams
 from discolike.requests import DiscoverParams
 from discolike.resources.companies import CompanyProfile
 
-NEW_FILTERS = ("sub_industry", "negate_sub_industry", "lat", "lon", "radius")
+NEW_FILTERS = ("sub_industry", "negate_sub_industry", "lat", "lon", "radius", "bbox")
 NEW_OUTPUTS = ("sub_industry", "latitude", "longitude", "geo_precision")
 
 
@@ -13,6 +13,7 @@ NEGATE_SUB_INDUSTRY = ["FOUNDRIES"]
 LAT = 40.7128
 LON = -74.006
 RADIUS = "30mi"
+BBOX = "40.4,-74.3,41.0,-73.7"
 
 
 class TestGeneratedRequests:
@@ -53,6 +54,12 @@ class TestGeneratedRequests:
         assert wire["lat"] == 40.7128
         assert wire["lon"] == -74.006
         assert wire["radius"] == "30mi"
+
+    def test_discover_params_serialize_bbox_onto_the_wire(self) -> None:
+        assert DiscoverParams(bbox=BBOX).to_wire()["bbox"] == BBOX
+
+    def test_count_params_serialize_bbox_onto_the_wire(self) -> None:
+        assert CountParams(bbox=BBOX).to_wire()["bbox"] == BBOX
 
     def test_unset_new_filters_are_dropped_by_exclude_unset(self) -> None:
         wire = DiscoverParams(icp_prompt="widgets").to_wire()

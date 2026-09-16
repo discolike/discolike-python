@@ -70,6 +70,10 @@ _RADIUS_DESCRIPTION = (
     "Search radius around lat/lon: a number optionally suffixed with km or mi (50km, 30mi, 50). A bare number is "
     "kilometres. Defaults to 50km when lat/lon are supplied, maximum 1000km."
 )
+_BBOX_DESCRIPTION = (
+    "Bounding box as min_lat,min_lon,max_lat,max_lon. Longitudes may wrap the antimeridian (min_lon above "
+    "max_lon). Mutually exclusive with lat/lon/radius."
+)
 _GEO_PROPERTIES: dict[str, dict[str, Any]] = {
     "lat": {
         "type": "number",
@@ -88,6 +92,7 @@ _GEO_PROPERTIES: dict[str, dict[str, Any]] = {
         "title": "Lon",
     },
     "radius": {"type": "string", "nullable": True, "description": _RADIUS_DESCRIPTION, "title": "Radius"},
+    "bbox": {"type": "string", "nullable": True, "description": _BBOX_DESCRIPTION, "title": "Bbox"},
 }
 _SUB_INDUSTRY_PROPERTIES: dict[str, dict[str, Any]] = {
     "sub_industry": {

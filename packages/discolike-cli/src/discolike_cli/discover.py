@@ -15,6 +15,10 @@ LIST_VALUE_SEPARATOR = ","
 
 FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls back to JSON for non-tabular data)."
 PARAM_HELP = "Extra API parameter as KEY=VALUE (comma-separates into a list); see docs.discolike.com"
+BBOX_HELP = (
+    "Bounding box as min_lat,min_lon,max_lat,max_lon; mutually exclusive with --lat/--lon/--radius. "
+    "Longitudes may wrap the antimeridian."
+)
 SUBDOMAIN_HELP = "Limit results to this subdomain, up to 20, each at least 3 characters (repeatable)."
 NEGATE_SUBDOMAIN_HELP = "Exclude this subdomain, up to 20, each at least 3 characters (repeatable)."
 START_DATE_HELP = "Minimum company start date (YYYY-MM-DD) or range (YYYY-MM-DD,YYYY-MM-DD)."
@@ -59,6 +63,7 @@ def discover_command(
     lat: float | None = typer.Option(None, help="Latitude of the search centre; requires --lon."),
     lon: float | None = typer.Option(None, help="Longitude of the search centre; requires --lat."),
     radius: str | None = typer.Option(None, help="Radius around --lat/--lon, e.g. 50km or 30mi. Default 50km."),
+    bbox: str | None = typer.Option(None, help=BBOX_HELP),
     country: list[str] | None = typer.Option(None, help="ISO country code filter (repeatable)."),
     negate_country: list[str] | None = typer.Option(None, help="Negate the --country filter (repeatable)."),
     state: list[str] | None = typer.Option(None, help="State or region filter (repeatable)."),
@@ -138,6 +143,7 @@ def discover_command(
             lat=lat,
             lon=lon,
             radius=radius,
+            bbox=bbox,
             country=country,
             negate_country=negate_country,
             state=state,
@@ -189,6 +195,7 @@ def count_command(
     lat: float | None = typer.Option(None, help="Latitude of the search centre; requires --lon."),
     lon: float | None = typer.Option(None, help="Longitude of the search centre; requires --lat."),
     radius: str | None = typer.Option(None, help="Radius around --lat/--lon, e.g. 50km or 30mi. Default 50km."),
+    bbox: str | None = typer.Option(None, help=BBOX_HELP),
     country: list[str] | None = typer.Option(None, help="ISO country code filter (repeatable)."),
     negate_country: list[str] | None = typer.Option(None, help="Negate the --country filter (repeatable)."),
     state: list[str] | None = typer.Option(None, help="State or region filter (repeatable)."),
@@ -233,6 +240,7 @@ def count_command(
             lat=lat,
             lon=lon,
             radius=radius,
+            bbox=bbox,
             country=country,
             negate_country=negate_country,
             state=state,

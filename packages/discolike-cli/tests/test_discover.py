@@ -323,6 +323,38 @@ def test_discover_forwards_sub_industry_and_geo_flags(install_build_client: Call
     assert params.get("radius") == "30mi"
 
 
+def test_count_forwards_bbox(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.QueryParams] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["params"] = request.url.params
+        return _count_ok(request)
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["count", "--bbox", "40.4,-74.3,41.0,-73.7"])
+    assert result.exit_code == 0, result.output
+    assert captured["params"].get("bbox") == "40.4,-74.3,41.0,-73.7"
+
+
+def test_discover_forwards_bbox(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, httpx2.QueryParams] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["params"] = request.url.params
+        return _discover_ok(request)
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["discover", "--bbox", "40.4,-74.3,41.0,-73.7"])
+    assert result.exit_code == 0, result.output
+    assert captured["params"].get("bbox") == "40.4,-74.3,41.0,-73.7"
+
+
+def test_discover_rejects_out_of_range_bbox(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(_discover_ok)
+    result = runner.invoke(app, ["discover", "--bbox", "40.4,-74.3,91.0,-73.7"])
+    assert result.exit_code != 0
+
+
 def test_discover_unauthorized_exits_3(install_build_client: Callable[[Handler], None]) -> None:
     install_build_client(_unauthorized)
     result = runner.invoke(app, ["discover", "--icp-prompt", "X"])
