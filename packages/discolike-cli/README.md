@@ -41,6 +41,7 @@ Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `ap
 
 - Results print as JSON to stdout; errors print as JSON (`error`, `message`, `status_code`) to stderr.
 - Pass `--format table` for a human-readable table — used automatically when stdout is a TTY.
+- Volume inputs come from files: `--domains-file companies.csv` (a `domain` column, or one domain per line) on `queries create-exclusion-list`, `contacts discover|search|count|generate`, `discogen run` and `validate-icp`; `--params-file form.json` (a JSON object of API parameter names, e.g. an app form) on `discover`, `count` and `contacts discover|search|count`; `--exclude-domains-file` on `discover`. Precedence: file < `--param` < flags.
 - Async endpoints (`match --file`, `discogen run`, `discogen run-personas`, `segment`, `validate-icp`) take `--wait` to block until the job finishes. Without it, you get a `task_id` back to poll with `discolike discogen status <task_id> --family <family>`. `append` is synchronous — it returns enriched rows directly (or writes CSV bytes to `--output`).
 
 ### Exit codes
