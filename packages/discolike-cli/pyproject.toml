@@ -34,7 +34,7 @@ classifiers = [
 ]
 
 [project.scripts]
-discolike = "discolike_cli.main:app"
+discolike = "discolike_cli.main:run"
 
 [project.urls]
 Homepage = "https://www.discolike.com"

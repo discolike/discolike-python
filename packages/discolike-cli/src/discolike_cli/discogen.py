@@ -7,6 +7,8 @@ import typer
 from discolike._jobs import Job
 from discolike.requests import DiscoGenPersonaProcessRequest
 from discolike.requests import DiscoGenProcessRequest
+from discolike_cli._help import ContractCommand
+from discolike_cli._help import epilog
 from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
@@ -41,7 +43,7 @@ class TaskFamily(str, enum.Enum):
     segment = "segment"
 
 
-@app.command("run")
+@app.command("run", cls=ContractCommand, epilog=epilog("discogen run"))
 @handle_errors
 def run_command(
     ctx: typer.Context,
@@ -138,7 +140,7 @@ def _build_job(ctx: typer.Context, family: TaskFamily, task_id: str) -> Job:
     return Job(client._transport, task_family=family.value, task_id=task_id)
 
 
-@app.command("status")
+@app.command("status", cls=ContractCommand, epilog=epilog("discogen status"))
 @handle_errors
 def status_command(
     ctx: typer.Context,
