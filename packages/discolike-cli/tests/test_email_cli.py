@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import time
 from collections.abc import Callable
 
@@ -15,6 +16,12 @@ from discolike_cli.main import app
 from discolike_testkit import Handler
 
 runner = CliRunner()
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _plain(output: str) -> str:
+    """Usage errors render in a rich panel (colored and wrapped at 80 columns on CI); flatten to one line."""
+    return " ".join(_ANSI.sub("", output).replace("│", " ").split())
 
 
 @pytest.fixture(autouse=True)
@@ -346,7 +353,7 @@ def test_email_find_batch_refs_must_match_contacts(install_build_client: Callabl
         ["email", "find-batch", "--contact", "Jane,Doe,acme.com", "--source-query-id", "q-1", "--ref", "a", "--ref", "b"],
     )  # fmt: skip
     assert result.exit_code != 0
-    assert "one --ref per contact" in result.output
+    assert "one --ref per contact" in _plain(result.output)
     assert calls == []
 
 
@@ -354,4 +361,4 @@ def test_email_find_batch_refs_require_source_query_id(install_build_client: Cal
     install_build_client(lambda request: httpx2.Response(200, json={"batch_id": "eb-6"}))
     result = runner.invoke(app, ["email", "find-batch", "--contact", "Jane,Doe,acme.com", "--ref", "a"])
     assert result.exit_code != 0
-    assert "--ref requires --source-query-id" in result.output
+    assert "--ref requires --source-query-id" in _plain(result.output)
