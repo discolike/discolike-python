@@ -13,6 +13,7 @@ from typer.testing import CliRunner
 
 from discolike_cli.main import app
 from discolike_testkit import Handler
+from discolike_testkit import plain_output
 
 runner = CliRunner()
 
@@ -94,7 +95,7 @@ def test_contacts_generate_requires_domain_or_file(install_build_client: Callabl
     install_build_client(_capture_json({}, {"task_id": "t1"}))
     result = runner.invoke(app, ["contacts", "generate", "--icp-text", "X"])
     assert result.exit_code != 0
-    assert "--domain or --domains-file" in result.output
+    assert "--domain or --domains-file" in plain_output(result.output)
 
 
 def test_discogen_run_domains_file(install_build_client: Callable[[Handler], None], domains_file: Path) -> None:
