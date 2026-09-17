@@ -4,6 +4,7 @@ import asyncio
 import time
 from collections.abc import Callable
 from typing import Any
+from typing import Literal
 
 import pydantic
 
@@ -36,6 +37,7 @@ class JobStatus(DiscolikeModel):
     # model's built-in search only; on a BYOS run read search_provider instead.
     estimated_cost: float | None = None
     cost_metadata: dict[str, dict[str, Any]] | None = None
+    title_validation: Literal["llm", "none"] | None = None
 
 
 class Job:

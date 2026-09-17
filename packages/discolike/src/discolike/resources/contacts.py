@@ -20,6 +20,8 @@ from discolike.resources._base import api_route
 from discolike.resources.companies import CompanyProfile
 from discolike.resources.discovery import Count
 
+NATIVE_ENGINE = "native"
+
 
 class Contact(DiscolikeModel):
     persona_id: int | None = None

@@ -1397,7 +1397,13 @@ class ContactGenerateRequest(DiscolikeRequest):
         ),
     ]
     context_mode: Annotated[Literal["website", "profile", "domain"] | None, Field(title="Context Mode")] = "website"
-    integration_id: Annotated[str | None, Field(title="Integration Id")] = None
+    integration_id: Annotated[
+        str | None,
+        Field(
+            description="LLM provider integration UUID, or 'native' for keyless extraction without title validation. Omit for the org default (falls back to native when none is set).",
+            title="Integration Id",
+        ),
+    ] = None
     search_provider_id: Annotated[str | None, Field(title="Search Provider Id")] = None
     search_context_size: Annotated[Literal["low", "medium", "high"] | None, Field(title="Search Context Size")] = "low"
     max_contacts_per_domain: Annotated[int | None, Field(title="Max Contacts Per Domain")] = 10
