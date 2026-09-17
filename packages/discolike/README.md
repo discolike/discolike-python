@@ -80,7 +80,7 @@ result = job.wait()
 
 ### Contact generation without an LLM key
 
-`contacts.generate` runs on your own search provider plus either your own LLM or DiscoLike's native extractor. Pass `NATIVE_ENGINE` to skip the LLM entirely:
+`contacts.generate` runs on your own search provider plus either your own LLM or DiscoLike Groove, DiscoLike's native extractor. Pass `NATIVE_ENGINE` to skip the LLM entirely:
 
 ```python
 from discolike import NATIVE_ENGINE
