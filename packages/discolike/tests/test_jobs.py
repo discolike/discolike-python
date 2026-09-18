@@ -88,6 +88,19 @@ def test_status_without_cost_fields_defaults_to_none() -> None:
     assert final.warnings == []
 
 
+def test_status_exposes_title_validation() -> None:
+    native = make_job(_status_sequence([{"status": "completed", "progress": 100, "title_validation": "none"}])).status()
+    assert native.title_validation == "none"
+
+    byok = make_job(_status_sequence([{"status": "completed", "progress": 100, "title_validation": "llm"}])).status()
+    assert byok.title_validation == "llm"
+
+
+def test_status_without_title_validation_defaults_to_none() -> None:
+    final = make_job(_status_sequence([{"status": "in_progress", "progress": 10}])).status()
+    assert final.title_validation is None
+
+
 def test_wait_failed_raises() -> None:
     handler = _status_sequence([{"status": "failed", "progress": 100, "result": "LLM exploded"}])
     with pytest.raises(JobFailedError, match="LLM exploded"):
