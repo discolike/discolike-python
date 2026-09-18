@@ -51,6 +51,15 @@ def test_command_help_documents_output_and_errors(argv: list[str]) -> None:
     assert any(line.strip().startswith("Common errors:") for line in result.output.splitlines())
 
 
+def test_validate_icp_help_documents_a_title_case_verdict() -> None:
+    result = runner.invoke(app, ["validate-icp", "--help"])
+    assert result.exit_code == 0, result.output
+    assert '"Fit": "Yes"|"No"' in result.output
+    assert '"ICP Fit" ("Yes"|"No"' in result.output
+    assert '"yes"' not in result.output
+    assert '"no"' not in result.output
+
+
 def test_every_command_epilog_is_short() -> None:
     for name, text in _help.COMMAND_EPILOGS.items():
         assert len(text.splitlines()) <= 18, name
