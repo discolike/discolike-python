@@ -309,6 +309,27 @@ result = job.wait()
 
 `JobTimeoutError` is a client-side wait limit only — the task keeps running server-side (large DiscoGen runs can take hours), so call `wait()` again to resume or fetch `status()` later. Cancelled tasks still return results for every item that finished before cancellation. Send one job per list (up to 10,000 domains) rather than splitting into parallel jobs — concurrent DiscoGen jobs share your LLM provider key and slow each other down.
 
+### Contact generation without an LLM key
+
+`contacts.generate` runs on your own search provider plus either your own LLM or DiscoLike Groove, DiscoLike's native extractor. Pass `NATIVE_ENGINE` to skip the LLM entirely:
+
+```python
+from discolike import NATIVE_ENGINE
+from discolike.requests import ContactGenerateRequest
+
+job = client.contacts.generate(
+    ContactGenerateRequest(
+        icp_text="VPs or Directors of Marketing at B2B SaaS",
+        domains=["gusto.com", "rippling.com"],
+        integration_id=NATIVE_ENGINE,
+    )
+)
+result = job.wait()
+print(result.title_validation)  # "none" on the native engine, "llm" on a BYOK run
+```
+
+The native engine returns every person the search surfaces with a title and does not validate titles against `icp_text`, so filter them yourself when that matters. Omit `integration_id` to use your default LLM integration, or native when you have none. A search provider is required either way.
+
 ### Error handling
 
 All errors inherit from `DiscolikeError`:

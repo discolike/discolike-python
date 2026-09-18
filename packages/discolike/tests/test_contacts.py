@@ -17,6 +17,7 @@ from discolike.requests import ContactsCountParams
 from discolike.requests import ContactsLookupParams
 from discolike.requests import ContactsMatchParams
 from discolike.requests import ContactsSearchParams
+from discolike.resources.contacts import NATIVE_ENGINE
 from discolike_testkit import AsyncClientFactory
 from discolike_testkit import ClientFactory
 
@@ -235,6 +236,65 @@ def test_generate_posts_json_and_returns_job(make_client: ClientFactory) -> None
     assert isinstance(job, Job)
     assert job.task_family == FAMILY_DISCOGEN
     assert job.task_id == "dg-1"
+
+
+def test_generate_native_engine_serializes_integration_id(make_client: ClientFactory) -> None:
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-native"})
+
+    with make_client(handler) as client:
+        job = client.contacts.generate(
+            ContactGenerateRequest(
+                icp_text="VPs of Marketing at B2B SaaS",
+                domains=["gusto.com"],
+                integration_id=NATIVE_ENGINE,
+            )
+        )
+
+    assert NATIVE_ENGINE == "native"
+    assert seen["body"]["integration_id"] == "native"
+    assert job.task_id == "dg-native"
+
+
+async def test_generate_async_native_engine_serializes_integration_id(
+    make_async_client: AsyncClientFactory,
+) -> None:
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-native-2"})
+
+    async with make_async_client(handler) as client:
+        job = await client.contacts.generate(
+            ContactGenerateRequest(icp_text="VPs", domains=["a.com"], integration_id=NATIVE_ENGINE)
+        )
+
+    assert seen["body"]["integration_id"] == "native"
+    assert job.task_id == "dg-native-2"
+
+
+def test_generate_omits_integration_id_when_unset(make_client: ClientFactory) -> None:
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-default"})
+
+    with make_client(handler) as client:
+        client.contacts.generate(ContactGenerateRequest(icp_text="VPs", domains=["a.com"]))
+
+    assert "integration_id" not in seen["body"]
+
+
+def test_native_engine_is_exported_from_package_root() -> None:
+    import discolike
+
+    assert discolike.NATIVE_ENGINE == NATIVE_ENGINE
+    assert "NATIVE_ENGINE" in discolike.__all__
 
 
 async def test_search_async(make_async_client: AsyncClientFactory) -> None:

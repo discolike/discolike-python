@@ -18,6 +18,7 @@ from discolike._jobs import JobStatus
 from discolike._models import DiscolikeModel
 from discolike._models import DiscolikeRequest
 from discolike._version import __version__
+from discolike.resources.contacts import NATIVE_ENGINE
 from discolike.resources.discovery import Company
 from discolike.resources.discovery import Count
 from discolike.resources.email import EmailBatchResults
@@ -30,6 +31,7 @@ from discolike.signup import async_signup
 from discolike.signup import signup
 
 __all__ = [
+    "NATIVE_ENGINE",
     "APIConnectionError",
     "ApiKeyCredential",
     "AsyncDiscolike",
