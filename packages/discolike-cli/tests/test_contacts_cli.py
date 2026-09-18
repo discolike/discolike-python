@@ -499,3 +499,19 @@ def test_contacts_generate_forwards_full_and_partial_domains(install_build_clien
         "full_domains": ["done.com"],
         "partial_domains": ["half.com"],
     }
+
+
+def test_contacts_generate_find_emails_flag(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-9"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        ["contacts", "generate", "--icp-text", "VPs of Marketing", "--domain", "acme.com", "--find-emails"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {"icp_text": "VPs of Marketing", "domains": ["acme.com"], "find_emails": True}
