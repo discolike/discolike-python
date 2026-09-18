@@ -79,7 +79,8 @@ class ValidateResource(SyncAPIResource):
         `integration_id` takes an LLM provider integration UUID, or `NATIVE_ICP_ENGINE` to score
         with DiscoLike's own ICP-fit model: no LLM key, no LLM cost, and no web search on that
         run. Omit it for the org default. Read `Job.column_name` for the columns the run returns
-        rather than assuming the LLM ones.
+        rather than assuming the LLM ones; the native run's `Reasoning` column is always null,
+        since the model returns a score rather than an explanation.
         """
         return _job(self._transport, self._transport.request("POST", "/validate/icp", json_body=request.to_wire()))
 
@@ -117,7 +118,8 @@ class AsyncValidateResource(AsyncAPIResource):
         `integration_id` takes an LLM provider integration UUID, or `NATIVE_ICP_ENGINE` to score
         with DiscoLike's own ICP-fit model: no LLM key, no LLM cost, and no web search on that
         run. Omit it for the org default. Read `AsyncJob.column_name` for the columns the run
-        returns rather than assuming the LLM ones.
+        returns rather than assuming the LLM ones; the native run's `Reasoning` column is always
+        null, since the model returns a score rather than an explanation.
         """
         response = await self._transport.request("POST", "/validate/icp", json_body=request.to_wire())
         return _async_job(self._transport, response)

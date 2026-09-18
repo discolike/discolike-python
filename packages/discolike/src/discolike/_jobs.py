@@ -23,7 +23,8 @@ DEFAULT_WAIT_TIMEOUT_SECONDS = 900.0
 DEFAULT_POLL_INTERVAL_SECONDS = 5.0
 
 # The engine that ran decides the result columns: an LLM validation returns Fit / Confidence /
-# Reasoning, the native ICP-fit model ICP Fit / ICP Score / Reasoning. Read it, never assume.
+# Reasoning, the native ICP-fit model ICP Fit / ICP Score / Reasoning, whose Reasoning is always
+# null. Read it, never assume.
 ColumnName = str | list[str] | None
 
 
