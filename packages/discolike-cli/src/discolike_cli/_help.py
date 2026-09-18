@@ -162,6 +162,10 @@ Output (success, exit 0):
   With --wait: the results object keyed by domain:
     {{<domain>: {{"Fit": "yes"|"no", "Confidence": "high"|"medium"|"low", "Reasoning": <string>}}, ...}}
   Runs on the account's own LLM provider key.
+  With --integration-id native-icp: DiscoLike's own ICP-fit model, no LLM key or cost and no
+  web search, and the keys become "ICP Fit", "ICP Score" (0.00-1.00 as a string), "Reasoning".
+  The ICP text must yield a Mandatory / Reject if / Nice-to-have prompt or the call is a 400,
+  and the run is a 503 when no ICP-fit engine is available.
 
 {_JOB_ERRORS}
 """,
