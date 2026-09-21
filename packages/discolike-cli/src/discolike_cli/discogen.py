@@ -32,6 +32,7 @@ INTEGRATION_ID_HELP = "Integration ID to use for the run."
 WEB_SEARCH_HELP = "Toggle web search during research."
 CONTEXT_MODE_HELP = "Context mode; see docs.discolike.com."
 INCLUDE_X_SEARCH_HELP = "Toggle including X search in the research."
+INCLUDE_CONFIDENCE_HELP = "Add a confidence column beside each typed column."
 SEARCH_PROVIDER_ID_HELP = "Search provider ID to use for web search."
 SEARCH_CONTEXT_SIZE_HELP = "Search context size; see docs.discolike.com."
 TASK_ID_HELP = "Task ID returned when the job was started."
@@ -59,6 +60,9 @@ def run_command(
     include_x_search: bool | None = typer.Option(
         None, "--include-x-search/--no-include-x-search", help=INCLUDE_X_SEARCH_HELP
     ),
+    include_confidence: bool | None = typer.Option(
+        None, "--include-confidence/--no-include-confidence", help=INCLUDE_CONFIDENCE_HELP
+    ),
     search_provider_id: str | None = typer.Option(None, "--search-provider-id", help=SEARCH_PROVIDER_ID_HELP),
     search_context_size: str | None = typer.Option(None, "--search-context-size", help=SEARCH_CONTEXT_SIZE_HELP),
     wait: bool = typer.Option(False, "--wait", help=WAIT_HELP),
@@ -81,6 +85,7 @@ def run_command(
             web_search=web_search,
             context_mode=context_mode,
             include_x_search=include_x_search,
+            include_confidence=include_confidence,
             search_provider_id=search_provider_id,
             search_context_size=search_context_size,
         ),
@@ -99,6 +104,9 @@ def run_personas_command(
     context_mode: str | None = typer.Option(None, "--context-mode", help=CONTEXT_MODE_HELP),
     include_x_search: bool | None = typer.Option(
         None, "--include-x-search/--no-include-x-search", help=INCLUDE_X_SEARCH_HELP
+    ),
+    include_confidence: bool | None = typer.Option(
+        None, "--include-confidence/--no-include-confidence", help=INCLUDE_CONFIDENCE_HELP
     ),
     search_provider_id: str | None = typer.Option(None, "--search-provider-id", help=SEARCH_PROVIDER_ID_HELP),
     search_context_size: str | None = typer.Option(None, "--search-context-size", help=SEARCH_CONTEXT_SIZE_HELP),
@@ -119,6 +127,7 @@ def run_personas_command(
             web_search=web_search,
             context_mode=context_mode,
             include_x_search=include_x_search,
+            include_confidence=include_confidence,
             search_provider_id=search_provider_id,
             search_context_size=search_context_size,
         ),

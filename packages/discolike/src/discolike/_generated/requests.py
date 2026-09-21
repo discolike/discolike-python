@@ -1421,12 +1421,13 @@ class DiscoGenProcessRequest(DiscolikeRequest):
     integration_id: Annotated[
         str | None,
         Field(
-            description="LLM provider integration UUID (omit for org default)",
+            description="LLM provider integration UUID (omit for org default), or 'native-icp' to score an ICP validation prompt with the native model",
             title="Integration Id",
         ),
     ] = None
     web_search: Annotated[bool | None, Field(title="Web Search")] = False
     include_x_search: Annotated[bool | None, Field(title="Include X Search")] = False
+    include_confidence: Annotated[bool | None, Field(title="Include Confidence")] = False
     search_provider_id: Annotated[
         str | None,
         Field(
@@ -1456,12 +1457,13 @@ class DiscoGenPersonaProcessRequest(DiscolikeRequest):
     integration_id: Annotated[
         str | None,
         Field(
-            description="LLM provider integration UUID (omit for org default)",
+            description="LLM provider integration UUID (omit for org default), or 'native-icp' to score an ICP validation prompt with the native model",
             title="Integration Id",
         ),
     ] = None
     web_search: Annotated[bool | None, Field(title="Web Search")] = False
     include_x_search: Annotated[bool | None, Field(title="Include X Search")] = False
+    include_confidence: Annotated[bool | None, Field(title="Include Confidence")] = False
     search_provider_id: Annotated[
         str | None,
         Field(
@@ -1507,7 +1509,7 @@ class ValidateIcpRequest(DiscolikeRequest):
     integration_id: Annotated[
         str | None,
         Field(
-            description="LLM provider integration UUID (omit for org default)",
+            description="LLM provider integration UUID (omit for org default), or 'native-icp' to score with DiscoLike's own ICP-fit model at no LLM cost",
             title="Integration Id",
         ),
     ] = None
