@@ -160,8 +160,13 @@ Common errors:
 Output (success, exit 0):
 {_JOB_SUBMITTED}
   With --wait: the results object keyed by domain:
-    {{<domain>: {{"Fit": "yes"|"no", "Confidence": "high"|"medium"|"low", "Reasoning": <string>}}, ...}}
+    {{<domain>: {{"Fit": "Yes"|"No", "Confidence": "high"|"medium"|"low", "Reasoning": <string>}}, ...}}
   Runs on the account's own LLM provider key.
+  With --integration-id native-icp: DiscoLike's own ICP-fit model, no LLM key or cost and no
+  web search. Keys become "ICP Fit" ("Yes"|"No" at a 0.50 threshold on the score), "ICP Score"
+  (the calibrated probability, 0.00-1.00 as a string) and "Reasoning", always null there: the
+  model returns a score, not an explanation. A 400 when the ICP text yields no Mandatory /
+  Reject if / Nice-to-have prompt, a 503 when no ICP-fit engine is available.
 
 {_JOB_ERRORS}
 """,
