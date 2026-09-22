@@ -18,14 +18,16 @@ jobs:
                   python-version: '3.14'
             - run: uv sync --all-packages
             # SDK features land on development before the platform deploys to
-            # prod, so PRs targeting development check against the dev spec.
+            # prod, so every PR but a release into main checks against the dev
+            # spec — including one stacked on another feature branch, which is
+            # just as far ahead of prod as the branch it targets.
             # DEV_SPEC_URL is a repo secret; fork PRs don't receive it and
             # fall back to the prod spec, keeping dev infra internal-only.
             - env:
                   BASE_REF: ${{ github.base_ref }}
                   DEV_SPEC_URL: ${{ secrets.DEV_SPEC_URL }}
               run: |
-                  if [ "$BASE_REF" = "development" ] && [ -n "$DEV_SPEC_URL" ]; then
+                  if [ "$BASE_REF" != "main" ] && [ -n "$DEV_SPEC_URL" ]; then
                       uv run python scripts/check_contract.py --spec-url "$DEV_SPEC_URL"
                       uv run python scripts/gen_requests.py --check --spec-url "$DEV_SPEC_URL"
                   else
