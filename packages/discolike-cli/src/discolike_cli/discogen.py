@@ -28,7 +28,10 @@ FAMILY_HELP = (
     "segment jobs 'segment', contact bulk-match 'contactmatch')."
 )
 QUERY_HELP = "Research query to run."
-INTEGRATION_ID_HELP = "Integration ID to use for the run."
+INTEGRATION_ID_HELP = (
+    "Integration ID to use for the run, or 'native-icp' to score an ICP validation prompt with "
+    "DiscoLike's own model at no LLM cost."
+)
 WEB_SEARCH_HELP = "Toggle web search during research."
 CONTEXT_MODE_HELP = "Context mode; see docs.discolike.com."
 INCLUDE_X_SEARCH_HELP = "Toggle including X search in the research."

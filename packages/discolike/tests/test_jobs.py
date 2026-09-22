@@ -59,7 +59,7 @@ def test_status_exposes_cost_metadata_and_warnings() -> None:
     payload = {
         "status": "completed",
         "progress": 100,
-        "results": {"a.com": "yes"},
+        "results": {"a.com": "Yes"},
         "estimated_cost": 0.0283,
         "warnings": ["Search provider out of credits"],
         "cost_metadata": {
