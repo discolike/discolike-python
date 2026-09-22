@@ -67,6 +67,71 @@ def test_discogen_run_sends_include_x_search_when_passed(install_build_client: C
     }
 
 
+def test_discogen_run_sends_include_confidence_true_when_flag_passed(
+    install_build_client: Callable[[Handler], None],
+) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-1d"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        ["discogen", "run", "--query", "q", "--domain", "acme.com", "--include-confidence"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {
+        "query": "q",
+        "domains": ["acme.com"],
+        "include_confidence": True,
+    }
+
+
+def test_discogen_run_sends_include_confidence_false_when_flag_negated(
+    install_build_client: Callable[[Handler], None],
+) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-1e"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        ["discogen", "run", "--query", "q", "--domain", "acme.com", "--no-include-confidence"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {
+        "query": "q",
+        "domains": ["acme.com"],
+        "include_confidence": False,
+    }
+
+
+def test_discogen_run_omits_include_confidence_when_flag_not_passed(
+    install_build_client: Callable[[Handler], None],
+) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-1f"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        ["discogen", "run", "--query", "q", "--domain", "acme.com"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {
+        "query": "q",
+        "domains": ["acme.com"],
+    }
+
+
 def test_discogen_run_personas_posts_persona_ids(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 
@@ -107,6 +172,71 @@ def test_discogen_run_personas_sends_include_x_search_when_passed(
         "query": "q",
         "persona_ids": [1],
         "include_x_search": True,
+    }
+
+
+def test_discogen_run_personas_sends_include_confidence_true_when_flag_passed(
+    install_build_client: Callable[[Handler], None],
+) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-2c"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        ["discogen", "run-personas", "--query", "q", "--persona-id", "1", "--include-confidence"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {
+        "query": "q",
+        "persona_ids": [1],
+        "include_confidence": True,
+    }
+
+
+def test_discogen_run_personas_sends_include_confidence_false_when_flag_negated(
+    install_build_client: Callable[[Handler], None],
+) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-2d"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        ["discogen", "run-personas", "--query", "q", "--persona-id", "1", "--no-include-confidence"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {
+        "query": "q",
+        "persona_ids": [1],
+        "include_confidence": False,
+    }
+
+
+def test_discogen_run_personas_omits_include_confidence_when_flag_not_passed(
+    install_build_client: Callable[[Handler], None],
+) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-2e"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        ["discogen", "run-personas", "--query", "q", "--persona-id", "1"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {
+        "query": "q",
+        "persona_ids": [1],
     }
 
 
