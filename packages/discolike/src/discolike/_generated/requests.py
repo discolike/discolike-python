@@ -1427,6 +1427,13 @@ class DiscoGenProcessRequest(DiscolikeRequest):
     ] = None
     web_search: Annotated[bool | None, Field(title="Web Search")] = False
     include_x_search: Annotated[bool | None, Field(title="Include X Search")] = False
+    typed_columns: Annotated[
+        bool | None,
+        Field(
+            description="Let the detector answer yes/no, fixed-set and scale columns with a TypeSafe judgment model",
+            title="Typed Columns",
+        ),
+    ] = False
     include_confidence: Annotated[bool | None, Field(title="Include Confidence")] = False
     search_provider_id: Annotated[
         str | None,
@@ -1463,6 +1470,13 @@ class DiscoGenPersonaProcessRequest(DiscolikeRequest):
     ] = None
     web_search: Annotated[bool | None, Field(title="Web Search")] = False
     include_x_search: Annotated[bool | None, Field(title="Include X Search")] = False
+    typed_columns: Annotated[
+        bool | None,
+        Field(
+            description="Let the detector answer yes/no, fixed-set and scale columns with a TypeSafe judgment model",
+            title="Typed Columns",
+        ),
+    ] = False
     include_confidence: Annotated[bool | None, Field(title="Include Confidence")] = False
     search_provider_id: Annotated[
         str | None,

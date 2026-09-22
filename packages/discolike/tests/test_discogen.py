@@ -71,6 +71,8 @@ def test_process_all_optionals_present(make_client: ClientFactory) -> None:
                 web_search=True,
                 context_mode="website",
                 include_x_search=False,
+                typed_columns=True,
+                include_confidence=True,
                 search_provider_id="serper",
                 search_context_size="medium",
             )
@@ -83,9 +85,24 @@ def test_process_all_optionals_present(make_client: ClientFactory) -> None:
         "web_search": True,
         "context_mode": "website",
         "include_x_search": False,
+        "typed_columns": True,
+        "include_confidence": True,
         "search_provider_id": "serper",
         "search_context_size": "medium",
     }
+
+
+def test_process_sends_typed_columns_when_set(make_client: ClientFactory) -> None:
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-typed"})
+
+    with make_client(handler) as client:
+        client.discogen.process(DiscoGenProcessRequest(query="q", domains=["a.com"], typed_columns=True))
+
+    assert seen["body"] == {"query": "q", "domains": ["a.com"], "typed_columns": True}
 
 
 def test_process_personas_posts_json_and_returns_job(make_client: ClientFactory) -> None:
