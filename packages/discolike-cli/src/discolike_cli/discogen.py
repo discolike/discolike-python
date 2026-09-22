@@ -35,6 +35,7 @@ INTEGRATION_ID_HELP = (
 WEB_SEARCH_HELP = "Toggle web search during research."
 CONTEXT_MODE_HELP = "Context mode; see docs.discolike.com."
 INCLUDE_X_SEARCH_HELP = "Toggle including X search in the research."
+TYPED_COLUMNS_HELP = "Let the detector answer yes/no, fixed-set and scale columns with a TypeSafe judgment model."
 INCLUDE_CONFIDENCE_HELP = "Add a confidence column beside each typed column."
 SEARCH_PROVIDER_ID_HELP = "Search provider ID to use for web search."
 SEARCH_CONTEXT_SIZE_HELP = "Search context size; see docs.discolike.com."
@@ -63,6 +64,7 @@ def run_command(
     include_x_search: bool | None = typer.Option(
         None, "--include-x-search/--no-include-x-search", help=INCLUDE_X_SEARCH_HELP
     ),
+    typed_columns: bool | None = typer.Option(None, "--typed-columns/--no-typed-columns", help=TYPED_COLUMNS_HELP),
     include_confidence: bool | None = typer.Option(
         None, "--include-confidence/--no-include-confidence", help=INCLUDE_CONFIDENCE_HELP
     ),
@@ -88,6 +90,7 @@ def run_command(
             web_search=web_search,
             context_mode=context_mode,
             include_x_search=include_x_search,
+            typed_columns=typed_columns,
             include_confidence=include_confidence,
             search_provider_id=search_provider_id,
             search_context_size=search_context_size,
@@ -108,6 +111,7 @@ def run_personas_command(
     include_x_search: bool | None = typer.Option(
         None, "--include-x-search/--no-include-x-search", help=INCLUDE_X_SEARCH_HELP
     ),
+    typed_columns: bool | None = typer.Option(None, "--typed-columns/--no-typed-columns", help=TYPED_COLUMNS_HELP),
     include_confidence: bool | None = typer.Option(
         None, "--include-confidence/--no-include-confidence", help=INCLUDE_CONFIDENCE_HELP
     ),
@@ -130,6 +134,7 @@ def run_personas_command(
             web_search=web_search,
             context_mode=context_mode,
             include_x_search=include_x_search,
+            typed_columns=typed_columns,
             include_confidence=include_confidence,
             search_provider_id=search_provider_id,
             search_context_size=search_context_size,

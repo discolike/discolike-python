@@ -67,6 +67,26 @@ def test_discogen_run_sends_include_x_search_when_passed(install_build_client: C
     }
 
 
+def test_discogen_run_sends_typed_columns_when_passed(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-1c"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        ["discogen", "run", "--query", "q", "--domain", "acme.com", "--typed-columns"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {
+        "query": "q",
+        "domains": ["acme.com"],
+        "typed_columns": True,
+    }
+
+
 def test_discogen_run_sends_include_confidence_true_when_flag_passed(
     install_build_client: Callable[[Handler], None],
 ) -> None:
@@ -172,6 +192,28 @@ def test_discogen_run_personas_sends_include_x_search_when_passed(
         "query": "q",
         "persona_ids": [1],
         "include_x_search": True,
+    }
+
+
+def test_discogen_run_personas_sends_typed_columns_when_passed(
+    install_build_client: Callable[[Handler], None],
+) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-2c"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        ["discogen", "run-personas", "--query", "q", "--persona-id", "1", "--typed-columns"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {
+        "query": "q",
+        "persona_ids": [1],
+        "typed_columns": True,
     }
 
 
