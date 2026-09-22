@@ -21,6 +21,10 @@ FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls
 WAIT_HELP = "Block until the job finishes, streaming progress to stderr."
 TIMEOUT_HELP = "Max seconds to wait with --wait."
 QUERY_ID_HELP = "Saved query ID whose domains are included alongside the file/--domain ones (repeatable)."
+INTEGRATION_ID_HELP = (
+    "Integration ID to use for the validation, or 'native-icp' to score with DiscoLike's own "
+    "ICP-fit model at no LLM cost (no LLM key and no web search on that run)."
+)
 
 
 @handle_errors
@@ -35,9 +39,7 @@ def validate_icp_command(
         help="CSV with a 'domain' column, or one domain per line (instead of --domain).",
     ),
     context_mode: str | None = typer.Option(None, "--context-mode", help="Context mode; see docs.discolike.com."),
-    integration_id: str | None = typer.Option(
-        None, "--integration-id", help="Integration ID to use for the validation."
-    ),
+    integration_id: str | None = typer.Option(None, "--integration-id", help=INTEGRATION_ID_HELP),
     web_search: bool | None = typer.Option(
         None, "--web-search/--no-web-search", help="Toggle web search during validation."
     ),
