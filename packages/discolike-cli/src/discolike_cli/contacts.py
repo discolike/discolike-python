@@ -459,6 +459,11 @@ def generate_command(
     max_company_records: int | None = typer.Option(
         None, "--max-company-records", help="Maximum company records to process."
     ),
+    find_emails: bool = typer.Option(
+        False,
+        "--find-emails",
+        help="Run the email finder over named, email-less rows before the job completes (found addresses bill).",
+    ),
     wait: bool = typer.Option(False, "--wait", help=WAIT_HELP),
     timeout: float = typer.Option(DEFAULT_WAIT_TIMEOUT_SECONDS, "--timeout", help=TIMEOUT_HELP),
     fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
@@ -483,6 +488,7 @@ def generate_command(
             search_context_size=search_context_size,
             max_contacts_per_domain=max_contacts_per_domain,
             max_company_records=max_company_records,
+            find_emails=find_emails or None,
         ),
     )
     run_job(get_client(ctx).contacts.generate(request), wait=wait, timeout=timeout, fmt=fmt)
