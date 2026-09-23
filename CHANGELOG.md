@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 (2026-09-23)
 
 - SDK: `validate_icp` can run without an LLM key. Pass `integration_id=NATIVE_ICP_ENGINE` (exported from `discolike`, the string `"native-icp"`) to score with DiscoLike's own ICP-fit model instead of your BYOK LLM: no LLM cost, no LLM key, and no web search on that run. The same sentinel works on `discogen.process` for a prompt that already carries the validation structure. Two new errors are specific to it: a 400 `ValidationError` when the ICP text does not yield a Mandatory / Reject if / Nice-to-have prompt, and a 503 `ServerError` when no ICP-fit engine is available. Task lifecycle, polling and statuses are unchanged.
 - SDK: `Job` / `AsyncJob` returned by `validate_icp`, `discogen.process` and `discogen.process_personas` carry `column_name` from the submit response. The engine picks the columns — an LLM validation returns `Fit` / `Confidence` / `Reasoning`, the native model `ICP Fit` (`Yes` / `No` at a 0.50 threshold on the score) / `ICP Score` (the calibrated probability, 0.00-1.00 as a string) / `Reasoning (always null)` — so read it rather than hardcoding either set. It is `None` on a job reattached with `discogen.job(task_id)`.
