@@ -26,6 +26,28 @@ jobs:
             - run: uv run pytest packages/discolike/tests -q
             - run: uv run pytest packages/discolike-cli/tests -q
 
+    # uv.lock pins one version of every dependency; users resolve fresh from the
+    # pyproject ranges. Test both ends of those ranges and the built wheels.
+    test-resolution:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                include:
+                    - resolution: highest
+                      python-version: '3.14'
+                    - resolution: lowest-direct
+                      python-version: '3.10'
+        steps:
+            - uses: actions/checkout@v4
+            - uses: astral-sh/setup-uv@v5
+              with:
+                  python-version: ${{ matrix.python-version }}
+            - run: uv sync --all-packages --upgrade --resolution ${{ matrix.resolution }}
+            - run: uv run --no-sync pytest packages/discolike/tests -q
+            - run: uv run --no-sync pytest packages/discolike-cli/tests -q
+            - run: uv build --all-packages -o dist
+            - run: uv run --no-project --isolated --resolution ${{ matrix.resolution }} --find-links dist --with dist/discolike_cli-*.whl discolike --version
+
     # 3.15 is still prerelease; non-blocking until 3.15.0 final, when it moves
     # into the matrix above and gets a classifier.
     test-prerelease:

@@ -22,8 +22,8 @@ def _run(argv: list[str], capsys: pytest.CaptureFixture[str]) -> tuple[int, str,
     ("argv", "fragment"),
     [
         (["count", "--nope"], "--nope"),
-        (["discover", "--max-records", "abc"], "not a valid integer"),
-        (["discogen", "status"], "TASK_ID"),
+        (["discover", "--max-records", "abc"], "--max-records"),
+        (["discogen", "status"], "task_id"),
         (["auth", "login", "--method", "bogus"], "--method"),
     ],
 )
@@ -37,7 +37,7 @@ def test_parser_errors_use_the_json_envelope(
     assert payload["code"] == "validation_error"
     assert payload["error"] == "ValidationError"
     assert payload["exit_code"] == 2
-    assert fragment in payload["message"]
+    assert fragment.lower() in payload["message"].lower()
 
 
 def test_help_still_renders(capsys: pytest.CaptureFixture[str]) -> None:
