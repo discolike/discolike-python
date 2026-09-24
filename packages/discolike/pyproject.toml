@@ -34,7 +34,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-cli = ["discolike-cli==0.4.0"]
+cli = ["discolike-cli==0.4.1"]
 
 [project.urls]
 Homepage = "https://www.discolike.com"
