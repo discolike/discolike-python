@@ -2,7 +2,7 @@
 
 ## 0.4.1 (2026-09-23)
 
-- CLI: fix `ImportError: cannot import name 'Abort' from 'typer._click.exceptions'` on every command in a fresh 0.4.0 install. Typer 0.27 moved `Abort`; the CLI now imports the public `typer.Abort` and requires `typer>=0.26,<0.28`, since it still relies on Typer's vendored Click for its error envelope and help formatting.
+- CLI: fix `ImportError: cannot import name 'Abort' from 'typer._click.exceptions'` on every command in a fresh 0.4.0 install. Typer 0.27 moved `Abort`; the CLI now imports the public `typer.Abort` and requires `typer>=0.26.1,<0.28`, since it still relies on Typer's vendored Click for its error envelope and help formatting.
 
 ## 0.4.0 (2026-09-23)
 

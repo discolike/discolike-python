@@ -13,7 +13,7 @@ requires-python = ">=3.10"
 authors = [{ name = "DiscoLike", email = "support@discolike.com" }]
 dependencies = [
   "discolike==0.4.1",
-  "typer>=0.26,<0.28",
+  "typer>=0.26.1,<0.28",
   "rich>=13.0",
 ]
 keywords = ["discolike", "cli", "business-data", "enrichment"]

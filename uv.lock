@@ -395,7 +395,7 @@ dev = [
 requires-dist = [
     { name = "discolike", editable = "packages/discolike" },
     { name = "rich", specifier = ">=13.0" },
-    { name = "typer", specifier = ">=0.26,<0.28" },
+    { name = "typer", specifier = ">=0.26.1,<0.28" },
 ]
 
 [package.metadata.requires-dev]
