@@ -99,6 +99,8 @@ def save_results_command(
             data = json.loads(input_path.read_text())
     except FileNotFoundError as exc:
         raise typer.BadParameter(f"--input file not found: {input_path}") from exc
+    except (OSError, UnicodeDecodeError) as exc:
+        raise typer.BadParameter(f"--input file {input_path} could not be read: {exc}") from exc
     except json.JSONDecodeError as exc:
         raise typer.BadParameter(f"--input file {input_path} must contain valid JSON: {exc}") from exc
 
