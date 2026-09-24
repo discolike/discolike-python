@@ -12,6 +12,7 @@ from discolike._jobs import Job
 from discolike.requests import DiscoGenPersonaProcessRequest
 from discolike.requests import DiscoGenProcessRequest
 from discolike.requests import ValidateIcpRequest
+from discolike.resources.discogen import NATIVE_ICP_ENGINE
 from discolike_testkit import AsyncClientFactory
 from discolike_testkit import ClientFactory
 
@@ -71,6 +72,8 @@ def test_process_all_optionals_present(make_client: ClientFactory) -> None:
                 web_search=True,
                 context_mode="website",
                 include_x_search=False,
+                typed_columns=True,
+                include_confidence=True,
                 search_provider_id="serper",
                 search_context_size="medium",
             )
@@ -83,9 +86,24 @@ def test_process_all_optionals_present(make_client: ClientFactory) -> None:
         "web_search": True,
         "context_mode": "website",
         "include_x_search": False,
+        "typed_columns": True,
+        "include_confidence": True,
         "search_provider_id": "serper",
         "search_context_size": "medium",
     }
+
+
+def test_process_sends_typed_columns_when_set(make_client: ClientFactory) -> None:
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-typed"})
+
+    with make_client(handler) as client:
+        client.discogen.process(DiscoGenProcessRequest(query="q", domains=["a.com"], typed_columns=True))
+
+    assert seen["body"] == {"query": "q", "domains": ["a.com"], "typed_columns": True}
 
 
 def test_process_personas_posts_json_and_returns_job(make_client: ClientFactory) -> None:
@@ -280,3 +298,108 @@ def test_route_metadata_stamped() -> None:
     assert get_discolike_route(DiscogenResource.models) == ("GET", "/discogen/models", True)
     assert get_discolike_route(DiscogenResource.job) is None
     assert get_discolike_route(ValidateResource.icp) == ("POST", "/validate/icp", True)
+
+
+def test_validate_icp_native_sentinel_serializes_and_exposes_columns(make_client: ClientFactory) -> None:
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx2.Response(
+            200,
+            json={
+                "task_id": "val-native",
+                "column_name": ["ICP Fit", "ICP Score", "Reasoning"],
+                "status": "in_progress",
+                "total_domains": 1,
+            },
+        )
+
+    with make_client(handler) as client:
+        job = client.validate_icp(
+            ValidateIcpRequest(
+                icp_text="Cybersecurity for SMBs",
+                domains=["gusto.com"],
+                integration_id=NATIVE_ICP_ENGINE,
+            )
+        )
+
+    assert NATIVE_ICP_ENGINE == "native-icp"
+    assert seen["body"]["integration_id"] == "native-icp"
+    assert job.task_id == "val-native"
+    assert job.column_name == ["ICP Fit", "ICP Score", "Reasoning"]
+
+
+async def test_validate_icp_async_native_sentinel_serializes_and_exposes_columns(
+    make_async_client: AsyncClientFactory,
+) -> None:
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx2.Response(
+            200, json={"task_id": "val-native-async", "column_name": ["ICP Fit", "ICP Score", "Reasoning"]}
+        )
+
+    async with make_async_client(handler) as client:
+        job = await client.validate_icp(
+            ValidateIcpRequest(icp_text="q", domains=["a.com"], integration_id=NATIVE_ICP_ENGINE)
+        )
+
+    assert seen["body"]["integration_id"] == "native-icp"
+    assert job.column_name == ["ICP Fit", "ICP Score", "Reasoning"]
+
+
+def test_validate_icp_llm_run_reports_its_own_columns(make_client: ClientFactory) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"task_id": "val-llm", "column_name": ["Fit", "Confidence", "Reasoning"]})
+
+    with make_client(handler) as client:
+        job = client.validate_icp(ValidateIcpRequest(icp_text="q", domains=["a.com"], integration_id="int-1"))
+
+    assert job.column_name == ["Fit", "Confidence", "Reasoning"]
+
+
+def test_validate_icp_column_name_is_none_when_absent(make_client: ClientFactory) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"task_id": "val-bare"})
+
+    with make_client(handler) as client:
+        job = client.validate_icp(ValidateIcpRequest(icp_text="q", domains=["a.com"]))
+
+    assert job.column_name is None
+
+
+def test_process_native_icp_sentinel_serializes(make_client: ClientFactory) -> None:
+    seen = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "dg-native-icp", "column_name": ["ICP Fit"]})
+
+    with make_client(handler) as client:
+        job = client.discogen.process(
+            DiscoGenProcessRequest(
+                query="Mandatory:\nUS-based\n\nReject if:\nagency",
+                domains=["a.com"],
+                integration_id=NATIVE_ICP_ENGINE,
+            )
+        )
+
+    assert seen["body"]["integration_id"] == "native-icp"
+    assert job.column_name == ["ICP Fit"]
+
+
+def test_native_icp_engine_is_exported_from_package_root() -> None:
+    import discolike
+
+    assert discolike.NATIVE_ICP_ENGINE == NATIVE_ICP_ENGINE
+    assert "NATIVE_ICP_ENGINE" in discolike.__all__
+
+
+def test_reattached_job_has_no_column_name(make_client: ClientFactory) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        pytest.fail("job() must not perform an HTTP request")
+
+    with make_client(handler) as client:
+        assert client.discogen.job("dg-existing").column_name is None

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import pathlib
 from typing import Any
 
 import typer
 
 from discolike.requests import CountParams
 from discolike.requests import DiscoverParams
+from discolike_cli._inputs import merge_domains
+from discolike_cli._inputs import read_params_file
 from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
@@ -15,6 +18,18 @@ LIST_VALUE_SEPARATOR = ","
 
 FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls back to JSON for non-tabular data)."
 PARAM_HELP = "Extra API parameter as KEY=VALUE (comma-separates into a list); see docs.discolike.com"
+BBOX_HELP = "Bounding box as min_lat,min_lon,max_lat,max_lon (repeatable). Longitudes may wrap the antimeridian."
+GEO_HELP = "Circular area as lat,lon or lat,lon,radius, e.g. 30.27,-97.74,30mi (repeatable). Radius defaults to 50km."
+SHAPES_ARE_ORED_HELP = (
+    "Every --geo circle, every --bbox and the --lat/--lon/--radius centre are OR'd together, up to 10 in total."
+)
+PARAMS_FILE_HELP = (
+    "JSON object of API parameter names (e.g. an app form copied over); --param and flags override its values."
+)
+DOMAINS_FILE_HELP = "CSV with a 'domain' column, or one domain per line; merged with --domain."
+EXCLUDE_DOMAINS_FILE_HELP = (
+    "CSV with a 'domain' column, or one domain per line; merged with --exclude-domain (100 max)."
+)
 SUBDOMAIN_HELP = "Limit results to this subdomain, up to 20, each at least 3 characters (repeatable)."
 NEGATE_SUBDOMAIN_HELP = "Exclude this subdomain, up to 20, each at least 3 characters (repeatable)."
 START_DATE_HELP = "Minimum company start date (YYYY-MM-DD) or range (YYYY-MM-DD,YYYY-MM-DD)."
@@ -39,8 +54,14 @@ def _parse_param(raw: str) -> tuple[str, str | list[str]]:
     return key, value
 
 
-def _merge_params(param: list[str] | None, **options: Any) -> dict[str, Any]:  # noqa: ANN401 -- forwarded as a dict to build_request
-    kwargs: dict[str, Any] = dict(_parse_param(raw) for raw in param or [])
+def _merge_params(
+    param: list[str] | None,
+    params_file: pathlib.Path | None = None,
+    **options: Any,  # noqa: ANN401 -- forwarded as a dict to build_request
+) -> dict[str, Any]:
+    """Precedence, lowest to highest: --params-file, --param KEY=VALUE, first-class flags."""
+    kwargs: dict[str, Any] = read_params_file(params_file) if params_file is not None else {}
+    kwargs.update(_parse_param(raw) for raw in param or [])
     kwargs.update({key: value for key, value in options.items() if value is not None})
     return kwargs
 
@@ -54,6 +75,13 @@ def discover_command(
     negate_phrase_match: list[str] | None = typer.Option(None, help="Negate the --phrase-match filter (repeatable)."),
     category: list[str] | None = typer.Option(None, help="Industry category filter (repeatable)."),
     negate_category: list[str] | None = typer.Option(None, help="Negate the --category filter (repeatable)."),
+    sub_industry: list[str] | None = typer.Option(None, help="Sub-industry filter, bare or PARENT/SUB (repeatable)."),
+    negate_sub_industry: list[str] | None = typer.Option(None, help="Negate the --sub-industry filter (repeatable)."),
+    lat: float | None = typer.Option(None, help="Latitude of the search centre; requires --lon."),
+    lon: float | None = typer.Option(None, help="Longitude of the search centre; requires --lat."),
+    radius: str | None = typer.Option(None, help="Radius around --lat/--lon, e.g. 50km or 30mi. Default 50km."),
+    geo: list[str] | None = typer.Option(None, help=f"{GEO_HELP} {SHAPES_ARE_ORED_HELP}"),
+    bbox: list[str] | None = typer.Option(None, help=f"{BBOX_HELP} {SHAPES_ARE_ORED_HELP}"),
     country: list[str] | None = typer.Option(None, help="ISO country code filter (repeatable)."),
     negate_country: list[str] | None = typer.Option(None, help="Negate the --country filter (repeatable)."),
     state: list[str] | None = typer.Option(None, help="State or region filter (repeatable)."),
@@ -104,6 +132,7 @@ def discover_command(
         None, "--auto-phrase-match/--no-auto-phrase-match", help="Auto-generate phrase matches from ICP text."
     ),
     exclude_domain: list[str] | None = typer.Option(None, help="Domain to exclude from results (repeatable)."),
+    exclude_domains_file: pathlib.Path | None = typer.Option(None, help=EXCLUDE_DOMAINS_FILE_HELP),
     inclusion_query_id: list[str] | None = typer.Option(
         None, help="Saved query ID whose domains are included (repeatable); requires the STARTER plan."
     ),
@@ -114,6 +143,7 @@ def discover_command(
     offset: int | None = typer.Option(None, help="Number of records to skip for pagination."),
     fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
     param: list[str] | None = typer.Option(None, "--param", help=PARAM_HELP),
+    params_file: pathlib.Path | None = typer.Option(None, help=PARAMS_FILE_HELP),
 ) -> None:
     """Discover companies matching your ICP and filters."""
     from discolike_cli.main import get_client
@@ -122,12 +152,20 @@ def discover_command(
         DiscoverParams,
         _merge_params(
             param,
+            params_file,
             icp_prompt=icp_prompt,
             domain=domain,
             phrase_match=phrase_match,
             negate_phrase_match=negate_phrase_match,
             category=category,
             negate_category=negate_category,
+            sub_industry=sub_industry,
+            negate_sub_industry=negate_sub_industry,
+            lat=lat,
+            lon=lon,
+            radius=radius,
+            geo=geo,
+            bbox=bbox,
             country=country,
             negate_country=negate_country,
             state=state,
@@ -157,7 +195,7 @@ def discover_command(
             include_search_domains=include_search_domains,
             auto_icp_text=auto_icp_text,
             auto_phrase_match=auto_phrase_match,
-            exclude_domain=exclude_domain,
+            exclude_domain=merge_domains(exclude_domain, exclude_domains_file),
             inclusion_query_id=inclusion_query_id,
             exclusion_query_id=exclusion_query_id,
             max_records=max_records,
@@ -174,6 +212,13 @@ def count_command(
     negate_phrase_match: list[str] | None = typer.Option(None, help="Negate the --phrase-match filter (repeatable)."),
     category: list[str] | None = typer.Option(None, help="Industry category filter (repeatable)."),
     negate_category: list[str] | None = typer.Option(None, help="Negate the --category filter (repeatable)."),
+    sub_industry: list[str] | None = typer.Option(None, help="Sub-industry filter, bare or PARENT/SUB (repeatable)."),
+    negate_sub_industry: list[str] | None = typer.Option(None, help="Negate the --sub-industry filter (repeatable)."),
+    lat: float | None = typer.Option(None, help="Latitude of the search centre; requires --lon."),
+    lon: float | None = typer.Option(None, help="Longitude of the search centre; requires --lat."),
+    radius: str | None = typer.Option(None, help="Radius around --lat/--lon, e.g. 50km or 30mi. Default 50km."),
+    geo: list[str] | None = typer.Option(None, help=f"{GEO_HELP} {SHAPES_ARE_ORED_HELP}"),
+    bbox: list[str] | None = typer.Option(None, help=f"{BBOX_HELP} {SHAPES_ARE_ORED_HELP}"),
     country: list[str] | None = typer.Option(None, help="ISO country code filter (repeatable)."),
     negate_country: list[str] | None = typer.Option(None, help="Negate the --country filter (repeatable)."),
     state: list[str] | None = typer.Option(None, help="State or region filter (repeatable)."),
@@ -201,6 +246,7 @@ def count_command(
     ),
     fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
     param: list[str] | None = typer.Option(None, "--param", help=PARAM_HELP),
+    params_file: pathlib.Path | None = typer.Option(None, help=PARAMS_FILE_HELP),
 ) -> None:
     """Count companies matching the given filters."""
     from discolike_cli.main import get_client
@@ -209,10 +255,18 @@ def count_command(
         CountParams,
         _merge_params(
             param,
+            params_file,
             phrase_match=phrase_match,
             negate_phrase_match=negate_phrase_match,
             category=category,
             negate_category=negate_category,
+            sub_industry=sub_industry,
+            negate_sub_industry=negate_sub_industry,
+            lat=lat,
+            lon=lon,
+            radius=radius,
+            geo=geo,
+            bbox=bbox,
             country=country,
             negate_country=negate_country,
             state=state,

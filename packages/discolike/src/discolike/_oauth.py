@@ -111,7 +111,12 @@ def _client_kwargs(
 
 
 def _credential_from_token(
-    token: dict[str, Any], *, client_id: str, token_endpoint: str, fallback_refresh_token: str | None
+    token: dict[str, Any],
+    *,
+    client_id: str,
+    token_endpoint: str,
+    resource: str | None,
+    fallback_refresh_token: str | None,
 ) -> OAuthCredential:
     # Exceptions raised here may be logged by SDK consumers; never attach live tokens to them.
     safe_payload = {key: value for key, value in token.items() if key not in TOKEN_KEYS}
@@ -128,7 +133,16 @@ def _credential_from_token(
         expires_at=float(token["expires_at"]),
         client_id=client_id,
         token_endpoint=token_endpoint,
+        resource=resource,
     )
+
+
+def _refresh_kwargs(credential: OAuthCredential) -> dict[str, Any]:
+    """Resend the resource the token was issued for; credentials stored before 0.3.3 have none."""
+    kwargs: dict[str, Any] = {"refresh_token": credential.refresh_token}
+    if credential.resource:
+        kwargs["resource"] = credential.resource
+    return kwargs
 
 
 def discover(base_url: str, *, client: httpx2.Client) -> AuthServerMetadata:
@@ -178,7 +192,11 @@ def exchange_code(
     with TokenClient(**kwargs) as client:
         token = client.fetch_token(metadata.token_endpoint, code=code, code_verifier=code_verifier, resource=resource)
     return _credential_from_token(
-        token, client_id=client_id, token_endpoint=metadata.token_endpoint, fallback_refresh_token=None
+        token,
+        client_id=client_id,
+        token_endpoint=metadata.token_endpoint,
+        resource=resource,
+        fallback_refresh_token=None,
     )
 
 
@@ -188,11 +206,12 @@ def refresh(
     """Rotates the tokens; any failure means the session is gone and the user must log in again."""
     try:
         with TokenClient(**_client_kwargs(client_id=credential.client_id, transport=transport)) as client:
-            token = client.refresh_token(credential.token_endpoint, refresh_token=credential.refresh_token)
+            token = client.refresh_token(credential.token_endpoint, **_refresh_kwargs(credential))
         return _credential_from_token(
             token,
             client_id=credential.client_id,
             token_endpoint=credential.token_endpoint,
+            resource=credential.resource,
             fallback_refresh_token=credential.refresh_token,
         )
     except AuthenticationError as exc:
@@ -204,11 +223,12 @@ async def refresh_async(
 ) -> OAuthCredential:
     try:
         async with AsyncTokenClient(**_client_kwargs(client_id=credential.client_id, transport=transport)) as client:
-            token = await client.refresh_token(credential.token_endpoint, refresh_token=credential.refresh_token)
+            token = await client.refresh_token(credential.token_endpoint, **_refresh_kwargs(credential))
         return _credential_from_token(
             token,
             client_id=credential.client_id,
             token_endpoint=credential.token_endpoint,
+            resource=credential.resource,
             fallback_refresh_token=credential.refresh_token,
         )
     except AuthenticationError as exc:

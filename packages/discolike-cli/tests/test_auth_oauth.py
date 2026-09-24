@@ -127,7 +127,7 @@ def test_login_default_runs_oauth_loopback_flow(
     stored = json.loads(config_path().read_text())
     assert (stored["auth_method"], stored["oauth"]) == ("oauth", CREDENTIAL.to_config())
     assert stored["oauth_client"] == {"client_id": "client-1", "redirect_uri": redirect_uri, "issuer": METADATA.issuer}
-    payload = json.loads(result.stderr.splitlines()[-1])
+    payload = json.loads(result.stdout)
     assert payload == {"logged_in": True, "method": "oauth", "expires_at": "2027-01-15T08:00:00+00:00"}
     assert provider.opened_urls[0] in result.stderr
 

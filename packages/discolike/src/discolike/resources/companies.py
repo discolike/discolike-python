@@ -39,6 +39,10 @@ class CompanyProfile(DiscolikeModel):
     start_date: str | None = None
     end_date: str | None = None
     address: CompanyAddress | None = None
+    # The API returned these as lat/lon before the release that renamed them.
+    latitude: float | None = pydantic.Field(default=None, validation_alias=pydantic.AliasChoices("latitude", "lat"))
+    longitude: float | None = pydantic.Field(default=None, validation_alias=pydantic.AliasChoices("longitude", "lon"))
+    geo_precision: str | None = None
     phones: list[str] | None = None
     public_emails: list[str] | None = None
     domain_associations: list[str] = pydantic.Field(default_factory=list)
@@ -47,6 +51,7 @@ class CompanyProfile(DiscolikeModel):
     description: str | None = None
     keywords: dict[str, float] = pydantic.Field(default_factory=dict)
     industry_groups: dict[str, float] = pydantic.Field(default_factory=dict)
+    sub_industry: dict[str, float] | None = None
     employees: str | None = None
     revenue_range: str | None = None
     business_model: dict[str, float] = pydantic.Field(default_factory=dict)

@@ -8,6 +8,7 @@ from discolike.requests import AppendParams
 from discolike.requests import SegmentFileParams
 from discolike.requests import SegmentParams
 from discolike.requests import ValidateIcpRequest
+from discolike_cli._inputs import read_domains_file
 from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
@@ -20,6 +21,10 @@ FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls
 WAIT_HELP = "Block until the job finishes, streaming progress to stderr."
 TIMEOUT_HELP = "Max seconds to wait with --wait."
 QUERY_ID_HELP = "Saved query ID whose domains are included alongside the file/--domain ones (repeatable)."
+INTEGRATION_ID_HELP = (
+    "Integration ID to use for the validation, or 'native-icp' to score with DiscoLike's own "
+    "ICP-fit model at no LLM cost (no LLM key and no web search on that run)."
+)
 
 
 @handle_errors
@@ -28,12 +33,13 @@ def validate_icp_command(
     icp: str = typer.Option(..., "--icp", help="ICP definition text to validate the domains against."),
     domain: list[str] | None = typer.Option(None, "--domain", help="Domain to validate (repeatable)."),
     file: pathlib.Path | None = typer.Option(
-        None, "--file", help="Text file with one domain per line (instead of --domain)."
+        None,
+        "--domains-file",
+        "--file",
+        help="CSV with a 'domain' column, or one domain per line (instead of --domain).",
     ),
     context_mode: str | None = typer.Option(None, "--context-mode", help="Context mode; see docs.discolike.com."),
-    integration_id: str | None = typer.Option(
-        None, "--integration-id", help="Integration ID to use for the validation."
-    ),
+    integration_id: str | None = typer.Option(None, "--integration-id", help=INTEGRATION_ID_HELP),
     web_search: bool | None = typer.Option(
         None, "--web-search/--no-web-search", help="Toggle web search during validation."
     ),
@@ -48,13 +54,9 @@ def validate_icp_command(
     from discolike_cli.main import get_client
 
     if (not domain) == (file is None):
-        raise typer.BadParameter("Provide exactly one of --domain or --file")
+        raise typer.BadParameter("Provide exactly one of --domain or --domains-file")
 
-    if file is not None:
-        domains = [line.strip() for line in file.read_text().splitlines() if line.strip()]
-    else:
-        assert domain is not None
-        domains = domain
+    domains = read_domains_file(file) if file is not None else domain
 
     request = build_request(
         ValidateIcpRequest,

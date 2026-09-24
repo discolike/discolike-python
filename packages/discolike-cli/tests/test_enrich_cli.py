@@ -271,3 +271,23 @@ def test_segment_forwards_query_id_for_domains_and_file(
     assert result.exit_code == 0, result.output
     assert captured[0].url.params.get_list("query_id") == ["q1"]
     assert captured[1].url.params.get_list("query_id") == ["q2"]
+
+
+def test_validate_icp_sends_native_icp_sentinel(install_build_client: Callable[[Handler], None]) -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"task_id": "vi-native"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        ["validate-icp", "--icp", "Cybersecurity for SMBs", "--domain", "acme.com", "--integration-id", "native-icp"],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"] == {
+        "icp_text": "Cybersecurity for SMBs",
+        "domains": ["acme.com"],
+        "integration_id": "native-icp",
+    }

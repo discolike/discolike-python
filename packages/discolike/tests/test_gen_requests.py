@@ -214,6 +214,29 @@ def test_normalize_schema_strips_scalar_item_constraints(gen) -> None:
     }
 
 
+def test_apply_overlays_fills_only_what_the_spec_is_missing(gen) -> None:
+    kept = {"DiscoverParams": {"type": "object", "properties": {"lat": {"type": "number", "description": "deployed"}}}}
+
+    properties = gen.apply_overlays(kept=kept)["DiscoverParams"]["properties"]
+
+    assert properties["lat"] == {"type": "number", "description": "deployed"}
+    assert properties["radius"]["type"] == "string"
+    assert properties["sub_industry"]["items"] == {"type": "string"}
+
+
+def test_apply_overlays_pins_sub_industry_over_a_spec_enum(gen) -> None:
+    kept = {"CountParams": {"type": "object", "properties": {"sub_industry": {"enum": ["CONSTRUCTION/ROOFING"]}}}}
+
+    sub_industry = gen.apply_overlays(kept=kept)["CountParams"]["properties"]["sub_industry"]
+
+    assert "enum" not in sub_industry
+    assert sub_industry["items"] == {"type": "string"}
+
+
+def test_apply_overlays_skips_schemas_this_run_does_not_generate(gen) -> None:
+    assert gen.apply_overlays(kept={}) == {}
+
+
 def test_build_codegen_spec_wraps_pruned_schemas(gen, routes) -> None:
     codegen_spec = gen.build_codegen_spec(spec=FAKE_SPEC, routes=routes)
     assert codegen_spec["paths"] == {}

@@ -12,10 +12,15 @@ from discolike.requests import ContactsCountParams
 from discolike.requests import ContactsLookupParams
 from discolike.requests import ContactsMatchParams
 from discolike.requests import ContactsSearchParams
+from discolike_cli._help import ContractCommand
+from discolike_cli._help import epilog
+from discolike_cli._inputs import merge_domains
 from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
 from discolike_cli._output import run_job
+from discolike_cli.discover import DOMAINS_FILE_HELP
+from discolike_cli.discover import PARAMS_FILE_HELP
 from discolike_cli.discover import _merge_params
 
 DEFAULT_WAIT_TIMEOUT_SECONDS = 900.0
@@ -50,7 +55,7 @@ app = typer.Typer(
 )
 
 
-@app.command("search")
+@app.command("search", cls=ContractCommand, epilog=epilog("contacts search"))
 @handle_errors
 def search_command(
     ctx: typer.Context,
@@ -66,6 +71,7 @@ def search_command(
     negate_summary: str | None = typer.Option(None, help=NEGATE_SUMMARY_HELP),
     skills: list[str] | None = typer.Option(None, help=SKILLS_HELP),
     domain: list[str] | None = typer.Option(None, help="Filter by company domain (repeatable)."),
+    domains_file: pathlib.Path | None = typer.Option(None, help=DOMAINS_FILE_HELP),
     person_country: list[str] | None = typer.Option(None, help="Filter by contact country (repeatable)."),
     negate_person_country: list[str] | None = typer.Option(None, help="Exclude contact countries (repeatable)."),
     person_state: list[str] | None = typer.Option(None, help=PERSON_STATE_HELP),
@@ -100,12 +106,14 @@ def search_command(
     consensus: int | None = typer.Option(None, help=CONSENSUS_HELP),
     fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
     param: list[str] | None = typer.Option(None, "--param", help=PARAM_HELP),
+    params_file: pathlib.Path | None = typer.Option(None, help=PARAMS_FILE_HELP),
 ) -> None:
     """Search contacts matching the given filters."""
     from discolike_cli.main import get_client
 
     kwargs = _merge_params(
         param,
+        params_file,
         icp_prompt=icp_prompt,
         seniority=seniority,
         negate_seniority=negate_seniority,
@@ -117,7 +125,7 @@ def search_command(
         summary=summary,
         negate_summary=negate_summary,
         skills=skills,
-        domain=domain,
+        domain=merge_domains(domain, domains_file),
         person_country=person_country,
         negate_person_country=negate_person_country,
         person_state=person_state,
@@ -164,6 +172,7 @@ def count_command(
     negate_summary: str | None = typer.Option(None, help=NEGATE_SUMMARY_HELP),
     skills: list[str] | None = typer.Option(None, help=SKILLS_HELP),
     domain: list[str] | None = typer.Option(None, help="Filter by company domain (repeatable)."),
+    domains_file: pathlib.Path | None = typer.Option(None, help=DOMAINS_FILE_HELP),
     person_country: list[str] | None = typer.Option(None, help="Filter by contact country (repeatable)."),
     negate_person_country: list[str] | None = typer.Option(None, help="Exclude contact countries (repeatable)."),
     person_state: list[str] | None = typer.Option(None, help=PERSON_STATE_HELP),
@@ -198,12 +207,14 @@ def count_command(
     consensus: int | None = typer.Option(None, help=CONSENSUS_HELP),
     fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
     param: list[str] | None = typer.Option(None, "--param", help=PARAM_HELP),
+    params_file: pathlib.Path | None = typer.Option(None, help=PARAMS_FILE_HELP),
 ) -> None:
     """Count contacts matching the given filters."""
     from discolike_cli.main import get_client
 
     kwargs = _merge_params(
         param,
+        params_file,
         icp_prompt=icp_prompt,
         seniority=seniority,
         negate_seniority=negate_seniority,
@@ -215,7 +226,7 @@ def count_command(
         summary=summary,
         negate_summary=negate_summary,
         skills=skills,
-        domain=domain,
+        domain=merge_domains(domain, domains_file),
         person_country=person_country,
         negate_person_country=negate_person_country,
         person_state=person_state,
@@ -332,6 +343,7 @@ def discover_command(
     negate_summary: str | None = typer.Option(None, help=NEGATE_SUMMARY_HELP),
     skills: list[str] | None = typer.Option(None, help=SKILLS_HELP),
     domain: list[str] | None = typer.Option(None, help="Filter by company domain (repeatable)."),
+    domains_file: pathlib.Path | None = typer.Option(None, help=DOMAINS_FILE_HELP),
     person_country: list[str] | None = typer.Option(None, help="Filter by contact country (repeatable)."),
     negate_person_country: list[str] | None = typer.Option(None, help="Exclude contact countries (repeatable)."),
     person_state: list[str] | None = typer.Option(None, help=PERSON_STATE_HELP),
@@ -370,12 +382,14 @@ def discover_command(
     consensus: int | None = typer.Option(None, "--consensus", help="Consensus threshold for discovered contacts."),
     fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
     param: list[str] | None = typer.Option(None, "--param", help=PARAM_HELP),
+    params_file: pathlib.Path | None = typer.Option(None, help=PARAMS_FILE_HELP),
 ) -> None:
     """Discover contacts grouped by company for the given filters."""
     from discolike_cli.main import get_client
 
     kwargs = _merge_params(
         param,
+        params_file,
         icp_prompt=icp_prompt,
         seniority=seniority,
         negate_seniority=negate_seniority,
@@ -387,7 +401,7 @@ def discover_command(
         summary=summary,
         negate_summary=negate_summary,
         skills=skills,
-        domain=domain,
+        domain=merge_domains(domain, domains_file),
         person_country=person_country,
         negate_person_country=negate_person_country,
         person_state=person_state,
@@ -418,12 +432,13 @@ def discover_command(
     emit(get_client(ctx).contacts.discover(build_request(ContactFilters, kwargs)), fmt=fmt)
 
 
-@app.command("generate")
+@app.command("generate", cls=ContractCommand, epilog=epilog("contacts generate"))
 @handle_errors
 def generate_command(
     ctx: typer.Context,
     icp_text: str = typer.Option(..., "--icp-text", help="ICP description used to generate contacts."),
-    domain: list[str] = typer.Option(..., "--domain", help="Target company domain (repeatable)."),
+    domain: list[str] | None = typer.Option(None, "--domain", help="Target company domain (repeatable)."),
+    domains_file: pathlib.Path | None = typer.Option(None, "--domains-file", help=DOMAINS_FILE_HELP),
     full_domain: list[str] | None = typer.Option(
         None, "--full-domain", help="Domain to send as full_domains to the generation job (repeatable)."
     ),
@@ -444,6 +459,11 @@ def generate_command(
     max_company_records: int | None = typer.Option(
         None, "--max-company-records", help="Maximum company records to process."
     ),
+    find_emails: bool = typer.Option(
+        False,
+        "--find-emails",
+        help="Run the email finder over named, email-less rows before the job completes (found addresses bill).",
+    ),
     wait: bool = typer.Option(False, "--wait", help=WAIT_HELP),
     timeout: float = typer.Option(DEFAULT_WAIT_TIMEOUT_SECONDS, "--timeout", help=TIMEOUT_HELP),
     fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
@@ -451,12 +471,15 @@ def generate_command(
     """Generate contacts for target domains from an ICP description (async job)."""
     from discolike_cli.main import get_client
 
+    if not domain and domains_file is None:
+        raise typer.BadParameter("Provide --domain or --domains-file")
+
     request = build_request(
         ContactGenerateRequest,
         _merge_params(
             None,
             icp_text=icp_text,
-            domains=domain,
+            domains=merge_domains(domain, domains_file),
             full_domains=full_domain,
             partial_domains=partial_domain,
             context_mode=context_mode,
@@ -465,6 +488,7 @@ def generate_command(
             search_context_size=search_context_size,
             max_contacts_per_domain=max_contacts_per_domain,
             max_company_records=max_company_records,
+            find_emails=find_emails or None,
         ),
     )
     run_job(get_client(ctx).contacts.generate(request), wait=wait, timeout=timeout, fmt=fmt)

@@ -4,6 +4,7 @@ import asyncio
 import time
 from collections.abc import Callable
 from typing import Any
+from typing import Literal
 
 import pydantic
 
@@ -21,6 +22,11 @@ FAMILY_SEGMENT = "segment"
 DEFAULT_WAIT_TIMEOUT_SECONDS = 900.0
 DEFAULT_POLL_INTERVAL_SECONDS = 5.0
 
+# The engine that ran decides the result columns: an LLM validation returns Fit / Confidence /
+# Reasoning, the native ICP-fit model ICP Fit / ICP Score / Reasoning, whose Reasoning is always
+# null. Read it, never assume.
+ColumnName = str | list[str] | None
+
 
 class JobStatus(DiscolikeModel):
     status: str
@@ -36,13 +42,15 @@ class JobStatus(DiscolikeModel):
     # model's built-in search only; on a BYOS run read search_provider instead.
     estimated_cost: float | None = None
     cost_metadata: dict[str, dict[str, Any]] | None = None
+    title_validation: Literal["llm", "none"] | None = None
 
 
 class Job:
-    def __init__(self, transport: Transport, *, task_family: str, task_id: str) -> None:
+    def __init__(self, transport: Transport, *, task_family: str, task_id: str, column_name: ColumnName = None) -> None:
         self._transport = transport
         self.task_family = task_family
         self.task_id = task_id
+        self.column_name = column_name
 
     def status(self) -> JobStatus:
         response = self._transport.request("GET", f"/{self.task_family}/status/{self.task_id}")
@@ -76,10 +84,13 @@ class Job:
 
 
 class AsyncJob:
-    def __init__(self, transport: AsyncTransport, *, task_family: str, task_id: str) -> None:
+    def __init__(
+        self, transport: AsyncTransport, *, task_family: str, task_id: str, column_name: ColumnName = None
+    ) -> None:
         self._transport = transport
         self.task_family = task_family
         self.task_id = task_id
+        self.column_name = column_name
 
     async def status(self) -> JobStatus:
         response = await self._transport.request("GET", f"/{self.task_family}/status/{self.task_id}")

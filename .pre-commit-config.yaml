@@ -39,13 +39,13 @@ repos:
       hooks:
           - id: foxguard
             name: foxguard
-            entry: npx -y foxguard@0.10.0 --staged
+            entry: npx -y foxguard@0.14.0 --staged
             language: system
             pass_filenames: false
             always_run: true
           - id: foxguard-secrets
             name: foxguard-secrets
-            entry: npx -y foxguard@0.10.0 secrets --staged
+            entry: npx -y foxguard@0.14.0 secrets --staged
             language: system
             pass_filenames: false
             always_run: true

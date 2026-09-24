@@ -34,6 +34,8 @@ from discolike._oauth import build_authorization_url
 from discolike._oauth import discover
 from discolike._oauth import exchange_code
 from discolike._oauth import register_client
+from discolike_cli._help import ContractCommand
+from discolike_cli._help import epilog
 from discolike_cli._loopback import CallbackServer
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
@@ -225,10 +227,10 @@ def _api_key_login(ctx: typer.Context, *, api_key: str | None) -> None:
     key = api_key or passed_globally or typer.prompt("API key", hide_input=True)
     _verify(ctx, api_key=key)
     save_config({"auth_method": AUTH_METHOD_API_KEY, "api_key": key})
-    print(json.dumps({"logged_in": True, "source": AUTH_METHOD_API_KEY}), file=sys.stderr)
+    emit({"logged_in": True, "source": AUTH_METHOD_API_KEY})
 
 
-@app.command()
+@app.command(cls=ContractCommand, epilog=epilog("auth login"))
 @handle_errors
 def login(
     ctx: typer.Context,
@@ -263,13 +265,10 @@ def login(
     credential = _oauth_login(ctx, open_browser=not no_browser, port=port)
     _verify(ctx, auth=credential)
     save_credential(credential)
-    print(
-        json.dumps({"logged_in": True, "method": AUTH_METHOD_OAUTH, "expires_at": _iso(credential.expires_at)}),
-        file=sys.stderr,
-    )
+    emit({"logged_in": True, "method": AUTH_METHOD_OAUTH, "expires_at": _iso(credential.expires_at)})
 
 
-@app.command()
+@app.command(cls=ContractCommand, epilog=epilog("auth status"))
 @handle_errors
 def status(ctx: typer.Context) -> None:
     """Show which credential is in use (option, env, or config) and verify it against the API."""

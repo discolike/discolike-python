@@ -17,12 +17,18 @@ import discolike.requests as requests_module
 CLI_SOURCE_DIR = pathlib.Path(__file__).resolve().parents[1] / "src" / "discolike_cli"
 REQUEST_BUILDER = "build_request"
 # icp_text was dropped from discover and contacts in 0.1.1 in favor of icp_prompt; see the *_icp_text_*_removed tests.
+# source_query_id/refs/round are saved-query plumbing: refs must be index-aligned with a stored
+# query's contacts, which the CLI never holds, so there's no flag for them to bind to.
 DELIBERATELY_OMITTED: dict[str, frozenset[str]] = {
     "DiscoverParams": frozenset({"icp_text"}),
     "ContactsSearchParams": frozenset({"icp_text"}),
     "ContactsCountParams": frozenset({"icp_text"}),
     "ContactFilters": frozenset({"icp_text"}),
+    "FindEmailBatchRequest": frozenset({"source_query_id", "refs", "round"}),
 }
+# ``discolike bulk`` takes the full vocabulary through --params-file / --param and manages the paging
+# fields itself; its flags are the handful a volume run needs, not one per SDK field.
+PARAMS_FILE_SITES = frozenset({"bulk.companies_command", "bulk.estimate_command", "bulk.contacts_command"})
 DICT_ONLY_FIELDS: dict[str, frozenset[str]] = {
     "ContactGenerateRequest": frozenset({"initial_contact_counts"}),
     "DiscoGenProcessRequest": frozenset({"previous_discogen_data"}),
@@ -77,7 +83,7 @@ def _build_request_sites() -> Iterator[tuple[str, str, set[str]]]:
                 yield f"{source_file.stem}.{function.name}", call.args[0].id, forwarded
 
 
-SITES = list(_build_request_sites())
+SITES = [site for site in _build_request_sites() if site[0] not in PARAMS_FILE_SITES]
 
 
 @pytest.mark.parametrize(("site", "model_name", "forwarded"), SITES, ids=[f"{s}->{m}" for s, m, _ in SITES])

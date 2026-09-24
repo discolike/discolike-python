@@ -78,6 +78,50 @@ result = job.wait()
 
 `JobTimeoutError` is a client-side wait limit only — the task keeps running server-side (large DiscoGen runs can take hours), so call `wait()` again to resume or fetch `status()` later. Cancelled tasks still return results for every item that finished before cancellation. Send one job per list (up to 10,000 domains) rather than splitting into parallel jobs — concurrent DiscoGen jobs share your LLM provider key and slow each other down.
 
+### Contact generation without an LLM key
+
+`contacts.generate` runs on your own search provider plus either your own LLM or DiscoLike Groove, DiscoLike's native extractor. Pass `NATIVE_ENGINE` to skip the LLM entirely:
+
+```python
+from discolike import NATIVE_ENGINE
+from discolike.requests import ContactGenerateRequest
+
+job = client.contacts.generate(
+    ContactGenerateRequest(
+        icp_text="VPs or Directors of Marketing at B2B SaaS",
+        domains=["gusto.com", "rippling.com"],
+        integration_id=NATIVE_ENGINE,
+    )
+)
+result = job.wait()
+print(result.title_validation)  # "none" on the native engine, "llm" on a BYOK run
+```
+
+The native engine returns every person the search surfaces with a title and does not validate titles against `icp_text`, so filter them yourself when that matters. Omit `integration_id` to use your default LLM integration, or native when you have none. A search provider is required either way.
+
+### ICP validation without an LLM key
+
+`validate_icp` runs your ICP text against each domain on your own LLM provider key, or on DiscoLike's own ICP-fit model. Pass `NATIVE_ICP_ENGINE` for the latter — no LLM key, no LLM cost, and no web search on that run:
+
+```python
+from discolike import NATIVE_ICP_ENGINE
+from discolike.requests import ValidateIcpRequest
+
+job = client.validate_icp(
+    ValidateIcpRequest(
+        icp_text="Cybersecurity for SMBs in North America, 50-500 employees",
+        domains=["gusto.com", "rippling.com"],
+        integration_id=NATIVE_ICP_ENGINE,
+    )
+)
+print(job.column_name)  # ["ICP Fit", "ICP Score", "Reasoning"]
+result = job.wait()
+```
+
+The engine decides the result columns, so read `job.column_name` instead of hardcoding them: an LLM run returns `Fit` / `Confidence` / `Reasoning`, the native model `ICP Fit` / `ICP Score` / `Reasoning (always null)`. `ICP Fit` is `Yes` or `No` at a 0.50 threshold on `ICP Score`, the calibrated probability as a 0.00-1.00 string. The native model returns only that score, so `Reasoning` is always `null` — the column is there to keep the set the same shape as an LLM run, not to carry an explanation. `integration_id="native-icp"` also works on `discogen.process` for a prompt that already carries the validation structure.
+
+Two errors are specific to the native engine: a 400 `ValidationError` when the ICP text does not yield a Mandatory / Reject if / Nice-to-have prompt, and a 503 `ServerError` when no ICP-fit engine is available. Task lifecycle, polling and statuses are the same either way.
+
 ## Links
 
 - **API documentation**: [docs.discolike.com](https://docs.discolike.com)

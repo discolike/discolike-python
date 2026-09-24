@@ -1,16 +1,21 @@
 from __future__ import annotations
 
 import enum
+import pathlib
 
 import typer
 
 from discolike._jobs import Job
 from discolike.requests import DiscoGenPersonaProcessRequest
 from discolike.requests import DiscoGenProcessRequest
+from discolike_cli._help import ContractCommand
+from discolike_cli._help import epilog
+from discolike_cli._inputs import merge_domains
 from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
 from discolike_cli._output import run_job
+from discolike_cli.discover import DOMAINS_FILE_HELP
 from discolike_cli.discover import _merge_params
 
 DEFAULT_WAIT_TIMEOUT_SECONDS = 900.0
@@ -23,10 +28,15 @@ FAMILY_HELP = (
     "segment jobs 'segment', contact bulk-match 'contactmatch')."
 )
 QUERY_HELP = "Research query to run."
-INTEGRATION_ID_HELP = "Integration ID to use for the run."
+INTEGRATION_ID_HELP = (
+    "Integration ID to use for the run, or 'native-icp' to score an ICP validation prompt with "
+    "DiscoLike's own model at no LLM cost."
+)
 WEB_SEARCH_HELP = "Toggle web search during research."
 CONTEXT_MODE_HELP = "Context mode; see docs.discolike.com."
 INCLUDE_X_SEARCH_HELP = "Toggle including X search in the research."
+TYPED_COLUMNS_HELP = "Let the detector answer yes/no, fixed-set and scale columns with a TypeSafe judgment model."
+INCLUDE_CONFIDENCE_HELP = "Add a confidence column beside each typed column."
 SEARCH_PROVIDER_ID_HELP = "Search provider ID to use for web search."
 SEARCH_CONTEXT_SIZE_HELP = "Search context size; see docs.discolike.com."
 TASK_ID_HELP = "Task ID returned when the job was started."
@@ -41,17 +51,22 @@ class TaskFamily(str, enum.Enum):
     segment = "segment"
 
 
-@app.command("run")
+@app.command("run", cls=ContractCommand, epilog=epilog("discogen run"))
 @handle_errors
 def run_command(
     ctx: typer.Context,
     query: str = typer.Option(..., "--query", help=QUERY_HELP),
-    domain: list[str] = typer.Option(..., "--domain", help="Company domain to research (repeatable)."),
+    domain: list[str] | None = typer.Option(None, "--domain", help="Company domain to research (repeatable)."),
+    domains_file: pathlib.Path | None = typer.Option(None, "--domains-file", help=DOMAINS_FILE_HELP),
     integration_id: str | None = typer.Option(None, "--integration-id", help=INTEGRATION_ID_HELP),
     web_search: bool | None = typer.Option(None, "--web-search/--no-web-search", help=WEB_SEARCH_HELP),
     context_mode: str | None = typer.Option(None, "--context-mode", help=CONTEXT_MODE_HELP),
     include_x_search: bool | None = typer.Option(
         None, "--include-x-search/--no-include-x-search", help=INCLUDE_X_SEARCH_HELP
+    ),
+    typed_columns: bool | None = typer.Option(None, "--typed-columns/--no-typed-columns", help=TYPED_COLUMNS_HELP),
+    include_confidence: bool | None = typer.Option(
+        None, "--include-confidence/--no-include-confidence", help=INCLUDE_CONFIDENCE_HELP
     ),
     search_provider_id: str | None = typer.Option(None, "--search-provider-id", help=SEARCH_PROVIDER_ID_HELP),
     search_context_size: str | None = typer.Option(None, "--search-context-size", help=SEARCH_CONTEXT_SIZE_HELP),
@@ -62,16 +77,21 @@ def run_command(
     """Run a DiscoGen research query across company domains (async job)."""
     from discolike_cli.main import get_client
 
+    if not domain and domains_file is None:
+        raise typer.BadParameter("Provide --domain or --domains-file")
+
     request = build_request(
         DiscoGenProcessRequest,
         _merge_params(
             None,
             query=query,
-            domains=domain,
+            domains=merge_domains(domain, domains_file),
             integration_id=integration_id,
             web_search=web_search,
             context_mode=context_mode,
             include_x_search=include_x_search,
+            typed_columns=typed_columns,
+            include_confidence=include_confidence,
             search_provider_id=search_provider_id,
             search_context_size=search_context_size,
         ),
@@ -90,6 +110,10 @@ def run_personas_command(
     context_mode: str | None = typer.Option(None, "--context-mode", help=CONTEXT_MODE_HELP),
     include_x_search: bool | None = typer.Option(
         None, "--include-x-search/--no-include-x-search", help=INCLUDE_X_SEARCH_HELP
+    ),
+    typed_columns: bool | None = typer.Option(None, "--typed-columns/--no-typed-columns", help=TYPED_COLUMNS_HELP),
+    include_confidence: bool | None = typer.Option(
+        None, "--include-confidence/--no-include-confidence", help=INCLUDE_CONFIDENCE_HELP
     ),
     search_provider_id: str | None = typer.Option(None, "--search-provider-id", help=SEARCH_PROVIDER_ID_HELP),
     search_context_size: str | None = typer.Option(None, "--search-context-size", help=SEARCH_CONTEXT_SIZE_HELP),
@@ -110,6 +134,8 @@ def run_personas_command(
             web_search=web_search,
             context_mode=context_mode,
             include_x_search=include_x_search,
+            typed_columns=typed_columns,
+            include_confidence=include_confidence,
             search_provider_id=search_provider_id,
             search_context_size=search_context_size,
         ),
@@ -138,7 +164,7 @@ def _build_job(ctx: typer.Context, family: TaskFamily, task_id: str) -> Job:
     return Job(client._transport, task_family=family.value, task_id=task_id)
 
 
-@app.command("status")
+@app.command("status", cls=ContractCommand, epilog=epilog("discogen status"))
 @handle_errors
 def status_command(
     ctx: typer.Context,
