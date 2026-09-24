@@ -62,3 +62,20 @@ def test_read_params_file_rejects_invalid_json(tmp_path: Path) -> None:
 def test_read_params_file_missing_is_bad_parameter(tmp_path: Path) -> None:
     with pytest.raises(typer.BadParameter, match="not found"):
         read_params_file(tmp_path / "nope.json")
+
+
+def test_read_domains_file_directory_is_bad_parameter(tmp_path: Path) -> None:
+    with pytest.raises(typer.BadParameter, match="could not be read"):
+        read_domains_file(tmp_path)
+
+
+def test_read_domains_file_bad_encoding_is_bad_parameter(tmp_path: Path) -> None:
+    path = tmp_path / "latin1.csv"
+    path.write_bytes(b"caf\xe9.com\n")
+    with pytest.raises(typer.BadParameter, match="could not be read"):
+        read_domains_file(path)
+
+
+def test_read_params_file_directory_is_bad_parameter(tmp_path: Path) -> None:
+    with pytest.raises(typer.BadParameter, match="could not be read"):
+        read_params_file(tmp_path)

@@ -23,6 +23,8 @@ def read_domains_file(path: pathlib.Path) -> list[str]:
             rows = list(csv.reader(handle))
     except FileNotFoundError as exc:
         raise typer.BadParameter(f"domains file not found: {path}") from exc
+    except (OSError, UnicodeDecodeError) as exc:
+        raise typer.BadParameter(f"domains file {path} could not be read: {exc}") from exc
     header = [cell.strip().lower() for cell in rows[0]] if rows else []
     column = header.index(DOMAIN_COLUMN) if DOMAIN_COLUMN in header else 0
     body = rows[1:] if DOMAIN_COLUMN in header else rows
@@ -46,6 +48,8 @@ def read_params_file(path: pathlib.Path) -> dict[str, Any]:
         loaded = json.loads(path.read_text())
     except FileNotFoundError as exc:
         raise typer.BadParameter(f"params file not found: {path}") from exc
+    except (OSError, UnicodeDecodeError) as exc:
+        raise typer.BadParameter(f"params file {path} could not be read: {exc}") from exc
     except json.JSONDecodeError as exc:
         raise typer.BadParameter(f"params file {path} must contain valid JSON: {exc}") from exc
     if not isinstance(loaded, dict):

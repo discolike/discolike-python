@@ -21,6 +21,7 @@ MAX_RADIUS_KM = 1000.0
 KM_PER_MILE = 1.609344
 RADIUS_KM_SUFFIX = "km"
 RADIUS_MILE_SUFFIX = "mi"
+MAX_GEO_SHAPES = 10
 
 
 class DiscolikeModel(pydantic.BaseModel):
@@ -46,6 +47,24 @@ class DiscolikeRequest(pydantic.BaseModel):
     @classmethod
     def _validate_geo(cls, value: object) -> object:
         return _validate_shapes(value=value, name="geo", fmt=GEO_FORMAT, rejection=_geo_rejection)
+
+    @pydantic.model_validator(mode="after")
+    def _validate_geo_shapes(self) -> DiscolikeRequest:
+        if "lat" not in type(self).model_fields:
+            return self
+        lat, lon, radius = getattr(self, "lat", None), getattr(self, "lon", None), getattr(self, "radius", None)
+        if (lat is None) != (lon is None):
+            raise ValueError("lat and lon must be supplied together")
+        if radius is not None:
+            if lat is None:
+                raise ValueError("radius needs lat and lon")
+            reason = _radius_km_rejection(radius)
+            if reason is not None:
+                raise ValueError(reason)
+        total = (lat is not None) + len(getattr(self, "geo", None) or []) + len(getattr(self, "bbox", None) or [])
+        if total > MAX_GEO_SHAPES:
+            raise ValueError(f"{total} geo shapes (lat/lon, geo and bbox together); at most {MAX_GEO_SHAPES}")
+        return self
 
     def to_wire(self) -> dict[str, Any]:
         return self.model_dump(mode="json", exclude_unset=True, by_alias=True)

@@ -229,6 +229,40 @@ def test_bulk_companies_resumes_from_existing_csv(
     assert summary == {**summary, "companies": 28, "new": 3}
 
 
+def test_bulk_companies_resume_still_excludes_the_csv_when_a_suppression_list_is_supplied(
+    install_build_client: Callable[[Handler], None], tmp_path: Path
+) -> None:
+    out = tmp_path / "companies.csv"
+    out.write_text("domain,name,country,employees,similarity\n" + "".join(f"old{i}.com,,,,\n" for i in range(25)))
+    recorder = Recorder(discover=[_companies("n", 3)], queries_exclusion_list=[{"query_id": "q-resume"}])
+    install_build_client(recorder)
+    result = runner.invoke(
+        app,
+        [
+            "bulk",
+            "companies",
+            "--icp-prompt",
+            "x",
+            "--page-size",
+            "20",
+            "--max-companies",
+            "100",
+            "--run-name",
+            "r",
+            "--exclusion-query-id",
+            "q-customers",
+            "--out",
+            str(out),
+            *NO_LIMIT,
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert recorder.bodies("/v1/queries/exclusion-list") == [
+        {"query_name": "r-resume-0", "domains": [f"old{i}.com" for i in range(25)]}
+    ]
+    assert recorder.params("/v1/discover")[0].get_list("exclusion_query_id") == ["q-customers", "q-resume"]
+
+
 def test_bulk_companies_overwrite_ignores_existing_csv(
     install_build_client: Callable[[Handler], None], tmp_path: Path
 ) -> None:

@@ -217,13 +217,12 @@ def companies_command(
         result = _call_with_retry(limiter, functools.partial(client.queries.create_exclusion_list, request))
         exclusion_ids.append(str(result.query_id))
 
-    if seen and not exclusion_ids:
+    if seen:
+        # --exclusion-query-id may be a suppression list unrelated to this CSV, so the file is always re-excluded.
+        supplied = len(exclusion_ids)
         for index, batch in _chunked(seen, MAX_RECORDS):
             arm_exclusion(batch, f"{run_name}-resume-{index}")
-        _log(
-            f"re-armed {len(exclusion_ids)} exclusion list(s) from the existing file "
-            "(pass the original --exclusion-query-id values to reuse them instead)"
-        )
+        _log(f"re-armed {len(exclusion_ids) - supplied} exclusion list(s) from the existing file")
 
     added = 0
     rounds = 0

@@ -2,6 +2,8 @@ import pydantic
 import pytest
 
 from discolike._models import DiscolikeRequest
+from discolike.requests import CountParams
+from discolike.requests import DiscoverParams
 
 
 class _Probe(DiscolikeRequest):
@@ -137,3 +139,34 @@ def test_bbox_rejects_boxes_the_platform_would_reject(value: str, message: str) 
 
 def test_bbox_none_stays_unvalidated() -> None:
     assert _BboxProbe(bbox=None).to_wire() == {"bbox": None}
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"lat": 40.0}, "lat and lon must be supplied together"),
+        ({"lon": -74.0}, "lat and lon must be supplied together"),
+        ({"radius": "10km"}, "radius needs lat and lon"),
+        ({"lat": 40.0, "lon": -74.0, "radius": "wide"}, "must be a number optionally suffixed"),
+        ({"lat": 40.0, "lon": -74.0, "radius": "1001km"}, "greater than 0"),
+        ({"geo": ["30.27,-97.74"] * 11}, "11 geo shapes"),
+        (
+            {"lat": 40.0, "lon": -74.0, "geo": ["30.27,-97.74"] * 5, "bbox": ["40.4,-74.3,41.0,-73.7"] * 5},
+            "11 geo shapes",
+        ),
+    ],
+)
+def test_discover_params_rejects_geo_combinations_the_platform_would_reject(
+    kwargs: dict[str, object], message: str
+) -> None:
+    with pytest.raises(pydantic.ValidationError, match=message):
+        DiscoverParams.model_validate(kwargs)
+
+
+def test_discover_params_accepts_ten_shapes_and_a_centre_with_radius() -> None:
+    DiscoverParams(lat=40.0, lon=-74.0, radius="30mi", geo=["30.27,-97.74"] * 4, bbox=["40.4,-74.3,41.0,-73.7"] * 5)
+
+
+def test_count_params_rejects_lat_without_lon() -> None:
+    with pytest.raises(pydantic.ValidationError, match="supplied together"):
+        CountParams(lat=40.0)
