@@ -374,7 +374,7 @@ dev = [
 
 [[package]]
 name = "discolike-cli"
-version = "0.4.0"
+version = "0.4.1"
 source = { editable = "packages/discolike-cli" }
 dependencies = [
     { name = "discolike" },
@@ -395,7 +395,7 @@ dev = [
 requires-dist = [
     { name = "discolike", editable = "packages/discolike" },
     { name = "rich", specifier = ">=13.0" },
-    { name = "typer", specifier = ">=0.12" },
+    { name = "typer", specifier = ">=0.26,<0.28" },
 ]
 
 [package.metadata.requires-dev]

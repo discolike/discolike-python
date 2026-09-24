@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 (2026-09-23)
+
+- CLI: fix `ImportError: cannot import name 'Abort' from 'typer._click.exceptions'` on every command in a fresh 0.4.0 install. Typer 0.27 moved `Abort`; the CLI now imports the public `typer.Abort` and requires `typer>=0.26,<0.28`, since it still relies on Typer's vendored Click for its error envelope and help formatting.
+
 ## 0.4.0 (2026-09-23)
 
 - SDK: `validate_icp` can run without an LLM key. Pass `integration_id=NATIVE_ICP_ENGINE` (exported from `discolike`, the string `"native-icp"`) to score with DiscoLike's own ICP-fit model instead of your BYOK LLM: no LLM cost, no LLM key, and no web search on that run. The same sentinel works on `discogen.process` for a prompt that already carries the validation structure. Two new errors are specific to it: a 400 `ValidationError` when the ICP text does not yield a Mandatory / Reject if / Nice-to-have prompt, and a 503 `ServerError` when no ICP-fit engine is available. Task lifecycle, polling and statuses are unchanged.

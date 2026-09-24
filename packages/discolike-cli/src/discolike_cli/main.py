@@ -5,7 +5,7 @@ from importlib.metadata import version as package_version
 from typing import Any
 
 import typer
-from typer._click.exceptions import Abort
+from typer import Abort
 from typer._click.exceptions import ClickException
 from typer._click.exceptions import NoArgsIsHelpError
 from typer._click.exceptions import UsageError
