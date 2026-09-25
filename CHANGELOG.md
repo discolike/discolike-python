@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- SDK/CLI: `discogen.process` / `discogen.process_personas` with `typed_columns=True` now raise a 400 `ValidationError` at submit when the account has no TypeSafe integration, instead of returning a job whose typed cells all read `Error: No TypeSafe integration is configured`. No SDK code change; the server rejects earlier.
+
 ## 0.4.1 (2026-09-23)
 
 - CLI: fix `ImportError: cannot import name 'Abort' from 'typer._click.exceptions'` on every command in a fresh 0.4.0 install. Typer 0.27 moved `Abort`; the CLI now imports the public `typer.Abort` and requires `typer>=0.26.1,<0.28`, since it still relies on Typer's vendored Click for its error envelope and help formatting.
