@@ -1460,7 +1460,7 @@ class DiscoGenProcessRequest(DiscolikeRequest):
         ),
     ]
     context_mode: Annotated[Literal["website", "profile", "domain"] | None, Field(title="Context Mode")] = "website"
-    previous_discogen_data: Annotated[dict[str, Any] | None, Field(title="Previous Discogen Data")] = None
+    previous_discogen_data: Annotated[dict[str, dict[str, Any]] | None, Field(title="Previous Discogen Data")] = None
 
 
 class DiscoGenPersonaProcessRequest(DiscolikeRequest):
@@ -1506,7 +1506,7 @@ class DiscoGenPersonaProcessRequest(DiscolikeRequest):
         Literal["name_only", "profile", "profile_summary", "company", "full"] | None,
         Field(title="Context Mode"),
     ] = "profile"
-    previous_discogen_data: Annotated[dict[str, Any] | None, Field(title="Previous Discogen Data")] = None
+    previous_discogen_data: Annotated[dict[str, dict[str, Any]] | None, Field(title="Previous Discogen Data")] = None
 
 
 class ValidateIcpRequest(DiscolikeRequest):
@@ -2904,6 +2904,26 @@ class MatchBulkParams(DiscolikeRequest):
             title="Min Match Confidence",
         ),
     ] = 50
+
+
+class ProspectingBrief(DiscolikeRequest):
+    brief: Annotated[str, Field(max_length=4000, min_length=10, title="Brief")]
+    domains: Annotated[list[str] | None, Field(max_length=1000, title="Domains")] = None
+    company_names: Annotated[list[str] | None, Field(max_length=100, title="Company Names")] = None
+    exclude_domains: Annotated[list[str] | None, Field(max_length=1000, title="Exclude Domains")] = None
+    target_companies: Annotated[int | None, Field(ge=1, le=100, title="Target Companies")] = 25
+    contacts_per_company: Annotated[int | None, Field(ge=1, le=5, title="Contacts Per Company")] = 2
+    max_candidates: Annotated[int | None, Field(ge=1, le=1000, title="Max Candidates")] = 200
+    max_actions: Annotated[int | None, Field(ge=1, le=60, title="Max Actions")] = 24
+    validation_integration_id: Annotated[str | None, Field(max_length=128, title="Validation Integration Id")] = None
+    contact_integration_id: Annotated[str | None, Field(max_length=128, title="Contact Integration Id")] = None
+    search_provider_id: Annotated[str | None, Field(max_length=128, title="Search Provider Id")] = None
+    segment: Annotated[bool | None, Field(title="Segment")] = False
+
+
+class ProspectingGetParams(DiscolikeRequest):
+    offset: Annotated[int | None, Field(ge=0, title="Offset")] = 0
+    limit: Annotated[int | None, Field(ge=1, le=100, title="Limit")] = 100
 
 
 class LLMProviderCreateRequest(DiscolikeRequest):

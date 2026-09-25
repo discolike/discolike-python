@@ -421,3 +421,23 @@ Committed request models track the dev spec (`--spec-url https://api.dev.discoli
 ## License
 
 [MIT](LICENSE)
+
+
+### Managed prospecting
+
+Existing processing charges and configured BYOK/BYOS integrations apply; the coordinator uses platform credentials. Limits bound work, not provider dollar spend.
+
+```python
+from discolike.requests import ProspectingBrief, ProspectingGetParams
+
+run = client.prospecting.start(
+    ProspectingBrief(brief="US logistics companies; operations directors", target_companies=10),
+    idempotency_key="logistics-pilot-2026-09-25",
+)
+run = client.prospecting.wait(run.run_id)
+print(run.status, run.stop_reason, run.accepted_contacts)
+page = client.prospecting.get(run.run_id, ProspectingGetParams(offset=100, limit=100))
+# client.prospecting.cancel(run.run_id)
+```
+
+The async client has the same methods with `await`. Save the run ID and submission key. Reuse the key on retries; a different brief with the same key is rejected. `wait` returns the first page on `completed`, `needs_input`, `failed`, or `cancelled`, and a local timeout leaves server execution running. Partial results remain available. The pilot uses email finder outcomes; it does not expose raw email verification through the public API.

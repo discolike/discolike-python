@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- CLI: add `prospecting start/status/cancel/wait`, with explicit submission keys, work limits, integration selection, and result pagination.
+- SDK: add sync/async `client.prospecting.start/get/cancel/wait` for managed prospecting. Starts require an idempotency key; status responses preserve partial results and support pagination. `wait` stops on needs-input, failed, and cancelled runs as well as completion; inspect `stop_reason` before assuming the target was reached.
+
 - SDK/CLI: `discogen.process` / `discogen.process_personas` with `typed_columns=True` now raise a 400 `ValidationError` at submit when the account has no TypeSafe integration, instead of returning a job whose typed cells all read `Error: No TypeSafe integration is configured`. No SDK code change; the server rejects earlier.
 
 ## 0.4.1 (2026-09-23)

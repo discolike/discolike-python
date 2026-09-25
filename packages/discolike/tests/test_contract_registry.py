@@ -5,7 +5,8 @@ import sys
 
 from discolike.resources._base import get_discolike_route
 
-ALLOW_UNSTAMPED = {"job", "batch"}
+# wait orchestrates repeated get() calls and is not a separate route.
+ALLOW_UNSTAMPED = {"job", "batch", "wait"}
 SCRIPT_PATH = pathlib.Path(__file__).parents[3] / "scripts" / "check_contract.py"
 
 

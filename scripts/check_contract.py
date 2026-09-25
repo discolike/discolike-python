@@ -26,6 +26,8 @@ from discolike.resources.companies import Score
 from discolike.resources.companies import Subsidiary
 from discolike.resources.companies import Vendor
 from discolike.resources.match import MatchResponse
+from discolike.resources.prospecting import ProspectingPlan
+from discolike.resources.prospecting import ProspectingRun
 from discolike.resources.queries import SavedQueries
 
 IGNORE_PARAMS = {"file"}
@@ -36,6 +38,8 @@ ASYNC_CLASS_PREFIX = "Async"
 # checked field-by-field against the spec, so a platform-side model change surfaces as a
 # contract failure instead of silently landing in `extra`.
 MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
+    "ProspectingRunResponse": ProspectingRun,
+    "ProspectingPlan": ProspectingPlan,
     "CompanyResult": CompanyProfile,
     "ExtractResponse": ExtractResult,
     "ScoreResponse": Score,
@@ -74,8 +78,9 @@ def _resource_modules() -> list[ModuleType]:
 
 def _request_model(member: object) -> type[DiscolikeRequest] | None:
     for annotation in typing.get_type_hints(member).values():
-        if inspect.isclass(annotation) and issubclass(annotation, DiscolikeRequest):
-            return annotation
+        for candidate in (annotation, *typing.get_args(annotation)):
+            if inspect.isclass(candidate) and issubclass(candidate, DiscolikeRequest):
+                return candidate
     return None
 
 
