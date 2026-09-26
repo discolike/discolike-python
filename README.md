@@ -441,3 +441,5 @@ page = client.prospecting.get(run.run_id, ProspectingGetParams(offset=100, limit
 ```
 
 The async client has the same methods with `await`. Save the run ID and submission key. Reuse the key on retries; a different brief with the same key is rejected. `wait` returns the first page on `completed`, `needs_input`, `failed`, or `cancelled`, and a local timeout leaves server execution running. Partial results remain available. The pilot uses email finder outcomes; it does not expose raw email verification through the public API.
+
+Prospecting scope checks can stop with `needs_input`: inspect `stop_reason` for `out_of_scope`, `company_target`, `persona_target`, or `ambiguous_target`, and `error` for guidance. These runs count the interpretation action and do not execute downstream research. Correct the brief and use a new submission key.
