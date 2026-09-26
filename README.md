@@ -425,7 +425,7 @@ Committed request models track the dev spec (`--spec-url https://api.dev.discoli
 
 ### Managed prospecting
 
-Existing processing charges and configured BYOK/BYOS integrations apply; the coordinator uses platform credentials. Limits bound work, not provider dollar spend.
+Existing processing charges and configured BYOK/BYOS integrations apply. Interpretation, coordination, and prompt preparation use platform credentials. Independent contact qualification uses your contact LLM integration; native contacts use your validation LLM integration or organization default, so this workflow requires a customer LLM even with native extraction. Missing keys and provider errors never fall back to platform keys. Limits bound work, not provider dollar spend.
 
 ```python
 from discolike.requests import ProspectingBrief, ProspectingGetParams

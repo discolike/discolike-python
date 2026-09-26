@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Managed prospecting contact qualification now uses customer LLM credentials, including when contact extraction is native. Missing keys and provider errors do not fall back to platform credentials. Request and response schemas are unchanged.
+
 - CLI: add `prospecting start/status/cancel/wait`, with explicit submission keys, work limits, integration selection, and result pagination.
 - SDK: add sync/async `client.prospecting.start/get/cancel/wait` for managed prospecting. Starts require an idempotency key; status responses preserve partial results and support pagination. `wait` stops on needs-input, failed, and cancelled runs as well as completion; inspect `stop_reason` before assuming the target was reached, including scope rejection and targeting-clarification reasons.
 
