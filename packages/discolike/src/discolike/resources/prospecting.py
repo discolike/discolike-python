@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import builtins
 import math
 import time
+from datetime import datetime
 from typing import Any
 from typing import Literal
 from uuid import UUID
@@ -11,13 +13,20 @@ from pydantic import Field
 
 from discolike._exceptions import JobTimeoutError
 from discolike._models import DiscolikeModel
+from discolike.requests import ProspectingApproveRequest
 from discolike.requests import ProspectingBrief
 from discolike.requests import ProspectingGetParams
+from discolike.requests import ProspectingListParams
+from discolike.requests import ProspectingMessageRequest
 from discolike.resources._base import AsyncAPIResource
 from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
 
-TERMINAL_STATUSES = frozenset({"completed", "needs_input", "failed", "cancelled"})
+WAIT_STATUSES = frozenset({"proposed", "completed", "needs_input", "failed", "cancelled"})
+ProspectingStatus = Literal[
+    "drafting", "proposed", "queued", "running", "needs_input", "completed", "failed", "cancelled"
+]
+ProspectingStage = Literal["plan", "discover", "validate", "contacts", "generate", "verify", "segment"]
 
 
 class ProspectingPlan(DiscolikeModel):
@@ -28,12 +37,63 @@ class ProspectingPlan(DiscolikeModel):
     issues: list[str] = Field(default_factory=list)
 
 
-class ProspectingRun(DiscolikeModel):
+class ProspectingEvent(DiscolikeModel):
+    seq: int
+    created_at: datetime
+    stage: str | None = None
+    kind: Literal["queued", "decision", "started", "progress", "result", "stopped", "warning"]
+    message: str
+    data: dict[str, Any] | None = None
+
+
+class ProspectingMessage(DiscolikeModel):
+    seq: int
+    created_at: datetime
+    role: Literal["user", "agent"]
+    kind: Literal["text", "plan", "milestone", "question", "ack", "error"]
+    content: str
+    data: dict[str, Any] | None = None
+
+
+class ProspectingInFlight(DiscolikeModel):
+    stage: ProspectingStage
+    items: int
+    plan_version: int
+    state: Literal["dispatching", "running"]
+    started_at: datetime
+
+
+class ProspectingRunSummary(DiscolikeModel):
     run_id: UUID
-    status: Literal["queued", "running", "needs_input", "completed", "failed", "cancelled"]
+    status: ProspectingStatus
+    title: str | None = None
     stop_reason: str | None = None
     stage: str | None = None
+    brief: str = Field(max_length=200)
+    target_companies: int
+    contacts_per_company: int
+    qualified_companies: int = 0
+    accepted_contacts: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProspectingRun(DiscolikeModel):
+    run_id: UUID
+    status: ProspectingStatus
+    stop_reason: str | None = None
+    stage: str | None = None
+    phase: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    brief: ProspectingBrief
+    target_companies: int
+    contacts_per_company: int
     plan: ProspectingPlan | None = None
+    last_decision: dict[str, Any] | None = None
+    events: list[ProspectingEvent] = Field(default_factory=list)
+    next_event_seq: int = 0
+    waiting_for_worker: bool = False
     companies: list[dict[str, Any]] = Field(default_factory=list)
     contacts: list[dict[str, Any]] = Field(default_factory=list)
     total_companies: int = 0
@@ -45,6 +105,16 @@ class ProspectingRun(DiscolikeModel):
     actions_used: int = 0
     max_actions: int
     error: str | None = None
+    title: str | None = None
+    plan_version: int = 1
+    approved_plan_version: int | None = None
+    saved_query_id: UUID | None = None
+    messages: list[ProspectingMessage] = Field(default_factory=list)
+    next_message_seq: int = 0
+    in_flight: list[ProspectingInFlight] = Field(default_factory=list)
+    fit_companies: int = 0
+    emails_found: int = 0
+    reply_pending: bool = False
 
 
 def _key(value: str) -> str:
@@ -64,9 +134,34 @@ def _deadline(timeout: float, poll_interval: float) -> float:
 
 
 class ProspectingResource(SyncAPIResource):
+    @api_route("GET", "/prospecting/runs")
+    def list(self, params: ProspectingListParams | None = None) -> builtins.list[ProspectingRunSummary]:
+        """List recent organization runs, newest first; default 20, maximum 50."""
+        response = self._transport.request("GET", "/prospecting/runs", params=params.to_wire() if params else None)
+        return [ProspectingRunSummary.model_validate(row) for row in response.json()]
+
+    @api_route("POST", "/prospecting/runs/{run_id}/approve")
+    def approve(self, run_id: str | UUID, request: ProspectingApproveRequest) -> ProspectingRun:
+        """Approve the reviewed plan version; repeating the same approval is safe."""
+        response = self._transport.request("POST", _path(run_id) + "/approve", json_body=request.to_wire())
+        return ProspectingRun.model_validate(response.json())
+
+    @api_route("POST", "/prospecting/runs/{run_id}/messages")
+    def message(
+        self, run_id: str | UUID, request: ProspectingMessageRequest, *, idempotency_key: str
+    ) -> ProspectingMessage:
+        """Send a chat message; poll get() with ProspectingGetParams(messages_after=...) for the agent's reply."""
+        response = self._transport.request(
+            "POST",
+            _path(run_id) + "/messages",
+            json_body=request.to_wire(),
+            headers={"Idempotency-Key": _key(idempotency_key)},
+        )
+        return ProspectingMessage.model_validate(response.json())
+
     @api_route("POST", "/prospecting/runs")
     def start(self, request: ProspectingBrief, *, idempotency_key: str) -> ProspectingRun:
-        """Start a managed run; retain the key when retrying this submission."""
+        """Draft a plan for approval; retain the key when retrying this submission."""
         response = self._transport.request(
             "POST", "/prospecting/runs", json_body=request.to_wire(), headers={"Idempotency-Key": _key(idempotency_key)}
         )
@@ -83,15 +178,16 @@ class ProspectingResource(SyncAPIResource):
         return ProspectingRun.model_validate(response.json())
 
     def wait(self, run_id: str | UUID, *, timeout: float = 3600, poll_interval: float = 5) -> ProspectingRun:
-        """Return the first result page at any terminal status, preserving partial results.
+        """Return the first page when approval, input, or a terminal outcome is ready.
 
+        A proposed run needs approve() with its plan_version before research starts.
         Inspect status and stop_reason; completed does not guarantee the target was met.
         Timeout stops local polling only. Fetch subsequent pages with get().
         """
         deadline = _deadline(timeout, poll_interval)
         while True:
             run = self.get(run_id)
-            if run.status in TERMINAL_STATUSES:
+            if run.status in WAIT_STATUSES:
                 return run
             remaining = deadline - time.monotonic()
             if remaining <= 0:
@@ -100,6 +196,33 @@ class ProspectingResource(SyncAPIResource):
 
 
 class AsyncProspectingResource(AsyncAPIResource):
+    @api_route("GET", "/prospecting/runs")
+    async def list(self, params: ProspectingListParams | None = None) -> builtins.list[ProspectingRunSummary]:
+        """List recent organization runs, newest first; default 20, maximum 50."""
+        response = await self._transport.request(
+            "GET", "/prospecting/runs", params=params.to_wire() if params else None
+        )
+        return [ProspectingRunSummary.model_validate(row) for row in response.json()]
+
+    @api_route("POST", "/prospecting/runs/{run_id}/approve")
+    async def approve(self, run_id: str | UUID, request: ProspectingApproveRequest) -> ProspectingRun:
+        """Approve the reviewed plan version; repeating the same approval is safe."""
+        response = await self._transport.request("POST", _path(run_id) + "/approve", json_body=request.to_wire())
+        return ProspectingRun.model_validate(response.json())
+
+    @api_route("POST", "/prospecting/runs/{run_id}/messages")
+    async def message(
+        self, run_id: str | UUID, request: ProspectingMessageRequest, *, idempotency_key: str
+    ) -> ProspectingMessage:
+        """Send a chat message; poll get() with ProspectingGetParams(messages_after=...) for the agent's reply."""
+        response = await self._transport.request(
+            "POST",
+            _path(run_id) + "/messages",
+            json_body=request.to_wire(),
+            headers={"Idempotency-Key": _key(idempotency_key)},
+        )
+        return ProspectingMessage.model_validate(response.json())
+
     @api_route("POST", "/prospecting/runs")
     async def start(self, request: ProspectingBrief, *, idempotency_key: str) -> ProspectingRun:
         response = await self._transport.request(
@@ -118,11 +241,11 @@ class AsyncProspectingResource(AsyncAPIResource):
         return ProspectingRun.model_validate(response.json())
 
     async def wait(self, run_id: str | UUID, *, timeout: float = 3600, poll_interval: float = 5) -> ProspectingRun:
-        """Return the first page on completed/needs_input/failed/cancelled; inspect stop_reason."""
+        """Return the first page on proposed/needs_input/completed/failed/cancelled; inspect status."""
         deadline = _deadline(timeout, poll_interval)
         while True:
             run = await self.get(run_id)
-            if run.status in TERMINAL_STATUSES:
+            if run.status in WAIT_STATUSES:
                 return run
             remaining = deadline - time.monotonic()
             if remaining <= 0:

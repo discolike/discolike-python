@@ -35,7 +35,7 @@ discolike company data stripe.com
 discolike extract https://stripe.com/enterprise
 ```
 
-Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment` — plus `auth`, `bulk`, `company`, `contacts`, `discogen`, `queries`, `account`, `search-providers`, and `llm-providers` command groups.
+Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment` — plus `auth`, `bulk`, `company`, `contacts`, `discogen`, `prospecting`, `queries`, `account`, `search-providers`, and `llm-providers` command groups.
 
 ### Volume pulls
 
@@ -48,6 +48,23 @@ discolike bulk contacts  --domains-file companies.csv --per-company 10 --summary
 ```
 
 `companies` saves each page as an exclusion list (`<run-name>-round-N`) and excludes it from the next page; rerunning with the same `--out` resumes from the CSV. `contacts` slices the domain list at `10000 / per-company` domains per call and records finished slices in `<out>.checkpoint`. Both keep one call in flight under `--rate-limit` (default 10/min, the Pro rate on `/discover` and `/contacts`), retry on 429/5xx, and print a JSON summary at the end. Filters come from `--params-file`, `--param` and the common flags; the paging fields are managed for you.
+
+### Managed prospecting
+
+```bash
+discolike prospecting start --brief "Find 100 US logistics companies and 3 operations directors each" --idempotency-key logistics-1
+discolike prospecting wait RUN_ID
+# Review the proposed plan, then approve the exact version you saw:
+discolike prospecting approve RUN_ID --plan-version 1
+discolike prospecting list --limit 20
+discolike prospecting message RUN_ID --text "Make it 250 companies" --idempotency-key logistics-edit-1
+discolike prospecting status RUN_ID --events-after 12 --messages-after 8 --limit 100
+discolike prospecting cancel RUN_ID
+```
+
+`wait` returns on `proposed`, `needs_input`, `completed`, `failed`, or `cancelled`. A timeout stops polling only. Inspect status and stop reason; completion does not guarantee full coverage. Message replies arrive through `status --messages-after`; follow `next_message_seq` and `reply_pending`.
+
+Omit `--target-companies` and `--contacts-per-company` to infer counts from the brief (fallback 25 and 2). Explicit values override the text. `--max-candidates` and `--max-actions` are automatic when omitted or `0`; their maxima are 100,000 and 10,000. Targets allow up to 10,000 companies, status pages up to 500 rows, and lists up to 50 runs. Work caps do not cap provider charges.
 
 ### Conventions
 

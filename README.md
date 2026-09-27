@@ -425,21 +425,40 @@ Committed request models track the dev spec (`--spec-url https://api.dev.discoli
 
 ### Managed prospecting
 
-Existing processing charges and configured BYOK/BYOS integrations apply. Wizard interpretation, segmentation, and prompt preparation use platform credentials. Agent coordination and independent contact qualification use your contact LLM integration; native contacts use your validation LLM integration or organization default, so this workflow requires a customer LLM even with native extraction. Missing keys and provider errors never fall back to platform keys. Limits bound work, not provider dollar spend.
+REST starts in `drafting`, then waits at `proposed` for approval. Review the plan and approve its exact version before research starts.
 
 ```python
-from discolike.requests import ProspectingBrief, ProspectingGetParams
+from discolike.requests import (
+    ProspectingApproveRequest, ProspectingBrief, ProspectingGetParams,
+    ProspectingListParams, ProspectingMessageRequest,
+)
 
 run = client.prospecting.start(
-    ProspectingBrief(brief="US logistics companies; operations directors", target_companies=10),
-    idempotency_key="logistics-pilot-2026-09-25",
+    ProspectingBrief(brief="Find 100 US logistics companies and 3 operations directors each"),
+    idempotency_key="logistics-search-2026-09-26",
 )
 run = client.prospecting.wait(run.run_id)
-print(run.status, run.stop_reason, run.accepted_contacts)
-page = client.prospecting.get(run.run_id, ProspectingGetParams(offset=100, limit=100))
+print(run.status, run.plan, run.messages)  # Review before approving.
+# After reviewing a proposed plan:
+# client.prospecting.approve(run.run_id, ProspectingApproveRequest(plan_version=run.plan_version))
+# run = client.prospecting.wait(run.run_id)
+
+recent = client.prospecting.list(ProspectingListParams(limit=20))
+message = client.prospecting.message(
+    run.run_id, ProspectingMessageRequest(text="Make it 250 companies"),
+    idempotency_key="logistics-target-edit-1",
+)
+page = client.prospecting.get(
+    run.run_id,
+    ProspectingGetParams(offset=0, limit=100, events_after=run.next_event_seq, messages_after=run.next_message_seq),
+)
 # client.prospecting.cancel(run.run_id)
 ```
 
-The async client has the same methods with `await`. Save the run ID and submission key. Reuse the key on retries; a different brief with the same key is rejected. `wait` returns the first page on `completed`, `needs_input`, `failed`, or `cancelled`, and a local timeout leaves server execution running. Partial results remain available. The pilot uses email finder outcomes; it does not expose raw email verification through the public API.
+The async client exposes the same methods with `await`. Starts and messages require separate idempotency keys; reuse each key when retrying that operation. Approving an already approved version is safe. A stale plan version is rejected: fetch the current plan and review it again.
 
-Prospecting scope checks can stop with `needs_input`: inspect `stop_reason` for `out_of_scope`, `company_target`, `persona_target`, or `ambiguous_target`, and `error` for guidance. These runs count the interpretation action and do not execute downstream research. Correct the brief and use a new submission key.
+`wait()` returns on `proposed`, `needs_input`, `completed`, `failed`, or `cancelled`. Inspect `status`, `stop_reason`, and `error`; completion does not guarantee the target was reached. A local timeout stops polling only. Partial results remain available. Use `get()` with event and message cursors to receive the agent's reply after sending a message; `reply_pending` indicates a pending reply. A `needs_input` question can be answered with `message()`.
+
+Initial planning extracts company counts and contacts per company from the brief. Omitted settings keep that inference available, falling back to 25 companies and 2 contacts per company. Explicit settings, including explicit defaults, override the text. Targets support 1–10,000 companies and 1–5 contacts per company. Candidate and action caps default to automatic (`0`); explicit maxima are 100,000 candidates and 10,000 actions. Result pages support up to 500 rows; recent-run lists support up to 50. Approved runs expose a stable `saved_query_id` for saved results.
+
+Existing processing charges and configured BYOK/BYOS integrations apply. Wizard interpretation, segmentation, and prompt preparation use platform credentials. Agent coordination and independent contact qualification use your contact LLM integration; native contacts use your validation LLM integration or organization default, so this workflow requires a customer LLM even with native extraction. Missing keys and provider errors never fall back to platform keys. Limits bound work, not provider dollar spend. Email finder outcomes are exposed; raw email verification is not a public API.

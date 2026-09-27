@@ -26,8 +26,12 @@ from discolike.resources.companies import Score
 from discolike.resources.companies import Subsidiary
 from discolike.resources.companies import Vendor
 from discolike.resources.match import MatchResponse
+from discolike.resources.prospecting import ProspectingEvent
+from discolike.resources.prospecting import ProspectingInFlight
+from discolike.resources.prospecting import ProspectingMessage
 from discolike.resources.prospecting import ProspectingPlan
 from discolike.resources.prospecting import ProspectingRun
+from discolike.resources.prospecting import ProspectingRunSummary
 from discolike.resources.queries import SavedQueries
 
 IGNORE_PARAMS = {"file"}
@@ -40,6 +44,10 @@ ASYNC_CLASS_PREFIX = "Async"
 MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
     "ProspectingRunResponse": ProspectingRun,
     "ProspectingPlan": ProspectingPlan,
+    "ProspectingEvent": ProspectingEvent,
+    "ProspectingMessage": ProspectingMessage,
+    "ProspectingInFlight": ProspectingInFlight,
+    "ProspectingRunSummary": ProspectingRunSummary,
     "CompanyResult": CompanyProfile,
     "ExtractResponse": ExtractResult,
     "ScoreResponse": Score,

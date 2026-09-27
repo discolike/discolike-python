@@ -2,10 +2,10 @@
 
 ## Unreleased
 
-- Managed prospecting agent coordination and contact qualification now use customer LLM credentials, including when contact extraction is native. Missing keys and provider errors do not fall back to platform credentials. Request and response schemas are unchanged.
+- Managed prospecting agent coordination and contact qualification now use customer LLM credentials, including when contact extraction is native. Missing keys and provider errors do not fall back to platform credentials.
 
-- CLI: add `prospecting start/status/cancel/wait`, with explicit submission keys, work limits, integration selection, and result pagination.
-- SDK: add sync/async `client.prospecting.start/get/cancel/wait` for managed prospecting. Starts require an idempotency key; status responses preserve partial results and support pagination. `wait` stops on needs-input, failed, and cancelled runs as well as completion; inspect `stop_reason` before assuming the target was reached, including scope rejection and targeting-clarification reasons.
+- CLI: add prospecting plan approval, recent-run lists, chat messages, and event/message cursors. Omitted quantity flags preserve brief inference; larger target and automatic work limits match the API. `wait` returns when a plan needs approval.
+- SDK: add sync/async prospecting start/get/list/approve/message/cancel/wait, with typed chat, progress, saved-query, and recent-run responses. Starts and messages require idempotency keys; approval requires the reviewed plan version. `wait` returns on proposed plans, needs-input, and terminal outcomes.
 
 - SDK/CLI: `discogen.process` / `discogen.process_personas` with `typed_columns=True` now raise a 400 `ValidationError` at submit when the account has no TypeSafe integration, instead of returning a job whose typed cells all read `Error: No TypeSafe integration is configured`. No SDK code change; the server rejects earlier.
 

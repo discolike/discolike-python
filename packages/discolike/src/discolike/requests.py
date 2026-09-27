@@ -28,8 +28,11 @@ from discolike._generated.requests import LLMProviderCreateRequest
 from discolike._generated.requests import LLMProviderUpdateRequest
 from discolike._generated.requests import MatchBulkParams
 from discolike._generated.requests import MatchCompanyParams
+from discolike._generated.requests import ProspectingApproveRequest
 from discolike._generated.requests import ProspectingBrief
 from discolike._generated.requests import ProspectingGetParams
+from discolike._generated.requests import ProspectingListParams
+from discolike._generated.requests import ProspectingMessageRequest
 from discolike._generated.requests import QueriesListParams
 from discolike._generated.requests import SaveResultsRequest
 from discolike._generated.requests import SearchProviderRequest
@@ -67,8 +70,11 @@ __all__ = [
     "LLMProviderUpdateRequest",
     "MatchBulkParams",
     "MatchCompanyParams",
+    "ProspectingApproveRequest",
     "ProspectingBrief",
     "ProspectingGetParams",
+    "ProspectingListParams",
+    "ProspectingMessageRequest",
     "QueriesListParams",
     "SaveResultsRequest",
     "SearchProviderRequest",

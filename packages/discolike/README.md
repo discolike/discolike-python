@@ -122,6 +122,14 @@ The engine decides the result columns, so read `job.column_name` instead of hard
 
 Two errors are specific to the native engine: a 400 `ValidationError` when the ICP text does not yield a Mandatory / Reject if / Nice-to-have prompt, and a 503 `ServerError` when no ICP-fit engine is available. Task lifecycle, polling and statuses are the same either way.
 
+## Managed prospecting
+
+`client.prospecting.start(ProspectingBrief(...), idempotency_key="...")` drafts a plan. Call `wait(run_id)`, review its `plan` and `messages`, then approve the returned `plan_version` with `approve(run_id, ProspectingApproveRequest(plan_version=...))`.
+
+`wait()` returns on `proposed`, `needs_input`, `completed`, `failed`, or `cancelled`; timeout stops local polling only. Use `message(run_id, ProspectingMessageRequest(text="..."), idempotency_key="...")` to steer or answer a question, and `get(run_id, ProspectingGetParams(events_after=..., messages_after=...))` for new events and replies. `list(ProspectingListParams(limit=20))` lists recent organization runs, up to 50. The async client has the same methods with `await`. Import these request models from `discolike.requests`.
+
+Omit target counts to infer them from the brief; explicit values override the text. Work caps default to automatic (`0`). Partial results and `saved_query_id` remain available after stopping. Customer integration charges apply; work caps do not cap provider dollar spend.
+
 ## Links
 
 - **API documentation**: [docs.discolike.com](https://docs.discolike.com)
