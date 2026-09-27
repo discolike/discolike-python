@@ -128,7 +128,7 @@ Two errors are specific to the native engine: a 400 `ValidationError` when the I
 
 `wait()` returns on `proposed`, `needs_input`, `completed`, `failed`, or `cancelled`; timeout stops local polling only. Use `message(run_id, ProspectingMessageRequest(text="..."), idempotency_key="...")` to steer or answer a question, and `get(run_id, ProspectingGetParams(events_after=..., messages_after=...))` for new events and replies. `list(ProspectingListParams(limit=20))` lists recent organization runs, up to 50. The async client has the same methods with `await`. Import these request models from `discolike.requests`.
 
-Omit target counts to infer them from the brief; explicit values override the text. Work caps default to automatic (`0`). Partial results and `saved_query_id` remain available after stopping. Customer integration charges apply; work caps do not cap provider dollar spend.
+Omit target counts to infer them from the brief; explicit values override the text. Work caps default to automatic (`0`). Partial results and `saved_query_id` remain available after stopping. Large results are split into several saved contact lists rather than being cut off; `saved_query_ids` carries every list for the run in order, with `saved_query_id` always the first entry, and the parts are final once the run reaches a terminal status. Customer integration charges apply; work caps do not cap provider dollar spend.
 
 ## Links
 

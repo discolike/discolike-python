@@ -58,6 +58,20 @@ def test_status_paginates(install_build_client: Callable[[Handler], None]) -> No
     assert json.loads(result.stdout)["status"] == "needs_input"
 
 
+def test_status_lists_every_saved_query_part(install_build_client: Callable[[Handler], None]) -> None:
+    other_query_id = "00000000-0000-0000-0000-000000000002"
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200, json=run_payload("completed") | {"saved_query_id": RUN_ID, "saved_query_ids": [RUN_ID, other_query_id]}
+        )
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["prospecting", "status", RUN_ID])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["saved_query_ids"] == [RUN_ID, other_query_id]
+
+
 def test_cancel_and_wait_preserve_terminal_outcomes(install_build_client: Callable[[Handler], None]) -> None:
     methods = []
 

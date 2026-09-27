@@ -21,6 +21,7 @@ from discolike_testkit.prospecting import run_payload
 from discolike_testkit.prospecting import summary_payload
 
 RUN_ID = "00000000-0000-0000-0000-000000000001"
+OTHER_QUERY_ID = "00000000-0000-0000-0000-000000000002"
 
 
 def payload(status: str = "queued") -> dict:
@@ -123,6 +124,7 @@ def test_list_approve_message_and_cursors(make_client: ClientFactory) -> None:
                 }
             ],
             saved_query_id=RUN_ID,
+            saved_query_ids=[RUN_ID, OTHER_QUERY_ID],
             plan_version=2,
             approved_plan_version=2,
             reply_pending=True,
@@ -149,6 +151,7 @@ def test_list_approve_message_and_cursors(make_client: ClientFactory) -> None:
     assert run.messages[0].created_at.year == 2026
     assert run.in_flight[0].stage == "generate"
     assert run.saved_query_id == UUID(RUN_ID)
+    assert run.saved_query_ids == [UUID(RUN_ID), UUID(OTHER_QUERY_ID)]
     assert (run.fit_companies, run.emails_found, run.reply_pending) == (40, 15, True)
 
 

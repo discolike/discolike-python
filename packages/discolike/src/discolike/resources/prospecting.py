@@ -109,6 +109,11 @@ class ProspectingRun(DiscolikeModel):
     plan_version: int = 1
     approved_plan_version: int | None = None
     saved_query_id: UUID | None = None
+    saved_query_ids: list[UUID] = Field(
+        default_factory=list,
+        description="Every saved contact list for this run, in order. Large results are split across several "
+        "lists; the first is saved_query_id. Parts are final once the run reaches a terminal status.",
+    )
     messages: list[ProspectingMessage] = Field(default_factory=list)
     next_message_seq: int = 0
     in_flight: list[ProspectingInFlight] = Field(default_factory=list)
