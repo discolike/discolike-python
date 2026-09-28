@@ -130,6 +130,8 @@ class ProspectingRun(DiscolikeModel):
 def _key(value: str) -> str:
     if not value.strip() or len(value) > 128:
         raise ValueError("idempotency_key must contain 1-128 characters")
+    if not value.isascii() or not value.isprintable():
+        raise ValueError("idempotency_key must be printable ASCII with no control characters")
     return value
 
 

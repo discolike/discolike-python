@@ -68,7 +68,7 @@ def test_wait_timeout_never_cancels(make_client: ClientFactory, monkeypatch: pyt
     assert seen == ["GET"]
 
 
-@pytest.mark.parametrize("key", ["", " ", "a" * 129])
+@pytest.mark.parametrize("key", ["", " ", "a" * 129, "a\nb", "a\rb", "a\tb", "a\x00b", "a🚀b"])
 def test_invalid_key_is_rejected_locally(make_client: ClientFactory, key: str) -> None:
     def handler(request: httpx2.Request) -> httpx2.Response:
         pytest.fail("invalid key must not reach the network")
@@ -185,7 +185,7 @@ async def test_async_chat_lifecycle_and_proposed_wait(make_async_client: AsyncCl
     assert seen[4].headers.get("Idempotency-Key") is None
 
 
-@pytest.mark.parametrize("key", ["", " ", "a" * 129])
+@pytest.mark.parametrize("key", ["", " ", "a" * 129, "a\nb", "a\rb", "a\tb", "a\x00b", "a🚀b"])
 def test_invalid_message_key_never_reaches_network(make_client: ClientFactory, key: str) -> None:
     def handler(request: httpx2.Request) -> httpx2.Response:
         pytest.fail("invalid key must fail locally")

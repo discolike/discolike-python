@@ -176,6 +176,40 @@ def check(spec: dict, routes: list[RouteEntry]) -> list[str]:
     return mismatches
 
 
+TYPE_INFO_KEYS = {"type", "anyOf", "oneOf", "$ref", "nullable"}
+
+
+def _resolved_type(node: dict) -> str | None:
+    return "object" if "$ref" in node else node.get("type")
+
+
+def _type_variants(prop: dict) -> list[dict]:
+    return prop.get("anyOf") or prop.get("oneOf") or [prop]
+
+
+def _field_types(prop: dict) -> frozenset[str]:
+    types = {resolved for variant in _type_variants(prop) if (resolved := _resolved_type(variant)) is not None}
+    if prop.get("nullable"):
+        types.add("null")
+    return frozenset(types)
+
+
+def _item_type(prop: dict) -> str | None:
+    for variant in _type_variants(prop):
+        items = variant.get("items")
+        if items is not None:
+            return _resolved_type(items)
+    return None
+
+
+def _has_type_info(prop: dict) -> bool:
+    return bool(prop.keys() & TYPE_INFO_KEYS)
+
+
+def _field_shape(prop: dict) -> tuple[frozenset[str], str | None]:
+    return (_field_types(prop), _item_type(prop))
+
+
 def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = None) -> list[str]:
     mismatches: list[str] = []
     schemas = spec.get("components", {}).get("schemas", {})
@@ -184,7 +218,10 @@ def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = 
         if schema is None:
             mismatches.append(f"{model.__name__}: schema '{schema_name}' not found in spec")
             continue
-        spec_fields = set(schema.get("properties", {}).keys())
+        spec_properties = schema.get("properties", {})
+        spec_fields = set(spec_properties)
+        model_schema = model.model_json_schema()
+        model_properties = model_schema.get("properties", {})
         model_fields = set(model.model_fields)
         mismatches.extend(
             f"{model.__name__}: field '{field}' not in spec schema '{schema_name}'"
@@ -194,6 +231,34 @@ def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = 
             f"{model.__name__}: spec schema '{schema_name}' has field '{field}' the SDK does not declare"
             for field in sorted(spec_fields - model_fields)
         )
+
+        # A fixture that doesn't spell out "type"/"required" info is asserting nothing about it, not
+        # that nothing is required or typed, so leave those fields alone rather than flag every one.
+        if "required" in schema:
+            spec_required = set(schema["required"])
+            model_required = set(model_schema.get("required", []))
+            mismatches.extend(
+                f"{model.__name__}: field '{field}' is required in spec schema '{schema_name}' but optional on "
+                f"the SDK model"
+                for field in sorted((spec_required - model_required) & model_fields)
+            )
+            mismatches.extend(
+                f"{model.__name__}: field '{field}' is optional in spec schema '{schema_name}' but required on "
+                f"the SDK model"
+                for field in sorted((model_required - spec_required) & spec_fields)
+            )
+
+        for field in sorted(model_fields & spec_fields):
+            spec_prop = spec_properties[field]
+            if not _has_type_info(spec_prop):
+                continue
+            model_shape = _field_shape(model_properties.get(field, {}))
+            spec_shape = _field_shape(spec_prop)
+            if model_shape != spec_shape:
+                mismatches.append(
+                    f"{model.__name__}: field '{field}' has type {model_shape} but spec schema "
+                    f"'{schema_name}' declares {spec_shape}"
+                )
     return mismatches
 
 
