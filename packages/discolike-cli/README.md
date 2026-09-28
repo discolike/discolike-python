@@ -64,6 +64,8 @@ discolike prospecting cancel RUN_ID
 
 `wait` returns on `proposed`, `needs_input`, `completed`, `failed`, or `cancelled`. A timeout stops polling only. Inspect status and stop reason; completion does not guarantee full coverage. Message replies arrive through `status --messages-after`; follow `next_message_seq` and `reply_pending`.
 
+`start` and `approve` default to pausing at checkpoints, like the web chat: a pilot check on large lists (`pilot`), a search drifting off target (`tail_quality`), candidates running out short of the target (`short`), and the target being met (`target_reached`). Pass `--auto` to never pause; a poor pilot is then sharpened once and the run stops with `pilot_failed` if it still fits poorly. On a terminal, `wait` shows the question, any sample companies and numbered replies at a checkpoint, sends your pick or your own text, and keeps waiting. Without a terminal, or with `--no-input`, it prints the run on stdout, a `needs_input` envelope (`message`, `stop_reason`, `suggested_replies`, `sample`) on stderr, and exits 7; answer with `prospecting message --text "<reply>"` and run `wait` again.
+
 Omit `--target-companies` and `--contacts-per-company` to infer counts from the brief (fallback 25 and 2). Explicit values override the text. `--max-candidates` and `--max-actions` are automatic when omitted or `0`; their maxima are 100,000 and 10,000. Targets allow up to 10,000 companies, status pages up to 500 rows, and lists up to 50 runs. Work caps do not cap provider charges.
 
 ### Conventions
@@ -84,6 +86,7 @@ Omit `--target-companies` and `--contacts-per-company` to infer counts from the 
 | 4 | Rate limited |
 | 5 | Network error |
 | 6 | Not found |
+| 7 | Needs input: `prospecting wait` reached a checkpoint with no terminal to ask (or `--no-input`) |
 
 ## Links
 

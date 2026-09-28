@@ -233,6 +233,20 @@ def test_apply_overlays_pins_sub_industry_over_a_spec_enum(gen) -> None:
     assert sub_industry["items"] == {"type": "string"}
 
 
+def test_apply_overlays_adds_the_checkpoint_modes_the_spec_hides_or_lacks(gen) -> None:
+    kept = {
+        "ProspectingBrief": {"type": "object", "properties": {"brief": {"type": "string"}}},
+        "ProspectingApproveRequest": {"type": "object", "properties": {"plan_version": {"type": "integer"}}},
+    }
+
+    overlaid = gen.apply_overlays(kept=kept)
+
+    brief = overlaid["ProspectingBrief"]["properties"]["checkpoints"]
+    assert (brief["enum"], brief["default"]) == (["ask", "auto"], "auto")
+    approve = overlaid["ProspectingApproveRequest"]["properties"]["checkpoints"]
+    assert (approve["enum"], approve["nullable"]) == (["ask", "auto"], True)
+
+
 def test_apply_overlays_skips_schemas_this_run_does_not_generate(gen) -> None:
     assert gen.apply_overlays(kept={}) == {}
 

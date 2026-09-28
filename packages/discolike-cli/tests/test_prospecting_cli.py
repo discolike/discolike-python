@@ -7,6 +7,8 @@ import httpx2
 import pytest
 from typer.testing import CliRunner
 
+import discolike_cli.prospecting as prospecting_cli
+from discolike_cli._output import NEEDS_INPUT_EXIT_CODE
 from discolike_cli.main import app
 from discolike_testkit import Handler
 from discolike_testkit.prospecting import message_payload
@@ -134,7 +136,7 @@ def test_chat_commands_send_exact_payloads(install_build_client: Callable[[Handl
         result = runner.invoke(app, ["prospecting", *command])
         assert result.exit_code == 0, result.output
     assert dict(seen[0].url.params) == {"limit": "20", "before": RUN_ID}
-    assert json.loads(seen[1].content) == {"plan_version": 2}
+    assert json.loads(seen[1].content) == {"plan_version": 2, "checkpoints": "ask"}
     assert json.loads(seen[2].content) == {"text": "Make it 100 companies"}
     assert seen[2].headers["Idempotency-Key"] == "cli-message"
     assert dict(seen[3].url.params) == {"offset": "0", "limit": "500", "events_after": "12", "messages_after": "8"}
@@ -200,3 +202,146 @@ def test_explicit_defaults_and_larger_caps_are_preserved(
         "max_candidates": candidates,
         "max_actions": actions,
     }
+
+
+@pytest.mark.parametrize(("flags", "mode"), [([], "ask"), (["--auto"], "auto")])
+def test_start_and_approve_ask_at_checkpoints_unless_auto(
+    install_build_client: Callable[[Handler], None], flags: list[str], mode: str
+) -> None:
+    bodies = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        bodies.append(json.loads(request.content))
+        return httpx2.Response(202, json=run_payload("queued"))
+
+    install_build_client(handler)
+    start = ["prospecting", "start", "--brief", "US logistics companies", "--idempotency-key", "mode", *flags]
+    for command in (start, ["prospecting", "approve", RUN_ID, "--plan-version", "1", *flags]):
+        result = runner.invoke(app, command)
+        assert result.exit_code == 0, result.output
+    assert [body["checkpoints"] for body in bodies] == [mode, mode]
+
+
+PILOT_REPLIES = ["Run the full list", "Stop here"]
+PILOT_SAMPLE = [{"domain": "fits.com", "name": "Fits", "company_fit": "Yes", "reason": "Runs a trucking fleet"}]
+PILOT_QUESTION = "I checked the first 20 companies: 18 fit your criteria (90%). Here are some of them."
+
+
+def _question_message(seq: int) -> dict:
+    return message_payload() | {
+        "seq": seq,
+        "role": "agent",
+        "kind": "question",
+        "content": PILOT_QUESTION,
+        "data": {"reason": "pilot", "suggested_replies": PILOT_REPLIES, "sample": PILOT_SAMPLE},
+    }
+
+
+def _emitted(stdout: str) -> dict:
+    """CliRunner echoes typed input to stdout, which a real terminal does not; the JSON follows it."""
+    return json.loads(stdout[stdout.index("{") :])
+
+
+def _checkpoint_handler(seen: list[httpx2.Request], *, answer_seq: int = 20) -> Handler:
+    """A run paused at the pilot whose question is past the first message page; any answer resumes it."""
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        answered = any(sent.method == "POST" for sent in seen)
+        after = request.url.params.get("messages_after")
+        if request.method == "POST":
+            return httpx2.Response(202, json=message_payload() | {"seq": answer_seq})
+        if after == str(answer_seq):
+            ack = message_payload() | {"seq": answer_seq + 1, "role": "agent", "kind": "ack", "content": "On it."}
+            return httpx2.Response(200, json=run_payload("running") | {"messages": [ack]})
+        if after == "7":
+            return httpx2.Response(200, json=run_payload("needs_input") | {"messages": [_question_message(8)]})
+        if after is not None:
+            return httpx2.Response(200, json=run_payload("needs_input"))
+        if answered:
+            return httpx2.Response(200, json=run_payload("completed"))
+        paused = {"stop_reason": "pilot", "error": PILOT_QUESTION, "next_message_seq": 7}
+        return httpx2.Response(200, json=run_payload("needs_input") | paused)
+
+    return handler
+
+
+@pytest.mark.parametrize(("typed", "posted"), [("1", "Run the full list"), ("Only fleets over 50 trucks", None)])
+def test_wait_asks_at_a_checkpoint_and_keeps_waiting(
+    install_build_client: Callable[[Handler], None],
+    monkeypatch: pytest.MonkeyPatch,
+    typed: str,
+    posted: str | None,
+) -> None:
+    seen: list[httpx2.Request] = []
+    install_build_client(_checkpoint_handler(seen))
+    monkeypatch.setattr(prospecting_cli, "_is_interactive", lambda: True)
+
+    result = runner.invoke(app, ["prospecting", "wait", RUN_ID], input=f"{typed}\n")
+
+    assert result.exit_code == 0, result.output
+    assert _emitted(result.stdout)["status"] == "completed"
+    (message,) = [request for request in seen if request.method == "POST"]
+    assert json.loads(message.content) == {"text": posted or typed}
+    assert message.headers["Idempotency-Key"].startswith("cli-checkpoint-")
+    for shown in (PILOT_QUESTION, "fits.com: Runs a trucking fleet", "1. Run the full list", "2. Stop here", "On it."):
+        assert shown in result.stderr
+
+
+def test_wait_reprompts_for_a_number_out_of_range(
+    install_build_client: Callable[[Handler], None], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: list[httpx2.Request] = []
+    install_build_client(_checkpoint_handler(seen))
+    monkeypatch.setattr(prospecting_cli, "_is_interactive", lambda: True)
+
+    result = runner.invoke(app, ["prospecting", "wait", RUN_ID], input="3\n2\n")
+
+    assert result.exit_code == 0, result.output
+    (message,) = [request for request in seen if request.method == "POST"]
+    assert json.loads(message.content) == {"text": "Stop here"}
+
+
+@pytest.mark.parametrize(("interactive", "flags"), [(False, []), (True, ["--no-input"])])
+def test_wait_without_a_terminal_reports_the_checkpoint_and_exits_needs_input(
+    install_build_client: Callable[[Handler], None],
+    monkeypatch: pytest.MonkeyPatch,
+    interactive: bool,
+    flags: list[str],
+) -> None:
+    seen: list[httpx2.Request] = []
+    install_build_client(_checkpoint_handler(seen))
+    monkeypatch.setattr(prospecting_cli, "_is_interactive", lambda: interactive)
+
+    result = runner.invoke(app, ["prospecting", "wait", RUN_ID, *flags])
+
+    assert result.exit_code == NEEDS_INPUT_EXIT_CODE
+    assert json.loads(result.stdout)["stop_reason"] == "pilot"
+    envelope = json.loads(result.stderr.splitlines()[-1])
+    assert envelope == {
+        "error": "NeedsInput",
+        "code": "needs_input",
+        "message": PILOT_QUESTION,
+        "status_code": None,
+        "exit_code": NEEDS_INPUT_EXIT_CODE,
+        "run_id": RUN_ID,
+        "stop_reason": "pilot",
+        "suggested_replies": PILOT_REPLIES,
+        "sample": PILOT_SAMPLE,
+    }
+    assert all(request.method == "GET" for request in seen)
+
+
+def test_wait_returns_other_needs_input_pauses_unchanged(
+    install_build_client: Callable[[Handler], None], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json=run_payload("needs_input") | {"stop_reason": "question"})
+
+    install_build_client(handler)
+    monkeypatch.setattr(prospecting_cli, "_is_interactive", lambda: False)
+
+    result = runner.invoke(app, ["prospecting", "wait", RUN_ID])
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["stop_reason"] == "question"

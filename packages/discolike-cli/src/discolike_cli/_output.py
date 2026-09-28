@@ -43,6 +43,7 @@ EXIT_CODES: dict[type, int] = {
     NotFoundError: 6,
 }
 DEFAULT_EXIT_CODE = 1
+NEEDS_INPUT_EXIT_CODE = 7
 
 # Stable, snake_case error codes for agents and scripts to branch on. The class
 # name in `error` is kept for backwards compatibility; `code` is the contract.

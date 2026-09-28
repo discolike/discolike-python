@@ -137,21 +137,39 @@ _SUB_INDUSTRY_PROPERTIES: dict[str, dict[str, Any]] = {
     },
 }
 
+_CHECKPOINT_MODES = ["ask", "auto"]
+_BRIEF_CHECKPOINTS_DESCRIPTION = (
+    "ask: pause at checkpoints (pilot, tail_quality, short, target_reached) with status needs_input and a "
+    "question to answer through message(). auto: never pause; a poor pilot is sharpened once, then the run "
+    "stops with stop_reason pilot_failed."
+)
+
 # Properties the SDK ships before the deployed spec has them. Merged in only while the spec
 # lacks them, so each entry clears itself once the platform release lands -- generation prints
 # the ones that have, to be deleted here.
 PENDING_PROPERTIES: dict[str, dict[str, dict[str, Any]]] = {
     "DiscoverParams": _GEO_PROPERTIES,
     "CountParams": _GEO_PROPERTIES,
+    "ProspectingApproveRequest": {"checkpoints": {"type": "string", "enum": _CHECKPOINT_MODES, "nullable": True}},
 }
 
 # Properties generated from this schema rather than the spec's, whatever the spec says. The
 # platform's sub-industry enum lists parent-qualified keys only; a bare label reaches it through
 # a server-side normalizer with no client-side counterpart, so generating that enum would reject
 # values the API accepts.
+# ProspectingBrief.checkpoints is SkipJsonSchema on the platform, so the spec never carries it.
 PROPERTY_OVERRIDES: dict[str, dict[str, dict[str, Any]]] = {
     "DiscoverParams": _SUB_INDUSTRY_PROPERTIES,
     "CountParams": _SUB_INDUSTRY_PROPERTIES,
+    "ProspectingBrief": {
+        "checkpoints": {
+            "type": "string",
+            "enum": _CHECKPOINT_MODES,
+            "default": "auto",
+            "description": _BRIEF_CHECKPOINTS_DESCRIPTION,
+            "title": "Checkpoints",
+        }
+    },
 }
 
 

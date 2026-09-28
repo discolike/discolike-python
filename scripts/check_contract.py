@@ -59,6 +59,8 @@ MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
     "MatchResponse": MatchResponse,
     "SavedQueriesListResponse": SavedQueries,
 }
+# Request fields the platform accepts but hides from its OpenAPI schema (SkipJsonSchema), so the spec never lists them.
+HIDDEN_REQUEST_FIELDS: dict[str, frozenset[str]] = {"ProspectingBrief": frozenset({"checkpoints"})}
 SPEC_URL = "https://api.discolike.com/v1/openapi.json"
 REQUEST_TIMEOUT_SECONDS = 30.0
 
@@ -164,7 +166,7 @@ def check(spec: dict, routes: list[RouteEntry]) -> list[str]:
             )
             continue
         model = route.request_model
-        model_fields = set(model.model_fields)
+        model_fields = set(model.model_fields) - HIDDEN_REQUEST_FIELDS.get(model.__name__, frozenset())
         mismatches.extend(
             f"{label}: field '{field}' of {model.__name__} not found in spec"
             for field in sorted(model_fields - spec_fields)

@@ -320,3 +320,31 @@ def test_check_compares_json_body_properties_bidirectionally():
         "components": {"schemas": {"FindEmailRequest": {"properties": properties}}},
     }
     assert check_contract.check(spec, routes) == []
+
+
+def _prospecting_start_spec(names: list[str]) -> dict:
+    body = {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProspectingBrief"}}}}
+    return {
+        "paths": {"/prospecting/runs": {"post": {"requestBody": body}}},
+        "components": {"schemas": {"ProspectingBrief": {"properties": {name: {} for name in names}}}},
+    }
+
+
+def test_check_allows_the_brief_checkpoints_field_the_spec_hides():
+    check_contract = _load_check_contract()
+    from discolike.requests import ProspectingBrief
+
+    routes = _route(check_contract, "ProspectingResource", "start")
+    names = [name for name in ProspectingBrief.model_fields if name != "checkpoints"]
+    assert check_contract.check(_prospecting_start_spec(names), routes) == []
+
+
+def test_check_still_reports_other_brief_fields_the_spec_lacks():
+    check_contract = _load_check_contract()
+    from discolike.requests import ProspectingBrief
+
+    routes = _route(check_contract, "ProspectingResource", "start")
+    names = [name for name in ProspectingBrief.model_fields if name not in {"checkpoints", "segment"}]
+    assert check_contract.check(_prospecting_start_spec(names), routes) == [
+        "ProspectingResource.start (POST /prospecting/runs): field 'segment' of ProspectingBrief not found in spec"
+    ]

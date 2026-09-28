@@ -274,6 +274,7 @@ Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `ap
 | 4 | Rate limited |
 | 5 | Network error |
 | 6 | Not found |
+| 7 | Needs input: `prospecting wait` reached a checkpoint with no terminal to ask (or `--no-input`) |
 
 ## What's in the box
 
@@ -458,6 +459,8 @@ page = client.prospecting.get(
 The async client exposes the same methods with `await`. Starts and messages require separate idempotency keys; reuse each key when retrying that operation. Approving an already approved version is safe. A stale plan version is rejected: fetch the current plan and review it again.
 
 `wait()` returns on `proposed`, `needs_input`, `completed`, `failed`, or `cancelled`. Inspect `status`, `stop_reason`, and `error`; completion does not guarantee the target was reached. A local timeout stops polling only. Partial results remain available. Use `get()` with event and message cursors to receive the agent's reply after sending a message; `reply_pending` indicates a pending reply. A `needs_input` question can be answered with `message()`.
+
+Checkpoints: `ProspectingBrief(checkpoints=...)` picks how a run handles its decision points. `"auto"`, the API default, never pauses. A run of 500+ target companies from a brief (not a domain list) checks its first companies before looking up contacts; under 80% fit, auto sharpens the criteria once and checks again, then stops with `stop_reason="pilot_failed"` and `pilot_sample` holding the checked companies (`domain`, `name`, `company_fit`, `reason`); start a new run with a sharper brief. A search drifting off target is dropped, a run short of candidates finishes as `candidates_exhausted`, and a met target finishes the run. `"ask"` pauses with `status="needs_input"` and a `stop_reason` in `CHECKPOINT_STOP_REASONS` (`pilot`, `tail_quality`, `short`, `target_reached`). The latest `kind="question"` message carries `data.suggested_replies` and, at a pilot, `data.sample`; answer with `message()` using a suggested reply's exact text (or free-text steering), then `wait()` again. Choosing to finish at a checkpoint ends the run with `stop_reason="user_finished"`. `ProspectingApproveRequest(checkpoints=...)` overrides the brief's mode at approval; `None` keeps it. `checkpoints` on the brief is not in the published OpenAPI schema; the SDK sends it anyway.
 
 Initial planning extracts company counts and contacts per company from the brief. Omitted settings keep that inference available, falling back to 25 companies and 2 contacts per company. Explicit settings, including explicit defaults, override the text. Targets support 1–10,000 companies and 1–5 contacts per company. Candidate and action caps default to automatic (`0`); explicit maxima are 100,000 candidates and 10,000 actions. Result pages support up to 500 rows; recent-run lists support up to 50. Approved runs expose a stable `saved_query_id` for saved results.
 

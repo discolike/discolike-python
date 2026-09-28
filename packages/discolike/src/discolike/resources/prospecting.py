@@ -23,6 +23,7 @@ from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
 
 WAIT_STATUSES = frozenset({"proposed", "completed", "needs_input", "failed", "cancelled"})
+CHECKPOINT_STOP_REASONS = frozenset({"pilot", "tail_quality", "short", "target_reached"})
 ProspectingStatus = Literal[
     "drafting", "proposed", "queued", "running", "needs_input", "completed", "failed", "cancelled"
 ]
@@ -125,6 +126,10 @@ class ProspectingRun(DiscolikeModel):
         description="The chat was closed for off-topic use: every new message gets the same fixed reply. "
         "An approved run keeps working and its saved lists still fill.",
     )
+    pilot_sample: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Checked companies (domain, name, company_fit, reason) when stop_reason is pilot_failed.",
+    )
 
 
 def _key(value: str) -> str:
@@ -157,7 +162,10 @@ class ProspectingResource(SyncAPIResource):
 
     @api_route("POST", "/prospecting/runs/{run_id}/approve")
     def approve(self, run_id: str | UUID, request: ProspectingApproveRequest) -> ProspectingRun:
-        """Approve the reviewed plan version; repeating the same approval is safe."""
+        """Approve the reviewed plan version; repeating the same approval is safe.
+
+        `checkpoints` on the request overrides the brief's mode; None keeps it.
+        """
         response = self._transport.request("POST", _path(run_id) + "/approve", json_body=request.to_wire())
         return ProspectingRun.model_validate(response.json())
 
@@ -197,6 +205,9 @@ class ProspectingResource(SyncAPIResource):
 
         A proposed run needs approve() with its plan_version before research starts.
         Inspect status and stop_reason; completed does not guarantee the target was met.
+        A run in checkpoints="ask" mode returns needs_input with a stop_reason in
+        CHECKPOINT_STOP_REASONS; answer the latest kind="question" message through message(),
+        then wait again.
         Timeout stops local polling only. Fetch subsequent pages with get().
         """
         deadline = _deadline(timeout, poll_interval)
@@ -224,7 +235,10 @@ class AsyncProspectingResource(AsyncAPIResource):
 
     @api_route("POST", "/prospecting/runs/{run_id}/approve")
     async def approve(self, run_id: str | UUID, request: ProspectingApproveRequest) -> ProspectingRun:
-        """Approve the reviewed plan version; repeating the same approval is safe."""
+        """Approve the reviewed plan version; repeating the same approval is safe.
+
+        `checkpoints` on the request overrides the brief's mode; None keeps it.
+        """
         response = await self._transport.request("POST", _path(run_id) + "/approve", json_body=request.to_wire())
         return ProspectingRun.model_validate(response.json())
 
@@ -259,7 +273,10 @@ class AsyncProspectingResource(AsyncAPIResource):
         return ProspectingRun.model_validate(response.json())
 
     async def wait(self, run_id: str | UUID, *, timeout: float = 3600, poll_interval: float = 5) -> ProspectingRun:
-        """Return the first page on proposed/needs_input/completed/failed/cancelled; inspect status."""
+        """Return the first page on proposed/needs_input/completed/failed/cancelled; inspect status.
+
+        A needs_input run with a stop_reason in CHECKPOINT_STOP_REASONS waits for an answer via message().
+        """
         deadline = _deadline(timeout, poll_interval)
         while True:
             run = await self.get(run_id)

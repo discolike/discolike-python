@@ -1,18 +1,153 @@
 from __future__ import annotations
 
+import json
+import sys
+import time
+from typing import Any
+from typing import Literal
+from typing import NamedTuple
+from uuid import uuid4
+
 import typer
 
+from discolike import CHECKPOINT_STOP_REASONS
+from discolike import Discolike
+from discolike import JobTimeoutError
 from discolike.requests import ProspectingApproveRequest
 from discolike.requests import ProspectingBrief
 from discolike.requests import ProspectingGetParams
 from discolike.requests import ProspectingListParams
 from discolike.requests import ProspectingMessageRequest
+from discolike.resources.prospecting import ProspectingMessage
+from discolike.resources.prospecting import ProspectingRun
+from discolike_cli._output import NEEDS_INPUT_EXIT_CODE
 from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
 from discolike_cli.discover import _merge_params
 
 app = typer.Typer(help="Run managed prospecting; processing and provider charges apply.")
+
+AUTO_HELP = "Never pause to ask: a poor pilot is sharpened once, then the run stops. Default: pause at checkpoints."
+NO_INPUT_HELP = f"Never prompt: at a checkpoint, print the question and exit {NEEDS_INPUT_EXIT_CODE}."
+NEEDS_INPUT_CODE = "needs_input"
+WAIT_HELP = (
+    "Return the first page on proposed, needs_input, completed, failed, or cancelled. Approve proposed plans; "
+    "timeout stops polling only.\n\n"
+    "At a checkpoint (stop_reason pilot, tail_quality, short or target_reached) a terminal shows the question, "
+    "any sample companies and numbered replies, sends your pick or your own text, and keeps waiting. Without a "
+    "terminal, or with --no-input, it prints the run on stdout and a needs_input envelope with the question and "
+    f"suggested_replies on stderr, then exits {NEEDS_INPUT_EXIT_CODE}; answer with `prospecting message --text "
+    "<reply>` and wait again."
+)
+TIMEOUT_MESSAGE = "Timed out waiting for prospecting; the run continues on the server"
+
+
+class Pause(NamedTuple):
+    question: str | None
+    suggested_replies: list[str]
+    sample: list[dict[str, Any]]
+
+
+def _checkpoints(*, auto: bool) -> Literal["ask", "auto"]:
+    return "auto" if auto else "ask"
+
+
+def _is_interactive() -> bool:
+    return sys.stdin.isatty()
+
+
+def _at_checkpoint(run: ProspectingRun) -> bool:
+    return run.status == "needs_input" and run.stop_reason in CHECKPOINT_STOP_REASONS
+
+
+def _latest_question(client: Discolike, run: ProspectingRun) -> ProspectingMessage | None:
+    """The run's newest question, paging past the first page of messages when there are more."""
+    messages = list(run.messages)
+    cursor = run.next_message_seq
+    while page := client.prospecting.get(run.run_id, ProspectingGetParams(limit=1, messages_after=cursor)).messages:
+        messages.extend(page)
+        cursor = page[-1].seq
+    return next((message for message in reversed(messages) if message.kind == "question"), None)
+
+
+def _pause(run: ProspectingRun, question: ProspectingMessage | None) -> Pause:
+    data = (question.data if question else None) or {}
+    return Pause(
+        question=question.content if question else run.error,
+        suggested_replies=list(data.get("suggested_replies", [])),
+        sample=list(data.get("sample", [])),
+    )
+
+
+def _report_pause(run: ProspectingRun, pause: Pause) -> typer.Exit:
+    emit(run)
+    envelope = {
+        "error": "NeedsInput",
+        "code": NEEDS_INPUT_CODE,
+        "message": pause.question,
+        "status_code": None,
+        "exit_code": NEEDS_INPUT_EXIT_CODE,
+        "run_id": str(run.run_id),
+        "stop_reason": run.stop_reason,
+        "suggested_replies": pause.suggested_replies,
+        "sample": pause.sample,
+    }
+    print(json.dumps(envelope, default=str), file=sys.stderr)
+    return typer.Exit(code=NEEDS_INPUT_EXIT_CODE)
+
+
+def _ask(pause: Pause) -> str:
+    if pause.question:
+        typer.echo(pause.question, err=True)
+    for company in pause.sample:
+        reason = company.get("reason")
+        typer.echo(f"  {company.get('domain')}: {reason}" if reason else f"  {company.get('domain')}", err=True)
+    replies = pause.suggested_replies
+    for number, reply in enumerate(replies, start=1):
+        typer.echo(f"  {number}. {reply}", err=True)
+    while True:
+        answer = typer.prompt("Pick a number or type your answer", err=True).strip()
+        if answer.isdigit() and 1 <= int(answer) <= len(replies):
+            return replies[int(answer) - 1]
+        if answer and not answer.isdigit():
+            return answer
+
+
+def _remaining(deadline: float) -> float:
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise JobTimeoutError(TIMEOUT_MESSAGE)
+    return remaining
+
+
+def _await_reply(client: Discolike, *, run_id: str, after: int, deadline: float, poll_interval: float) -> None:
+    """Poll until the agent has answered the message at seq `after`, then print its reply."""
+    while True:
+        run = client.prospecting.get(run_id, ProspectingGetParams(limit=1, messages_after=after))
+        if not run.reply_pending:
+            for message in run.messages:
+                if message.role == "agent":
+                    typer.echo(message.content, err=True)
+            return
+        time.sleep(min(poll_interval, _remaining(deadline)))
+
+
+def _wait_answering(
+    client: Discolike, *, run_id: str, timeout: float, poll_interval: float, no_input: bool
+) -> ProspectingRun:
+    deadline = time.monotonic() + timeout
+    while True:
+        run = client.prospecting.wait(run_id, timeout=_remaining(deadline), poll_interval=poll_interval)
+        if not _at_checkpoint(run):
+            return run
+        pause = _pause(run, _latest_question(client, run))
+        if no_input or not _is_interactive():
+            raise _report_pause(run, pause)
+        sent = client.prospecting.message(
+            run_id, ProspectingMessageRequest(text=_ask(pause)), idempotency_key=f"cli-checkpoint-{uuid4()}"
+        )
+        _await_reply(client, run_id=run_id, after=sent.seq, deadline=deadline, poll_interval=poll_interval)
 
 
 @app.command("start")
@@ -48,6 +183,7 @@ def start_command(
     contact_integration_id: str | None = typer.Option(None, "--contact-integration-id"),
     search_provider_id: str | None = typer.Option(None, "--search-provider-id"),
     segment: bool = typer.Option(False, "--segment/--no-segment"),
+    auto: bool = typer.Option(False, "--auto", help=AUTO_HELP),
 ) -> None:
     """Draft a plan. Wait for proposed, review it, then approve its plan version."""
     from discolike_cli.main import get_client
@@ -68,6 +204,7 @@ def start_command(
             contact_integration_id=contact_integration_id,
             search_provider_id=search_provider_id,
             segment=segment,
+            checkpoints=_checkpoints(auto=auto),
         ),
     )
     emit(get_client(ctx).prospecting.start(request, idempotency_key=idempotency_key))
@@ -102,18 +239,20 @@ def cancel_command(ctx: typer.Context, run_id: str = typer.Argument(...)) -> Non
     emit(get_client(ctx).prospecting.cancel(run_id))
 
 
-@app.command("wait")
+@app.command("wait", help=WAIT_HELP)
 @handle_errors
 def wait_command(
     ctx: typer.Context,
     run_id: str = typer.Argument(...),
     timeout: float = typer.Option(3600, "--timeout", min=0.01),
     poll_interval: float = typer.Option(5, "--poll-interval", min=5),
+    no_input: bool = typer.Option(False, "--no-input", help=NO_INPUT_HELP),
 ) -> None:
-    """Return the first page on proposed, needs_input, completed, failed, or cancelled. Approve proposed plans; timeout stops polling only."""
     from discolike_cli.main import get_client
 
-    emit(get_client(ctx).prospecting.wait(run_id, timeout=timeout, poll_interval=poll_interval))
+    emit(
+        _wait_answering(get_client(ctx), run_id=run_id, timeout=timeout, poll_interval=poll_interval, no_input=no_input)
+    )
 
 
 @app.command("list")
@@ -139,13 +278,17 @@ def approve_command(
     ctx: typer.Context,
     run_id: str = typer.Argument(...),
     plan_version: int = typer.Option(..., "--plan-version", min=1),
+    auto: bool = typer.Option(False, "--auto", help=AUTO_HELP),
 ) -> None:
     """Approve the reviewed plan version and start research."""
     from discolike_cli.main import get_client
 
     emit(
         get_client(ctx).prospecting.approve(
-            run_id, build_request(ProspectingApproveRequest, {"plan_version": plan_version})
+            run_id,
+            build_request(
+                ProspectingApproveRequest, {"plan_version": plan_version, "checkpoints": _checkpoints(auto=auto)}
+            ),
         )
     )
 

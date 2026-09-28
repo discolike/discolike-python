@@ -8,6 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 import discolike.resources.prospecting as module
+from discolike import CHECKPOINT_STOP_REASONS
 from discolike import JobTimeoutError
 from discolike.requests import ProspectingApproveRequest
 from discolike.requests import ProspectingBrief
@@ -199,6 +200,8 @@ def test_invalid_message_key_never_reaches_network(make_client: ClientFactory, k
     [
         (ProspectingApproveRequest, {}),
         (ProspectingApproveRequest, {"plan_version": 0}),
+        (ProspectingApproveRequest, {"plan_version": 1, "checkpoints": "sometimes"}),
+        (ProspectingBrief, {"brief": "US logistics companies", "checkpoints": "never"}),
         (ProspectingListParams, {"limit": 51}),
         (ProspectingListParams, {"limit": 0}),
         (ProspectingListParams, {"before": "not-a-uuid"}),
@@ -227,3 +230,44 @@ def test_request_defaults_preserve_explicit_quantity_intent() -> None:
         "max_candidates": 0,
     }
     assert (ProspectingListParams().limit, ProspectingListParams().before) == (20, None)
+
+
+def test_checkpoints_default_to_the_server_mode_and_send_only_when_set() -> None:
+    brief = "US logistics companies and operations leaders"
+    assert ProspectingBrief(brief=brief).checkpoints == "auto"
+    assert ProspectingBrief(brief=brief).to_wire() == {"brief": brief}
+    assert ProspectingBrief(brief=brief, checkpoints="ask").to_wire() == {"brief": brief, "checkpoints": "ask"}
+    assert ProspectingApproveRequest(plan_version=2).to_wire() == {"plan_version": 2}
+    assert ProspectingApproveRequest(plan_version=2, checkpoints="auto").to_wire() == {
+        "plan_version": 2,
+        "checkpoints": "auto",
+    }
+
+
+def test_wait_returns_at_a_checkpoint_with_its_question(make_client: ClientFactory) -> None:
+    question = message_payload() | {
+        "role": "agent",
+        "kind": "question",
+        "content": "Found 25 companies and 50 emails. Want more?",
+        "data": {"reason": "target_reached", "suggested_replies": ["That's enough", "Find 25 more"], "sample": []},
+    }
+    paused = payload("needs_input") | {
+        "stop_reason": "target_reached",
+        "brief": {"brief": "US logistics companies and operations leaders", "checkpoints": "ask"},
+        "messages": [question],
+    }
+    with make_client(lambda request: httpx2.Response(200, json=paused)) as client:
+        run = client.prospecting.wait(RUN_ID)
+    assert (run.status, run.stop_reason) == ("needs_input", "target_reached")
+    assert run.stop_reason in CHECKPOINT_STOP_REASONS
+    assert run.brief.checkpoints == "ask"
+    assert run.messages[-1].data == question["data"]
+
+
+def test_a_failed_pilot_carries_its_sample(make_client: ClientFactory) -> None:
+    sample = [{"domain": "example.com", "name": "Example", "company_fit": "No", "reason": "Sells software"}]
+    stopped = payload("completed") | {"stop_reason": "pilot_failed", "pilot_sample": sample}
+    with make_client(lambda request: httpx2.Response(200, json=stopped)) as client:
+        run = client.prospecting.wait(RUN_ID)
+    assert (run.stop_reason, run.pilot_sample) == ("pilot_failed", sample)
+    assert run.stop_reason not in CHECKPOINT_STOP_REASONS

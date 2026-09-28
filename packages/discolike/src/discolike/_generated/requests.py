@@ -2917,6 +2917,7 @@ class ProspectingListParams(DiscolikeRequest):
 
 class ProspectingApproveRequest(DiscolikeRequest):
     plan_version: Annotated[int, Field(ge=1, title="Plan Version")]
+    checkpoints: Literal["ask", "auto"] | None = None
 
 
 class ProspectingMessageRequest(DiscolikeRequest):
@@ -2936,6 +2937,13 @@ class ProspectingBrief(DiscolikeRequest):
     contact_integration_id: Annotated[str | None, Field(max_length=128, title="Contact Integration Id")] = None
     search_provider_id: Annotated[str | None, Field(max_length=128, title="Search Provider Id")] = None
     segment: Annotated[bool | None, Field(title="Segment")] = False
+    checkpoints: Annotated[
+        Literal["ask", "auto"] | None,
+        Field(
+            description="ask: pause at checkpoints (pilot, tail_quality, short, target_reached) with status needs_input and a question to answer through message(). auto: never pause; a poor pilot is sharpened once, then the run stops with stop_reason pilot_failed.",
+            title="Checkpoints",
+        ),
+    ] = "auto"
 
 
 class ProspectingGetParams(DiscolikeRequest):
