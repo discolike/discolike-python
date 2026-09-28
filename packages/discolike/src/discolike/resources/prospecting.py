@@ -148,7 +148,10 @@ def _deadline(timeout: float, poll_interval: float) -> float:
 class ProspectingResource(SyncAPIResource):
     @api_route("GET", "/prospecting/runs")
     def list(self, params: ProspectingListParams | None = None) -> builtins.list[ProspectingRunSummary]:
-        """List recent organization runs, newest first; default 20, maximum 50."""
+        """List recent organization runs, newest first; default 20, maximum 50.
+
+        Pass `before` (a run ID) to page past a full page of results.
+        """
         response = self._transport.request("GET", "/prospecting/runs", params=params.to_wire() if params else None)
         return [ProspectingRunSummary.model_validate(row) for row in response.json()]
 
@@ -210,7 +213,10 @@ class ProspectingResource(SyncAPIResource):
 class AsyncProspectingResource(AsyncAPIResource):
     @api_route("GET", "/prospecting/runs")
     async def list(self, params: ProspectingListParams | None = None) -> builtins.list[ProspectingRunSummary]:
-        """List recent organization runs, newest first; default 20, maximum 50."""
+        """List recent organization runs, newest first; default 20, maximum 50.
+
+        Pass `before` (a run ID) to page past a full page of results.
+        """
         response = await self._transport.request(
             "GET", "/prospecting/runs", params=params.to_wire() if params else None
         )

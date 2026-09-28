@@ -118,11 +118,19 @@ def wait_command(
 
 @app.command("list")
 @handle_errors
-def list_command(ctx: typer.Context, limit: int = typer.Option(20, "--limit", min=1, max=50)) -> None:
+def list_command(
+    ctx: typer.Context,
+    limit: int = typer.Option(20, "--limit", min=1, max=50),
+    before: str | None = typer.Option(None, "--before", help="Page past this run ID (last run ID from a prior page)."),
+) -> None:
     """List recent organization runs, newest first."""
     from discolike_cli.main import get_client
 
-    emit(get_client(ctx).prospecting.list(build_request(ProspectingListParams, {"limit": limit})))
+    emit(
+        get_client(ctx).prospecting.list(
+            build_request(ProspectingListParams, _merge_params(None, limit=limit, before=before))
+        )
+    )
 
 
 @app.command("approve")

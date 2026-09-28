@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 from typing import Any
 from typing import Literal
+from uuid import UUID
 
 from pydantic import Field
 
@@ -2908,6 +2909,10 @@ class MatchBulkParams(DiscolikeRequest):
 
 class ProspectingListParams(DiscolikeRequest):
     limit: Annotated[int | None, Field(ge=1, le=50, title="Limit")] = 20
+    before: Annotated[
+        UUID | None,
+        Field(description="Return the runs created before this run.", title="Before"),
+    ] = None
 
 
 class ProspectingApproveRequest(DiscolikeRequest):

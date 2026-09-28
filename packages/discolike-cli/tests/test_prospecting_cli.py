@@ -124,7 +124,7 @@ def test_chat_commands_send_exact_payloads(install_build_client: Callable[[Handl
 
     install_build_client(handler)
     commands = [
-        ["list"],
+        ["list", "--before", RUN_ID],
         ["approve", RUN_ID, "--plan-version", "2"],
         ["message", RUN_ID, "--text", "Make it 100 companies", "--idempotency-key", "cli-message"],
         ["status", RUN_ID, "--events-after", "12", "--messages-after", "8", "--limit", "500"],
@@ -133,7 +133,7 @@ def test_chat_commands_send_exact_payloads(install_build_client: Callable[[Handl
     for command in commands:
         result = runner.invoke(app, ["prospecting", *command])
         assert result.exit_code == 0, result.output
-    assert dict(seen[0].url.params) == {"limit": "20"}
+    assert dict(seen[0].url.params) == {"limit": "20", "before": RUN_ID}
     assert json.loads(seen[1].content) == {"plan_version": 2}
     assert json.loads(seen[2].content) == {"text": "Make it 100 companies"}
     assert seen[2].headers["Idempotency-Key"] == "cli-message"
@@ -147,6 +147,7 @@ def test_chat_commands_send_exact_payloads(install_build_client: Callable[[Handl
         ["approve", RUN_ID],
         ["message", RUN_ID, "--text", "Continue"],
         ["list", "--limit", "51"],
+        ["list", "--before", "not-a-uuid"],
         ["status", RUN_ID, "--messages-after", "-1"],
     ],
 )

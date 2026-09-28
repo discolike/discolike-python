@@ -136,7 +136,7 @@ def test_list_approve_message_and_cursors(make_client: ClientFactory) -> None:
         return httpx2.Response(200, json=result)
 
     with make_client(handler) as client:
-        assert client.prospecting.list(ProspectingListParams(limit=50))[0].target_companies == 25
+        assert client.prospecting.list(ProspectingListParams(limit=50, before=RUN_ID))[0].target_companies == 25
         assert client.prospecting.approve(RUN_ID, ProspectingApproveRequest(plan_version=2)).approved_plan_version == 2
         assert (
             client.prospecting.message(
@@ -145,7 +145,7 @@ def test_list_approve_message_and_cursors(make_client: ClientFactory) -> None:
             == 8
         )
         run = client.prospecting.get(RUN_ID, ProspectingGetParams(events_after=12, messages_after=8, limit=500))
-    assert dict(seen[0].url.params) == {"limit": "50"}
+    assert dict(seen[0].url.params) == {"limit": "50", "before": RUN_ID}
     assert json.loads(seen[1].content) == {"plan_version": 2}
     assert json.loads(seen[2].content) == {"text": "Make it 100 companies"}
     assert [r.headers.get("Idempotency-Key") for r in seen] == [None, None, "message-1", None]
@@ -201,6 +201,7 @@ def test_invalid_message_key_never_reaches_network(make_client: ClientFactory, k
         (ProspectingApproveRequest, {"plan_version": 0}),
         (ProspectingListParams, {"limit": 51}),
         (ProspectingListParams, {"limit": 0}),
+        (ProspectingListParams, {"before": "not-a-uuid"}),
         (ProspectingMessageRequest, {"text": ""}),
         (ProspectingMessageRequest, {"text": "x" * 4001}),
         (ProspectingGetParams, {"events_after": -1}),
@@ -225,4 +226,4 @@ def test_request_defaults_preserve_explicit_quantity_intent() -> None:
         "max_actions": 0,
         "max_candidates": 0,
     }
-    assert ProspectingListParams().limit == 20
+    assert (ProspectingListParams().limit, ProspectingListParams().before) == (20, None)

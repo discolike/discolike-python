@@ -8,6 +8,7 @@
 - CLI: add prospecting plan approval, recent-run lists, chat messages, and event/message cursors. Omitted quantity flags preserve brief inference; larger target and automatic work limits match the API. `wait` returns when a plan needs approval.
 - SDK: add sync/async prospecting start/get/list/approve/message/cancel/wait, with typed chat, progress, saved-query, and recent-run responses. Starts and messages require idempotency keys; approval requires the reviewed plan version. `wait` returns on proposed plans, needs-input, and terminal outcomes.
 - SDK: prospecting runs gain `saved_query_ids`, every saved contact list for the run in order (first entry is `saved_query_id`). Large results are now split across several lists instead of being cut off at 50 MiB; parts are final once the run reaches a terminal status.
+- SDK/CLI: `prospecting.list` / `ProspectingListParams` / `prospecting list --before` gain `before` (a run ID) for keyset paging past a full page of runs, ordered by `created_at` then `run_id` descending. An unknown or other-organization run ID returns an empty page.
 
 - SDK/CLI: `discogen.process` / `discogen.process_personas` with `typed_columns=True` now raise a 400 `ValidationError` at submit when the account has no TypeSafe integration, instead of returning a job whose typed cells all read `Error: No TypeSafe integration is configured`. No SDK code change; the server rejects earlier.
 
