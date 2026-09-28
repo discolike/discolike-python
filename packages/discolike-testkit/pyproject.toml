@@ -7,7 +7,7 @@ name = "discolike-testkit"
 version = "0.0.0"
 description = "Shared test helpers for the discolike workspace. Not published."
 license = "MIT"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
   "discolike",
   "httpx2>=2.9",

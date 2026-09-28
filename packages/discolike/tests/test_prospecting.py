@@ -65,7 +65,7 @@ def test_wait_timeout_never_cancels(make_client: ClientFactory, monkeypatch: pyt
         return httpx2.Response(200, json=payload())
 
     with make_client(handler) as client, pytest.raises(JobTimeoutError):
-        client.prospecting.wait(RUN_ID, timeout=1)
+        client.prospecting.wait(RUN_ID, max_wait=1)
     assert seen == ["GET"]
 
 
@@ -278,3 +278,18 @@ def test_a_run_carries_its_saved_companies_list(make_client: ClientFactory) -> N
     completed = payload("completed") | {"saved_query_id": RUN_ID, "companies_saved_query_id": OTHER_QUERY_ID}
     with make_client(lambda request: httpx2.Response(200, json=completed)) as client:
         assert client.prospecting.get(RUN_ID).companies_saved_query_id == UUID(OTHER_QUERY_ID)
+
+
+def test_a_run_from_a_newer_server_still_parses(make_client: ClientFactory) -> None:
+    newer = payload("archived") | {
+        "brief": {"brief": "Dentists", "contacts_per_company": 50, "target_companies": 50_000, "checkpoints": "review"},
+        "messages": [message_payload() | {"kind": "chart", "role": "system"}],
+    }
+    with make_client(lambda request: httpx2.Response(200, json=newer)) as client:
+        run = client.prospecting.get(RUN_ID)
+    assert (run.status, run.brief.contacts_per_company, run.messages[0].kind) == ("archived", 50, "chart")
+
+
+def test_a_summary_keeps_a_brief_longer_than_the_list_preview() -> None:
+    summary = module.ProspectingRunSummary.model_validate(summary_payload() | {"brief": "x" * 500})
+    assert len(summary.brief) == 500

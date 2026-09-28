@@ -61,8 +61,6 @@ MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
 }
 # Request fields the platform accepts but hides from its OpenAPI schema (SkipJsonSchema), so the spec never lists them.
 HIDDEN_REQUEST_FIELDS: dict[str, frozenset[str]] = {"ProspectingBrief": frozenset({"checkpoints"})}
-# Response fields the spec requires but the SDK defaults, so it still parses servers from before they were added.
-OPTIONAL_RESPONSE_FIELDS: dict[str, frozenset[str]] = {"ProspectingRun": frozenset({"companies_saved_query_id"})}
 SPEC_URL = "https://api.discolike.com/v1/openapi.json"
 REQUEST_TIMEOUT_SECONDS = 30.0
 
@@ -181,6 +179,7 @@ def check(spec: dict, routes: list[RouteEntry]) -> list[str]:
 
 
 TYPE_INFO_KEYS = {"type", "anyOf", "oneOf", "$ref", "nullable"}
+FieldShape = tuple[frozenset[str], str | None]
 
 
 def _resolved_type(node: dict, *, root: dict) -> str | None:
@@ -219,8 +218,17 @@ def _has_type_info(prop: dict) -> bool:
     return bool(prop.keys() & TYPE_INFO_KEYS)
 
 
-def _field_shape(prop: dict, *, root: dict) -> tuple[frozenset[str], str | None]:
+def _field_shape(prop: dict, *, root: dict) -> FieldShape:
     return (_field_types(prop, root=root), _item_type(prop, root=root))
+
+
+def _describe(shape: FieldShape) -> str:
+    types = " | ".join(sorted(shape[0]))
+    return types if shape[1] is None else f"{types} of {shape[1]}"
+
+
+def _accepts(*, model_shape: FieldShape, spec_shape: FieldShape) -> bool:
+    return spec_shape[0] <= model_shape[0] and spec_shape[1] == model_shape[1]
 
 
 def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = None) -> list[str]:
@@ -247,21 +255,12 @@ def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = 
 
         # A fixture that doesn't spell out "type"/"required" info is asserting nothing about it, not
         # that nothing is required or typed, so leave those fields alone rather than flag every one.
+        # Only drift that breaks parsing is flagged: an SDK looser than the spec still reads every response.
         if "required" in schema:
-            spec_required = set(schema["required"])
-            model_required = set(model_schema.get("required", []))
-            mismatches.extend(
-                f"{model.__name__}: field '{field}' is required in spec schema '{schema_name}' but optional on "
-                f"the SDK model"
-                for field in sorted(
-                    (spec_required - model_required)
-                    & model_fields - OPTIONAL_RESPONSE_FIELDS.get(model.__name__, frozenset())
-                )
-            )
             mismatches.extend(
                 f"{model.__name__}: field '{field}' is optional in spec schema '{schema_name}' but required on "
                 f"the SDK model"
-                for field in sorted((model_required - spec_required) & spec_fields)
+                for field in sorted((set(model_schema.get("required", [])) - set(schema["required"])) & spec_fields)
             )
 
         for field in sorted(model_fields & spec_fields):
@@ -270,10 +269,10 @@ def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = 
                 continue
             model_shape = _field_shape(model_properties.get(field, {}), root=model_schema)
             spec_shape = _field_shape(spec_prop, root=spec)
-            if model_shape != spec_shape:
+            if not _accepts(model_shape=model_shape, spec_shape=spec_shape):
                 mismatches.append(
-                    f"{model.__name__}: field '{field}' has type {model_shape} but spec schema "
-                    f"'{schema_name}' declares {spec_shape}"
+                    f"{model.__name__}: field '{field}' has type {_describe(model_shape)} but spec schema "
+                    f"'{schema_name}' declares {_describe(spec_shape)}"
                 )
     return mismatches
 

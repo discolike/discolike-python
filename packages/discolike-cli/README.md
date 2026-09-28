@@ -14,7 +14,7 @@ Or run it without installing:
 uvx --from discolike-cli discolike --help
 ```
 
-Requires Python 3.10+. Installing this package gives you the `discolike` command.
+Requires Python 3.11+. Installing this package gives you the `discolike` command.
 
 ## Authentication
 

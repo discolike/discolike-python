@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 import typer
@@ -25,7 +25,7 @@ FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls
 app = typer.Typer(help="Manage saved queries and exclusion lists for reusable targeting.")
 
 
-class SaveResultsAction(str, Enum):
+class SaveResultsAction(StrEnum):
     discover = "discover"
     segment = "segment"
     contacts = "contacts"

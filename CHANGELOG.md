@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Breaking:** Python 3.10 is no longer supported (end of life October 2026); the SDK and CLI require Python 3.11+.
+- **Breaking:** the polling deadline on `Job.wait()`, `EmailJob.wait()`, `EmailBatch.results()` and `prospecting.wait()` (sync and async) is renamed from `timeout=` to `max_wait=`, and `signup()` / `async_signup()` take `request_timeout=` instead of `timeout=`. Behavior is unchanged: `max_wait` still raises `JobTimeoutError` while the work keeps running server-side. The client constructor and `with_options(timeout=...)` keep their name. The CLI's `--timeout` flag is unchanged.
+- SDK: response enums are open. `JobStatus.title_validation` and the prospecting `status`, `stage`, message `role`/`kind`, event `kind` and in-flight `state` accept values a newer API adds instead of failing to parse, and `ProspectingRun.brief` is a `ProspectingRunBrief` without the request-side limits, so a run started with a higher server-side cap still parses. Compare against the documented values and treat anything else as unknown.
 - Managed prospecting agent coordination and contact qualification now use customer LLM credentials, including when contact extraction is native. Missing keys and provider errors do not fall back to platform credentials.
 - SDK: prospecting runs gain `chat_closed`, set once a chat is closed for repeated off-topic use; every later message then gets a fixed reply instead of a model call. A run with no approved plan, or an approved run paused waiting on a question, is cancelled with the new `stop_reason` value `"misuse"` when its chat closes; an approved queued or running run keeps working and its saved lists still fill. Starting a run past an organization's daily new-conversation limit now returns a 403 (`PlanAccessError`) with a message naming the limit.
 

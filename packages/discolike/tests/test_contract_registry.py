@@ -104,8 +104,7 @@ def test_check_models_reports_a_type_change():
     spec = {"components": {"schemas": {"ProspectingRunResponse": schema}}}
     mismatches = check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun})
     assert mismatches == [
-        "ProspectingRun: field 'chat_closed' has type (frozenset({'boolean'}), None) but spec schema "
-        "'ProspectingRunResponse' declares (frozenset({'string'}), None)"
+        "ProspectingRun: field 'chat_closed' has type boolean but spec schema 'ProspectingRunResponse' declares string"
     ]
 
 
@@ -118,8 +117,8 @@ def test_check_models_reports_an_array_item_type_change():
     spec = {"components": {"schemas": {"ProspectingRunResponse": schema}}}
     mismatches = check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun})
     assert mismatches == [
-        "ProspectingRun: field 'saved_query_ids' has type (frozenset({'array'}), 'string') but spec schema "
-        "'ProspectingRunResponse' declares (frozenset({'array'}), 'integer')"
+        "ProspectingRun: field 'saved_query_ids' has type array of string but spec schema "
+        "'ProspectingRunResponse' declares array of integer"
     ]
 
 
@@ -161,17 +160,38 @@ def test_check_models_passes_a_nullable_field_expressed_via_openapi_nullable_fla
     assert check_contract.check_models(spec, {"ExtractResponse": ExtractResult}) == []
 
 
-def test_check_models_reports_a_field_the_spec_marks_required_but_the_sdk_does_not():
+def test_check_models_accepts_a_field_the_spec_marks_required_but_the_sdk_keeps_optional():
     check_contract = _load_check_contract()
     from discolike.resources.prospecting import ProspectingRun
 
     schema = _spec_schema_for(ProspectingRun)
     schema["required"] = [*schema.get("required", []), "chat_closed"]
     spec = {"components": {"schemas": {"ProspectingRunResponse": schema}}}
-    mismatches = check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun})
-    assert mismatches == [
-        "ProspectingRun: field 'chat_closed' is required in spec schema 'ProspectingRunResponse' but optional on "
-        "the SDK model"
+    assert check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun}) == []
+
+
+def test_check_models_accepts_an_sdk_field_nullable_where_the_spec_is_not():
+    check_contract = _load_check_contract()
+    from discolike.resources.companies import ExtractResult
+
+    spec = {
+        "components": {
+            "schemas": {"ExtractResponse": {"properties": {"text": {"type": "string"}, "language": {"type": "string"}}}}
+        }
+    }
+    assert check_contract.check_models(spec, {"ExtractResponse": ExtractResult}) == []
+
+
+def test_check_models_reports_a_spec_field_turning_nullable_under_a_non_null_sdk_field():
+    check_contract = _load_check_contract()
+    from discolike.resources.prospecting import ProspectingRun
+
+    schema = _spec_schema_for(ProspectingRun)
+    schema["properties"]["chat_closed"] = {"anyOf": [{"type": "boolean"}, {"type": "null"}]}
+    spec = {"components": {"schemas": {"ProspectingRunResponse": schema}}}
+    assert check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun}) == [
+        "ProspectingRun: field 'chat_closed' has type boolean but spec schema "
+        "'ProspectingRunResponse' declares boolean | null"
     ]
 
 
@@ -380,8 +400,7 @@ def test_check_models_still_reports_a_ref_to_a_different_type():
         status={"$ref": "#/components/schemas/ProspectingStatus"}, status_schema={"type": "integer", "enum": [1, 2]}
     )
     assert check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun}) == [
-        "ProspectingRun: field 'status' has type (frozenset({'string'}), None) but spec schema "
-        "'ProspectingRunResponse' declares (frozenset({'integer'}), None)"
+        "ProspectingRun: field 'status' has type string but spec schema 'ProspectingRunResponse' declares integer"
     ]
 
 

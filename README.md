@@ -63,7 +63,7 @@ Or run the CLI without installing:
 uvx --from discolike-cli discolike --help
 ```
 
-Requires Python 3.10+.
+Requires Python 3.11+.
 
 ## Authentication
 

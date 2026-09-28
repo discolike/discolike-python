@@ -24,10 +24,11 @@ from discolike.resources._base import api_route
 
 WAIT_STATUSES = frozenset({"proposed", "completed", "needs_input", "failed", "cancelled"})
 CHECKPOINT_STOP_REASONS = frozenset({"pilot", "tail_quality", "short", "target_reached"})
-ProspectingStatus = Literal[
-    "drafting", "proposed", "queued", "running", "needs_input", "completed", "failed", "cancelled"
-]
-ProspectingStage = Literal["plan", "discover", "validate", "contacts", "generate", "verify", "segment"]
+# Response enums stay open (`| str`) so a value the platform adds later never fails parsing in released SDKs.
+ProspectingStatus = (
+    Literal["drafting", "proposed", "queued", "running", "needs_input", "completed", "failed", "cancelled"] | str
+)
+ProspectingStage = Literal["plan", "discover", "validate", "contacts", "generate", "verify", "segment"] | str
 
 
 class ProspectingPlan(DiscolikeModel):
@@ -38,11 +39,27 @@ class ProspectingPlan(DiscolikeModel):
     issues: list[str] = Field(default_factory=list)
 
 
+class ProspectingRunBrief(DiscolikeModel):
+    brief: str
+    domains: list[str] | None = None
+    company_names: list[str] | None = None
+    exclude_domains: list[str] | None = None
+    target_companies: int | None = None
+    contacts_per_company: int | None = None
+    max_candidates: int | None = None
+    max_actions: int | None = None
+    validation_integration_id: str | None = None
+    contact_integration_id: str | None = None
+    search_provider_id: str | None = None
+    segment: bool | None = None
+    checkpoints: Literal["ask", "auto"] | str | None = None
+
+
 class ProspectingEvent(DiscolikeModel):
     seq: int
     created_at: datetime
     stage: str | None = None
-    kind: Literal["queued", "decision", "started", "progress", "result", "stopped", "warning"]
+    kind: Literal["queued", "decision", "started", "progress", "result", "stopped", "warning"] | str
     message: str
     data: dict[str, Any] | None = None
 
@@ -50,8 +67,8 @@ class ProspectingEvent(DiscolikeModel):
 class ProspectingMessage(DiscolikeModel):
     seq: int
     created_at: datetime
-    role: Literal["user", "agent"]
-    kind: Literal["text", "plan", "milestone", "question", "ack", "error"]
+    role: Literal["user", "agent"] | str
+    kind: Literal["text", "plan", "milestone", "question", "ack", "error"] | str
     content: str
     data: dict[str, Any] | None = None
 
@@ -60,7 +77,7 @@ class ProspectingInFlight(DiscolikeModel):
     stage: ProspectingStage
     items: int
     plan_version: int
-    state: Literal["dispatching", "running"]
+    state: Literal["dispatching", "running"] | str
     started_at: datetime
 
 
@@ -70,7 +87,7 @@ class ProspectingRunSummary(DiscolikeModel):
     title: str | None = None
     stop_reason: str | None = None
     stage: str | None = None
-    brief: str = Field(max_length=200)
+    brief: str
     target_companies: int
     contacts_per_company: int
     qualified_companies: int = 0
@@ -87,7 +104,7 @@ class ProspectingRun(DiscolikeModel):
     phase: str | None = None
     created_at: datetime
     updated_at: datetime
-    brief: ProspectingBrief
+    brief: ProspectingRunBrief
     target_companies: int
     contacts_per_company: int
     plan: ProspectingPlan | None = None
@@ -147,10 +164,10 @@ def _path(run_id: str | UUID) -> str:
     return f"/prospecting/runs/{UUID(str(run_id))}"
 
 
-def _deadline(timeout: float, poll_interval: float) -> float:
-    if not math.isfinite(timeout) or timeout <= 0 or not math.isfinite(poll_interval) or poll_interval < 5:
-        raise ValueError("timeout must be finite and positive; poll_interval must be finite and at least 5 seconds")
-    return time.monotonic() + timeout
+def _deadline(max_wait: float, poll_interval: float) -> float:
+    if not math.isfinite(max_wait) or max_wait <= 0 or not math.isfinite(poll_interval) or poll_interval < 5:
+        raise ValueError("max_wait must be finite and positive; poll_interval must be finite and at least 5 seconds")
+    return time.monotonic() + max_wait
 
 
 class ProspectingResource(SyncAPIResource):
@@ -203,7 +220,7 @@ class ProspectingResource(SyncAPIResource):
         response = self._transport.request("DELETE", _path(run_id))
         return ProspectingRun.model_validate(response.json())
 
-    def wait(self, run_id: str | UUID, *, timeout: float = 3600, poll_interval: float = 5) -> ProspectingRun:
+    def wait(self, run_id: str | UUID, *, max_wait: float = 3600, poll_interval: float = 5) -> ProspectingRun:
         """Return the first page when approval, input, or a terminal outcome is ready.
 
         A proposed run needs approve() with its plan_version before research starts.
@@ -213,7 +230,7 @@ class ProspectingResource(SyncAPIResource):
         then wait again.
         Timeout stops local polling only. Fetch subsequent pages with get().
         """
-        deadline = _deadline(timeout, poll_interval)
+        deadline = _deadline(max_wait, poll_interval)
         while True:
             run = self.get(run_id)
             if run.status in WAIT_STATUSES:
@@ -275,12 +292,12 @@ class AsyncProspectingResource(AsyncAPIResource):
         response = await self._transport.request("DELETE", _path(run_id))
         return ProspectingRun.model_validate(response.json())
 
-    async def wait(self, run_id: str | UUID, *, timeout: float = 3600, poll_interval: float = 5) -> ProspectingRun:
+    async def wait(self, run_id: str | UUID, *, max_wait: float = 3600, poll_interval: float = 5) -> ProspectingRun:
         """Return the first page on proposed/needs_input/completed/failed/cancelled; inspect status.
 
         A needs_input run with a stop_reason in CHECKPOINT_STOP_REASONS waits for an answer via message().
         """
-        deadline = _deadline(timeout, poll_interval)
+        deadline = _deadline(max_wait, poll_interval)
         while True:
             run = await self.get(run_id)
             if run.status in WAIT_STATUSES:

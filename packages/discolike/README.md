@@ -10,7 +10,7 @@ For the terminal, see [`discolike-cli`](https://pypi.org/project/discolike-cli/)
 pip install discolike
 ```
 
-Requires Python 3.10+.
+Requires Python 3.11+.
 
 ## Authentication
 

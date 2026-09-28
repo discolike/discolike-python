@@ -138,7 +138,7 @@ def _wait_answering(
 ) -> ProspectingRun:
     deadline = time.monotonic() + timeout
     while True:
-        run = client.prospecting.wait(run_id, timeout=_remaining(deadline), poll_interval=poll_interval)
+        run = client.prospecting.wait(run_id, max_wait=_remaining(deadline), poll_interval=poll_interval)
         if not _at_checkpoint(run):
             return run
         pause = _pause(run, _latest_question(client, run))

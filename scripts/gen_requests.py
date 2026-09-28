@@ -50,7 +50,7 @@ CODEGEN_ARGS = [
     "--enum-field-as-literal",
     "all",
     "--target-python-version",
-    "3.10",
+    "3.11",
     "--use-double-quotes",
     "--disable-timestamp",
     "--formatters",
