@@ -322,14 +322,14 @@ class ContactsSearchParams(DiscolikeRequest):
     summary: Annotated[
         str | None,
         Field(
-            description="Filter by profile summary text (semantic search).",
+            description="Match the profile summary text: a contact matches when its summary contains every word of any one term, in any order. Words are separate terms; quote a multi-word term to keep it together, prefix + to require a term.",
             title="Summary",
         ),
     ] = None
     negate_summary: Annotated[
         str | None,
         Field(
-            description="Exclude contacts matching this summary description.",
+            description="Exclude contacts whose profile summary contains every word of any one term, in any order. Quote a multi-word term to keep it together.",
             title="Negate Summary",
         ),
     ] = None
@@ -751,14 +751,14 @@ class ContactsCountParams(DiscolikeRequest):
     summary: Annotated[
         str | None,
         Field(
-            description="Filter by profile summary text (semantic search).",
+            description="Match the profile summary text: a contact matches when its summary contains every word of any one term, in any order. Words are separate terms; quote a multi-word term to keep it together, prefix + to require a term.",
             title="Summary",
         ),
     ] = None
     negate_summary: Annotated[
         str | None,
         Field(
-            description="Exclude contacts matching this summary description.",
+            description="Exclude contacts whose profile summary contains every word of any one term, in any order. Quote a multi-word term to keep it together.",
             title="Negate Summary",
         ),
     ] = None
@@ -1212,14 +1212,14 @@ class ContactFilters(DiscolikeRequest):
     summary: Annotated[
         str | None,
         Field(
-            description="Filter by profile summary text (semantic search).",
+            description="Match the profile summary text: a contact matches when its summary contains every word of any one term, in any order. Words are separate terms; quote a multi-word term to keep it together, prefix + to require a term.",
             title="Summary",
         ),
     ] = None
     negate_summary: Annotated[
         str | None,
         Field(
-            description="Exclude contacts matching this summary description.",
+            description="Exclude contacts whose profile summary contains every word of any one term, in any order. Quote a multi-word term to keep it together.",
             title="Negate Summary",
         ),
     ] = None
@@ -2915,11 +2915,6 @@ class ProspectingListParams(DiscolikeRequest):
     ] = None
 
 
-class ProspectingApproveRequest(DiscolikeRequest):
-    plan_version: Annotated[int, Field(ge=1, title="Plan Version")]
-    checkpoints: Literal["ask", "auto"] | None = None
-
-
 class ProspectingMessageRequest(DiscolikeRequest):
     text: Annotated[str, Field(max_length=4000, min_length=1, title="Text")]
 
@@ -2928,6 +2923,14 @@ class ProspectingBrief(DiscolikeRequest):
     brief: Annotated[str, Field(max_length=4000, min_length=10, title="Brief")]
     domains: Annotated[list[str] | None, Field(max_length=1000, title="Domains")] = None
     company_names: Annotated[list[str] | None, Field(max_length=100, title="Company Names")] = None
+    customer_domains: Annotated[
+        list[str] | None,
+        Field(
+            description="Your customers' domains, grouped into segments; lookalikes of each are found. Not with domains.",
+            max_length=1000,
+            title="Customer Domains",
+        ),
+    ] = None
     exclude_domains: Annotated[list[str] | None, Field(max_length=1000, title="Exclude Domains")] = None
     target_companies: Annotated[int | None, Field(ge=1, le=10000, title="Target Companies")] = 25
     contacts_per_company: Annotated[int | None, Field(ge=1, le=5, title="Contacts Per Company")] = 2
@@ -3193,3 +3196,10 @@ class BulkContactMatchRequest(DiscolikeRequest):
         int | None,
         Field(description="Maximum matches per query (1-20).", ge=1, le=20, title="Limit"),
     ] = 10
+
+
+class ProspectingApproveRequest(DiscolikeRequest):
+    plan_version: Annotated[int, Field(ge=1, title="Plan Version")]
+    checkpoints: Literal["ask", "auto"] | None = None
+    seed_segments: Annotated[list[int] | None, Field(min_length=1, title="Seed Segments")] = None
+    segment: Annotated[bool | None, Field(title="Segment")] = None

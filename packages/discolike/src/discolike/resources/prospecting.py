@@ -28,7 +28,9 @@ CHECKPOINT_STOP_REASONS = frozenset({"pilot", "tail_quality", "short", "target_r
 ProspectingStatus = (
     Literal["drafting", "proposed", "queued", "running", "needs_input", "completed", "failed", "cancelled"] | str
 )
-ProspectingStage = Literal["plan", "discover", "validate", "contacts", "generate", "verify", "segment"] | str
+ProspectingStage = (
+    Literal["plan", "discover", "validate", "contacts", "generate", "verify", "segment", "seed_segment"] | str
+)
 
 
 class ProspectingPlan(DiscolikeModel):
@@ -43,6 +45,7 @@ class ProspectingRunBrief(DiscolikeModel):
     brief: str
     domains: list[str] | None = None
     company_names: list[str] | None = None
+    customer_domains: list[str] | None = None
     exclude_domains: list[str] | None = None
     target_companies: int | None = None
     contacts_per_company: int | None = None
@@ -53,6 +56,7 @@ class ProspectingRunBrief(DiscolikeModel):
     search_provider_id: str | None = None
     segment: bool | None = None
     checkpoints: Literal["ask", "auto"] | str | None = None
+    selected_seed_segments: list[int] | None = None
 
 
 class ProspectingEvent(DiscolikeModel):
@@ -185,6 +189,8 @@ class ProspectingResource(SyncAPIResource):
         """Approve the reviewed plan version; repeating the same approval is safe.
 
         `checkpoints` on the request overrides the brief's mode; None keeps it.
+        `seed_segments` picks which customer segments a seeded plan expands (None keeps the card's default);
+        `segment` turns results grouping on or off.
         """
         response = self._transport.request("POST", _path(run_id) + "/approve", json_body=request.to_wire())
         return ProspectingRun.model_validate(response.json())
@@ -258,6 +264,8 @@ class AsyncProspectingResource(AsyncAPIResource):
         """Approve the reviewed plan version; repeating the same approval is safe.
 
         `checkpoints` on the request overrides the brief's mode; None keeps it.
+        `seed_segments` picks which customer segments a seeded plan expands (None keeps the card's default);
+        `segment` turns results grouping on or off.
         """
         response = await self._transport.request("POST", _path(run_id) + "/approve", json_body=request.to_wire())
         return ProspectingRun.model_validate(response.json())

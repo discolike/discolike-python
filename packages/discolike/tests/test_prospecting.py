@@ -293,3 +293,43 @@ def test_a_run_from_a_newer_server_still_parses(make_client: ClientFactory) -> N
 def test_a_summary_keeps_a_brief_longer_than_the_list_preview() -> None:
     summary = module.ProspectingRunSummary.model_validate(summary_payload() | {"brief": "x" * 500})
     assert len(summary.brief) == 500
+
+
+def test_approve_sends_a_segment_selection_only_when_given(make_client: ClientFactory) -> None:
+    bodies: list[dict] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        bodies.append(json.loads(request.content))
+        return httpx2.Response(202, json=payload())
+
+    with make_client(handler) as client:
+        client.prospecting.approve(RUN_ID, ProspectingApproveRequest(plan_version=1))
+        client.prospecting.approve(
+            RUN_ID, ProspectingApproveRequest(plan_version=1, seed_segments=[1, 2], segment=True)
+        )
+    assert bodies == [{"plan_version": 1}, {"plan_version": 1, "seed_segments": [1, 2], "segment": True}]
+    with pytest.raises(ValidationError):
+        ProspectingApproveRequest(plan_version=1, seed_segments=[])
+
+
+def test_a_seeded_brief_sends_and_reads_back_its_customers(make_client: ClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+    customers = ["acme.com", "example.com"]
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        body = payload("drafting")
+        return httpx2.Response(
+            202,
+            json=body | {"brief": body["brief"] | {"customer_domains": customers, "selected_seed_segments": [1]}},
+        )
+
+    with make_client(handler) as client:
+        run = client.prospecting.start(
+            ProspectingBrief(brief="Lookalikes of our customers and their CTOs", customer_domains=customers),
+            idempotency_key="seeded",
+        )
+    assert json.loads(seen[0].content)["customer_domains"] == customers
+    assert (run.brief.customer_domains, run.brief.selected_seed_segments) == (customers, [1])
+    with pytest.raises(ValidationError):
+        ProspectingBrief(brief="Lookalikes of our customers", customer_domains=["acme.com"] * 1001)

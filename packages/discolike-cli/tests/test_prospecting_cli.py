@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from pathlib import Path
 
 import httpx2
 import pytest
@@ -345,3 +346,63 @@ def test_wait_returns_other_needs_input_pauses_unchanged(
 
     assert result.exit_code == 0, result.output
     assert json.loads(result.stdout)["stop_reason"] == "question"
+
+
+def test_start_reads_customers_from_a_file(install_build_client: Callable[[Handler], None], tmp_path: Path) -> None:
+    customers = tmp_path / "customers.csv"
+    customers.write_text("domain\nAcme.com\nwww.example.com\nacme.com\n")
+    bodies = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        bodies.append(json.loads(request.content))
+        return httpx2.Response(202, json=run_payload("drafting"))
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "prospecting",
+            "start",
+            "--brief",
+            "Lookalikes of our customers and their CTOs",
+            "--idempotency-key",
+            "seeded",
+            "--customers-file",
+            str(customers),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert bodies[0]["customer_domains"] == ["acme.com", "example.com"]
+
+
+def test_approve_sends_the_chosen_segments_and_results_grouping(
+    install_build_client: Callable[[Handler], None],
+) -> None:
+    bodies = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        bodies.append(json.loads(request.content))
+        return httpx2.Response(202, json=run_payload("queued"))
+
+    install_build_client(handler)
+    chosen = runner.invoke(
+        app,
+        [
+            "prospecting",
+            "approve",
+            RUN_ID,
+            "--plan-version",
+            "1",
+            "--seed-segment",
+            "1",
+            "--seed-segment",
+            "2",
+            "--segment",
+        ],
+    )
+    default = runner.invoke(app, ["prospecting", "approve", RUN_ID, "--plan-version", "1"])
+    assert chosen.exit_code == default.exit_code == 0, chosen.output + default.output
+    assert bodies == [
+        {"plan_version": 1, "checkpoints": "ask", "seed_segments": [1, 2], "segment": True},
+        {"plan_version": 1, "checkpoints": "ask"},
+    ]

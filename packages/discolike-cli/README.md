@@ -53,6 +53,7 @@ discolike bulk contacts  --domains-file companies.csv --per-company 10 --summary
 
 ```bash
 discolike prospecting start --brief "Find 100 US logistics companies and 3 operations directors each" --idempotency-key logistics-1
+discolike prospecting start --brief "Find lookalikes of our customers and their CTOs" --customers-file customers.csv --idempotency-key seeded-1
 discolike prospecting wait RUN_ID
 # Review the proposed plan, then approve the exact version you saw:
 discolike prospecting approve RUN_ID --plan-version 1

@@ -214,14 +214,17 @@ def test_normalize_schema_strips_scalar_item_constraints(gen) -> None:
     }
 
 
-def test_apply_overlays_fills_only_what_the_spec_is_missing(gen) -> None:
+def test_apply_overlays_fills_only_what_the_spec_is_missing(gen, monkeypatch, capsys) -> None:
+    pending = {"lat": {"type": "number", "description": "pending"}, "radius": {"type": "string"}}
+    monkeypatch.setattr(gen, "PENDING_PROPERTIES", {"DiscoverParams": pending})
     kept = {"DiscoverParams": {"type": "object", "properties": {"lat": {"type": "number", "description": "deployed"}}}}
 
     properties = gen.apply_overlays(kept=kept)["DiscoverParams"]["properties"]
 
     assert properties["lat"] == {"type": "number", "description": "deployed"}
-    assert properties["radius"]["type"] == "string"
+    assert properties["radius"] == {"type": "string"}
     assert properties["sub_industry"]["items"] == {"type": "string"}
+    assert "drop it from PENDING_PROPERTIES" in capsys.readouterr().out
 
 
 def test_apply_overlays_pins_sub_industry_over_a_spec_enum(gen) -> None:
@@ -233,18 +236,12 @@ def test_apply_overlays_pins_sub_industry_over_a_spec_enum(gen) -> None:
     assert sub_industry["items"] == {"type": "string"}
 
 
-def test_apply_overlays_adds_the_checkpoint_modes_the_spec_hides_or_lacks(gen) -> None:
-    kept = {
-        "ProspectingBrief": {"type": "object", "properties": {"brief": {"type": "string"}}},
-        "ProspectingApproveRequest": {"type": "object", "properties": {"plan_version": {"type": "integer"}}},
-    }
+def test_apply_overlays_pins_the_brief_checkpoint_modes_the_spec_hides(gen) -> None:
+    kept = {"ProspectingBrief": {"type": "object", "properties": {"brief": {"type": "string"}}}}
 
-    overlaid = gen.apply_overlays(kept=kept)
+    brief = gen.apply_overlays(kept=kept)["ProspectingBrief"]["properties"]["checkpoints"]
 
-    brief = overlaid["ProspectingBrief"]["properties"]["checkpoints"]
     assert (brief["enum"], brief["default"]) == (["ask", "auto"], "auto")
-    approve = overlaid["ProspectingApproveRequest"]["properties"]["checkpoints"]
-    assert (approve["enum"], approve["nullable"]) == (["ask", "auto"], True)
 
 
 def test_apply_overlays_skips_schemas_this_run_does_not_generate(gen) -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import pathlib
 import sys
 import time
 from typing import Any
@@ -20,6 +21,7 @@ from discolike.requests import ProspectingListParams
 from discolike.requests import ProspectingMessageRequest
 from discolike.resources.prospecting import ProspectingMessage
 from discolike.resources.prospecting import ProspectingRun
+from discolike_cli._inputs import read_domains_file
 from discolike_cli._output import NEEDS_INPUT_EXIT_CODE
 from discolike_cli._output import build_request
 from discolike_cli._output import emit
@@ -29,6 +31,14 @@ from discolike_cli.discover import _merge_params
 app = typer.Typer(help="Run managed prospecting; processing and provider charges apply.")
 
 AUTO_HELP = "Never pause to ask: a poor pilot is sharpened once and the run continues; it only stops if the re-pilot fit is still under 20%. Default: pause at checkpoints."
+CUSTOMERS_FILE_HELP = (
+    "Your customers (CSV with a 'domain' column, or one per line): grouped into segments, lookalikes of each are "
+    "found. Not with --domain or --company-name."
+)
+SEED_SEGMENT_HELP = (
+    "A customer segment id from the plan card to expand (repeatable); omitted keeps the card's selection."
+)
+RESULTS_SEGMENT_HELP = "Group the finished results into segments; omitted keeps the brief's setting."
 NO_INPUT_HELP = f"Never prompt: at a checkpoint, print the question and exit {NEEDS_INPUT_EXIT_CODE}."
 NEEDS_INPUT_CODE = "needs_input"
 WAIT_HELP = (
@@ -158,6 +168,7 @@ def start_command(
     idempotency_key: str = typer.Option(..., "--idempotency-key", help="Reuse this key when retrying this submission."),
     domain: list[str] | None = typer.Option(None, "--domain", help="Starting domain (repeatable)."),
     company_name: list[str] | None = typer.Option(None, "--company-name", help="Company to match (repeatable)."),
+    customers_file: pathlib.Path | None = typer.Option(None, "--customers-file", help=CUSTOMERS_FILE_HELP),
     exclude_domain: list[str] | None = typer.Option(None, "--exclude-domain", help="Suppressed domain (repeatable)."),
     target_companies: int | None = typer.Option(
         None,
@@ -195,6 +206,7 @@ def start_command(
             brief=brief,
             domains=domain,
             company_names=company_name,
+            customer_domains=read_domains_file(customers_file) if customers_file is not None else None,
             exclude_domains=exclude_domain,
             target_companies=target_companies,
             contacts_per_company=contacts_per_company,
@@ -279,6 +291,8 @@ def approve_command(
     run_id: str = typer.Argument(...),
     plan_version: int = typer.Option(..., "--plan-version", min=1),
     auto: bool = typer.Option(False, "--auto", help=AUTO_HELP),
+    seed_segment: list[int] | None = typer.Option(None, "--seed-segment", help=SEED_SEGMENT_HELP),
+    segment: bool | None = typer.Option(None, "--segment/--no-segment", help=RESULTS_SEGMENT_HELP),
 ) -> None:
     """Approve the reviewed plan version and start research."""
     from discolike_cli.main import get_client
@@ -287,7 +301,14 @@ def approve_command(
         get_client(ctx).prospecting.approve(
             run_id,
             build_request(
-                ProspectingApproveRequest, {"plan_version": plan_version, "checkpoints": _checkpoints(auto=auto)}
+                ProspectingApproveRequest,
+                _merge_params(
+                    None,
+                    plan_version=plan_version,
+                    checkpoints=_checkpoints(auto=auto),
+                    seed_segments=seed_segment,
+                    segment=segment,
+                ),
             ),
         )
     )
