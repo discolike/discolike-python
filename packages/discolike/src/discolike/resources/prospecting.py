@@ -130,6 +130,9 @@ class ProspectingRun(DiscolikeModel):
         default_factory=list,
         description="Checked companies (domain, name, company_fit, reason) when stop_reason is pilot_failed.",
     )
+    companies_saved_query_id: UUID | None = Field(
+        default=None, description="The saved list of the run's companies; None until the run has a saved list."
+    )
 
 
 def _key(value: str) -> str:

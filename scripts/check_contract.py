@@ -61,6 +61,8 @@ MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
 }
 # Request fields the platform accepts but hides from its OpenAPI schema (SkipJsonSchema), so the spec never lists them.
 HIDDEN_REQUEST_FIELDS: dict[str, frozenset[str]] = {"ProspectingBrief": frozenset({"checkpoints"})}
+# Response fields the spec requires but the SDK defaults, so it still parses servers from before they were added.
+OPTIONAL_RESPONSE_FIELDS: dict[str, frozenset[str]] = {"ProspectingRun": frozenset({"companies_saved_query_id"})}
 SPEC_URL = "https://api.discolike.com/v1/openapi.json"
 REQUEST_TIMEOUT_SECONDS = 30.0
 
@@ -181,26 +183,35 @@ def check(spec: dict, routes: list[RouteEntry]) -> list[str]:
 TYPE_INFO_KEYS = {"type", "anyOf", "oneOf", "$ref", "nullable"}
 
 
-def _resolved_type(node: dict) -> str | None:
-    return "object" if "$ref" in node else node.get("type")
+def _resolved_type(node: dict, *, root: dict) -> str | None:
+    """A $ref resolves to its target's type, so a named enum alias reads as "string" rather than "object"."""
+    ref = node.get("$ref")
+    if ref is None:
+        return node.get("type")
+    target: object = root
+    for part in ref.lstrip("#/").split("/"):
+        target = target.get(part) if isinstance(target, dict) else None
+    return target.get("type", "object") if isinstance(target, dict) else "object"
 
 
 def _type_variants(prop: dict) -> list[dict]:
     return prop.get("anyOf") or prop.get("oneOf") or [prop]
 
 
-def _field_types(prop: dict) -> frozenset[str]:
-    types = {resolved for variant in _type_variants(prop) if (resolved := _resolved_type(variant)) is not None}
+def _field_types(prop: dict, *, root: dict) -> frozenset[str]:
+    types = {
+        resolved for variant in _type_variants(prop) if (resolved := _resolved_type(variant, root=root)) is not None
+    }
     if prop.get("nullable"):
         types.add("null")
     return frozenset(types)
 
 
-def _item_type(prop: dict) -> str | None:
+def _item_type(prop: dict, *, root: dict) -> str | None:
     for variant in _type_variants(prop):
         items = variant.get("items")
         if items is not None:
-            return _resolved_type(items)
+            return _resolved_type(items, root=root)
     return None
 
 
@@ -208,8 +219,8 @@ def _has_type_info(prop: dict) -> bool:
     return bool(prop.keys() & TYPE_INFO_KEYS)
 
 
-def _field_shape(prop: dict) -> tuple[frozenset[str], str | None]:
-    return (_field_types(prop), _item_type(prop))
+def _field_shape(prop: dict, *, root: dict) -> tuple[frozenset[str], str | None]:
+    return (_field_types(prop, root=root), _item_type(prop, root=root))
 
 
 def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = None) -> list[str]:
@@ -242,7 +253,10 @@ def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = 
             mismatches.extend(
                 f"{model.__name__}: field '{field}' is required in spec schema '{schema_name}' but optional on "
                 f"the SDK model"
-                for field in sorted((spec_required - model_required) & model_fields)
+                for field in sorted(
+                    (spec_required - model_required)
+                    & model_fields - OPTIONAL_RESPONSE_FIELDS.get(model.__name__, frozenset())
+                )
             )
             mismatches.extend(
                 f"{model.__name__}: field '{field}' is optional in spec schema '{schema_name}' but required on "
@@ -254,8 +268,8 @@ def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = 
             spec_prop = spec_properties[field]
             if not _has_type_info(spec_prop):
                 continue
-            model_shape = _field_shape(model_properties.get(field, {}))
-            spec_shape = _field_shape(spec_prop)
+            model_shape = _field_shape(model_properties.get(field, {}), root=model_schema)
+            spec_shape = _field_shape(spec_prop, root=spec)
             if model_shape != spec_shape:
                 mismatches.append(
                     f"{model.__name__}: field '{field}' has type {model_shape} but spec schema "

@@ -348,3 +348,48 @@ def test_check_still_reports_other_brief_fields_the_spec_lacks():
     assert check_contract.check(_prospecting_start_spec(names), routes) == [
         "ProspectingResource.start (POST /prospecting/runs): field 'segment' of ProspectingBrief not found in spec"
     ]
+
+
+def _prospecting_run_spec(*, status: dict, status_schema: dict | None = None) -> dict:
+    from discolike.resources.prospecting import ProspectingRun
+
+    schema = _spec_schema_for(ProspectingRun)
+    schema["properties"]["status"] = status
+    schemas: dict[str, dict] = {"ProspectingRunResponse": schema}
+    if status_schema is not None:
+        schemas["ProspectingStatus"] = status_schema
+    return {"components": {"schemas": schemas}}
+
+
+def test_check_models_resolves_a_named_enum_ref_to_its_type():
+    check_contract = _load_check_contract()
+    from discolike.resources.prospecting import ProspectingRun
+
+    spec = _prospecting_run_spec(
+        status={"$ref": "#/components/schemas/ProspectingStatus"},
+        status_schema={"type": "string", "enum": ["running", "completed"]},
+    )
+    assert check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun}) == []
+
+
+def test_check_models_still_reports_a_ref_to_a_different_type():
+    check_contract = _load_check_contract()
+    from discolike.resources.prospecting import ProspectingRun
+
+    spec = _prospecting_run_spec(
+        status={"$ref": "#/components/schemas/ProspectingStatus"}, status_schema={"type": "integer", "enum": [1, 2]}
+    )
+    assert check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun}) == [
+        "ProspectingRun: field 'status' has type (frozenset({'string'}), None) but spec schema "
+        "'ProspectingRunResponse' declares (frozenset({'integer'}), None)"
+    ]
+
+
+def test_check_models_accepts_the_saved_companies_id_the_sdk_keeps_optional():
+    check_contract = _load_check_contract()
+    from discolike.resources.prospecting import ProspectingRun
+
+    schema = _spec_schema_for(ProspectingRun)
+    schema["required"] = [*schema["required"], "companies_saved_query_id"]
+    spec = {"components": {"schemas": {"ProspectingRunResponse": schema}}}
+    assert check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun}) == []

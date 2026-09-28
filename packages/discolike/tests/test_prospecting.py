@@ -270,4 +270,11 @@ def test_a_failed_pilot_carries_its_sample(make_client: ClientFactory) -> None:
     with make_client(lambda request: httpx2.Response(200, json=stopped)) as client:
         run = client.prospecting.wait(RUN_ID)
     assert (run.stop_reason, run.pilot_sample) == ("pilot_failed", sample)
+    assert run.companies_saved_query_id is None
     assert run.stop_reason not in CHECKPOINT_STOP_REASONS
+
+
+def test_a_run_carries_its_saved_companies_list(make_client: ClientFactory) -> None:
+    completed = payload("completed") | {"saved_query_id": RUN_ID, "companies_saved_query_id": OTHER_QUERY_ID}
+    with make_client(lambda request: httpx2.Response(200, json=completed)) as client:
+        assert client.prospecting.get(RUN_ID).companies_saved_query_id == UUID(OTHER_QUERY_ID)
