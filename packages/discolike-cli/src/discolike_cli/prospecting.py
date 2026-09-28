@@ -175,14 +175,14 @@ def start_command(
         "--target-companies",
         min=1,
         max=10000,
-        help="Override the company count in the brief; otherwise inferred, default 25.",
+        help="Override the company count in the brief; otherwise inferred, default 1000.",
     ),
     contacts_per_company: int | None = typer.Option(
         None,
         "--contacts-per-company",
         min=1,
         max=5,
-        help="Override contacts per company; otherwise inferred, default 2.",
+        help="Override contacts per company; otherwise inferred, default 1.",
     ),
     max_candidates: int | None = typer.Option(
         None, "--max-candidates", min=0, max=100000, help="Candidate work cap; omitted or 0 means automatic."

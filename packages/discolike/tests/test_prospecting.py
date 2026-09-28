@@ -221,6 +221,7 @@ def test_request_defaults_preserve_explicit_quantity_intent() -> None:
     explicit = ProspectingBrief(
         brief=implicit.brief, target_companies=25, contacts_per_company=2, max_actions=0, max_candidates=0
     )
+    assert (implicit.target_companies, implicit.contacts_per_company) == (1000, 1)
     assert implicit.to_wire() == {"brief": implicit.brief}
     assert explicit.to_wire() == {
         "brief": implicit.brief,
