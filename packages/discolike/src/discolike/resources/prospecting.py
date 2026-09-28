@@ -120,6 +120,11 @@ class ProspectingRun(DiscolikeModel):
     fit_companies: int = 0
     emails_found: int = 0
     reply_pending: bool = False
+    chat_closed: bool = Field(
+        default=False,
+        description="The chat was closed for off-topic use: every new message gets the same fixed reply. "
+        "An approved run keeps working and its saved lists still fill.",
+    )
 
 
 def _key(value: str) -> str:

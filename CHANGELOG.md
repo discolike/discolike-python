@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Managed prospecting agent coordination and contact qualification now use customer LLM credentials, including when contact extraction is native. Missing keys and provider errors do not fall back to platform credentials.
+- SDK: prospecting runs gain `chat_closed`, set once a chat is closed for repeated off-topic use; every later message then gets a fixed reply instead of a model call. A run with no approved plan, or an approved run paused waiting on a question, is cancelled with the new `stop_reason` value `"misuse"` when its chat closes; an approved queued or running run keeps working and its saved lists still fill. Starting a run past an organization's daily new-conversation limit now returns a 403 (`PlanAccessError`) with a message naming the limit.
 
 - CLI: add prospecting plan approval, recent-run lists, chat messages, and event/message cursors. Omitted quantity flags preserve brief inference; larger target and automatic work limits match the API. `wait` returns when a plan needs approval.
 - SDK: add sync/async prospecting start/get/list/approve/message/cancel/wait, with typed chat, progress, saved-query, and recent-run responses. Starts and messages require idempotency keys; approval requires the reviewed plan version. `wait` returns on proposed plans, needs-input, and terminal outcomes.

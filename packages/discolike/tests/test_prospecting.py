@@ -130,6 +130,8 @@ def test_list_approve_message_and_cursors(make_client: ClientFactory) -> None:
             reply_pending=True,
             fit_companies=40,
             emails_found=15,
+            chat_closed=True,
+            stop_reason="misuse",
         )
         return httpx2.Response(200, json=result)
 
@@ -153,6 +155,7 @@ def test_list_approve_message_and_cursors(make_client: ClientFactory) -> None:
     assert run.saved_query_id == UUID(RUN_ID)
     assert run.saved_query_ids == [UUID(RUN_ID), UUID(OTHER_QUERY_ID)]
     assert (run.fit_companies, run.emails_found, run.reply_pending) == (40, 15, True)
+    assert (run.chat_closed, run.stop_reason) == (True, "misuse")
 
 
 async def test_async_chat_lifecycle_and_proposed_wait(make_async_client: AsyncClientFactory) -> None:
