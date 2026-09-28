@@ -28,7 +28,7 @@ from discolike_cli.discover import _merge_params
 
 app = typer.Typer(help="Run managed prospecting; processing and provider charges apply.")
 
-AUTO_HELP = "Never pause to ask: a poor pilot is sharpened once, then the run stops. Default: pause at checkpoints."
+AUTO_HELP = "Never pause to ask: a poor pilot is sharpened once and the run continues; it only stops if the re-pilot fit is still under 20%. Default: pause at checkpoints."
 NO_INPUT_HELP = f"Never prompt: at a checkpoint, print the question and exit {NEEDS_INPUT_EXIT_CODE}."
 NEEDS_INPUT_CODE = "needs_input"
 WAIT_HELP = (

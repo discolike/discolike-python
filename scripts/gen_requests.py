@@ -140,8 +140,9 @@ _SUB_INDUSTRY_PROPERTIES: dict[str, dict[str, Any]] = {
 _CHECKPOINT_MODES = ["ask", "auto"]
 _BRIEF_CHECKPOINTS_DESCRIPTION = (
     "ask: pause at checkpoints (pilot, tail_quality, short, target_reached) with status needs_input and a "
-    "question to answer through message(). auto: never pause; a poor pilot is sharpened once, then the run "
-    "stops with stop_reason pilot_failed."
+    "question to answer through message(). auto: never pause; a poor pilot is sharpened once and the run "
+    "continues with a notice, stopping with stop_reason pilot_failed only if the re-pilot fit is still "
+    "under 20%."
 )
 
 # Properties the SDK ships before the deployed spec has them. Merged in only while the spec

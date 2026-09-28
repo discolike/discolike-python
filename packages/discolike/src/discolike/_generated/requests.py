@@ -2940,7 +2940,7 @@ class ProspectingBrief(DiscolikeRequest):
     checkpoints: Annotated[
         Literal["ask", "auto"] | None,
         Field(
-            description="ask: pause at checkpoints (pilot, tail_quality, short, target_reached) with status needs_input and a question to answer through message(). auto: never pause; a poor pilot is sharpened once, then the run stops with stop_reason pilot_failed.",
+            description="ask: pause at checkpoints (pilot, tail_quality, short, target_reached) with status needs_input and a question to answer through message(). auto: never pause; a poor pilot is sharpened once and the run continues with a notice, stopping with stop_reason pilot_failed only if the re-pilot fit is still under 20%.",
             title="Checkpoints",
         ),
     ] = "auto"
