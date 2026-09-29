@@ -431,7 +431,7 @@ REST starts in `drafting`, then waits at `proposed` for approval. Review the pla
 ```python
 from discolike.requests import (
     ProspectingApproveRequest, ProspectingBrief, ProspectingGetParams,
-    ProspectingListParams, ProspectingMessageRequest,
+    ProspectingListParams, ProspectingMessageRequest, ProspectingRunUpdate,
 )
 
 run = client.prospecting.start(
@@ -453,6 +453,7 @@ page = client.prospecting.get(
     run.run_id,
     ProspectingGetParams(offset=0, limit=100, events_after=run.next_event_seq, messages_after=run.next_message_seq),
 )
+# client.prospecting.rename(run.run_id, ProspectingRunUpdate(title="Logistics ops leaders"))  # Any status.
 # client.prospecting.cancel(run.run_id)  # Stop the run; it and its results stay readable.
 # client.prospecting.delete(run.run_id)  # Cancel if active, then remove it from list() and get().
 ```

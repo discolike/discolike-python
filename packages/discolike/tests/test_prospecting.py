@@ -16,6 +16,7 @@ from discolike.requests import ProspectingBrief
 from discolike.requests import ProspectingGetParams
 from discolike.requests import ProspectingListParams
 from discolike.requests import ProspectingMessageRequest
+from discolike.requests import ProspectingRunUpdate
 from discolike_testkit import AsyncClientFactory
 from discolike_testkit import ClientFactory
 from discolike_testkit.prospecting import message_payload
@@ -145,6 +146,49 @@ async def test_async_delete_returns_nothing(make_async_client: AsyncClientFactor
     async with make_async_client(handler) as client:
         assert await client.prospecting.delete(RUN_ID) is None
     assert seen == [("DELETE", f"/v1/prospecting/runs/{RUN_ID}")]
+
+
+def test_rename_patches_the_title_and_returns_the_summary(make_client: ClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, json=summary_payload() | {"title": "Logistics ops leaders"})
+
+    with make_client(handler) as client:
+        summary = client.prospecting.rename(RUN_ID, ProspectingRunUpdate(title="  Logistics ops leaders "))
+    assert isinstance(summary, module.ProspectingRunSummary)
+    assert summary.title == "Logistics ops leaders"
+    assert [(r.method, r.url.path) for r in seen] == [("PATCH", f"/v1/prospecting/runs/{RUN_ID}")]
+    assert json.loads(seen[0].content) == {"title": "  Logistics ops leaders "}
+
+
+def test_rename_surfaces_a_missing_run(make_client: ClientFactory) -> None:
+    with (
+        make_client(lambda request: httpx2.Response(404, json={"detail": "Prospecting run not found"})) as client,
+        pytest.raises(NotFoundError),
+    ):
+        client.prospecting.rename(RUN_ID, ProspectingRunUpdate(title="Renamed"))
+
+
+def test_rename_rejects_an_overlong_title_before_sending() -> None:
+    with pytest.raises(ValidationError):
+        ProspectingRunUpdate(title="x" * 81)
+
+
+async def test_async_rename_patches_the_title(make_async_client: AsyncClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, json=summary_payload() | {"title": "Renamed"})
+
+    async with make_async_client(handler) as client:
+        summary = await client.prospecting.rename(RUN_ID, ProspectingRunUpdate(title="Renamed"))
+    assert summary.title == "Renamed"
+    assert summary.run_id == UUID(RUN_ID)
+    assert [(r.method, r.url.path) for r in seen] == [("PATCH", f"/v1/prospecting/runs/{RUN_ID}")]
+    assert json.loads(seen[0].content) == {"title": "Renamed"}
 
 
 def test_wait_returns_a_proposed_plan(make_client: ClientFactory) -> None:

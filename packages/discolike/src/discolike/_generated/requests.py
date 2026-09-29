@@ -2926,7 +2926,7 @@ class ProspectingBrief(DiscolikeRequest):
     customer_domains: Annotated[
         list[str] | None,
         Field(
-            description="Your customers' domains, grouped into segments; lookalikes of each are found. Not with domains.",
+            description="Your customers' domains, grouped into segments; lookalikes of each are found. Cannot be combined with domains or company_names.",
             max_length=1000,
             title="Customer Domains",
         ),
@@ -2954,6 +2954,10 @@ class ProspectingGetParams(DiscolikeRequest):
     limit: Annotated[int | None, Field(ge=1, le=500, title="Limit")] = 100
     events_after: Annotated[int | None, Field(ge=0, title="Events After")] = 0
     messages_after: Annotated[int | None, Field(ge=0, title="Messages After")] = 0
+
+
+class ProspectingRunUpdate(DiscolikeRequest):
+    title: Annotated[str, Field(max_length=80, min_length=1, title="Title")]
 
 
 class LLMProviderCreateRequest(DiscolikeRequest):

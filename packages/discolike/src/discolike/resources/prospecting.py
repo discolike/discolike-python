@@ -18,6 +18,7 @@ from discolike.requests import ProspectingBrief
 from discolike.requests import ProspectingGetParams
 from discolike.requests import ProspectingListParams
 from discolike.requests import ProspectingMessageRequest
+from discolike.requests import ProspectingRunUpdate
 from discolike.resources._base import AsyncAPIResource
 from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
@@ -231,6 +232,16 @@ class ProspectingResource(SyncAPIResource):
         response = self._transport.request("POST", _path(run_id) + "/cancel")
         return ProspectingRun.model_validate(response.json())
 
+    @api_route("PATCH", "/prospecting/runs/{run_id}")
+    def rename(self, run_id: str | UUID, request: ProspectingRunUpdate) -> ProspectingRunSummary:
+        """Rename the run in any status; returns its summary as list() shows it.
+
+        The server strips the title, which must then be 1-80 characters. A title set before the agent
+        plans is kept. Result lists the run already saved keep their names.
+        """
+        response = self._transport.request("PATCH", _path(run_id), json_body=request.to_wire())
+        return ProspectingRunSummary.model_validate(response.json())
+
     @api_route("DELETE", "/prospecting/runs/{run_id}")
     def delete(self, run_id: str | UUID) -> None:
         """Cancel the run if it is still active, then hide it; charges already incurred stay.
@@ -312,6 +323,16 @@ class AsyncProspectingResource(AsyncAPIResource):
     async def cancel(self, run_id: str | UUID) -> ProspectingRun:
         response = await self._transport.request("POST", _path(run_id) + "/cancel")
         return ProspectingRun.model_validate(response.json())
+
+    @api_route("PATCH", "/prospecting/runs/{run_id}")
+    async def rename(self, run_id: str | UUID, request: ProspectingRunUpdate) -> ProspectingRunSummary:
+        """Rename the run in any status; returns its summary as list() shows it.
+
+        The server strips the title, which must then be 1-80 characters. A title set before the agent
+        plans is kept. Result lists the run already saved keep their names.
+        """
+        response = await self._transport.request("PATCH", _path(run_id), json_body=request.to_wire())
+        return ProspectingRunSummary.model_validate(response.json())
 
     @api_route("DELETE", "/prospecting/runs/{run_id}")
     async def delete(self, run_id: str | UUID) -> None:
