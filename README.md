@@ -453,7 +453,8 @@ page = client.prospecting.get(
     run.run_id,
     ProspectingGetParams(offset=0, limit=100, events_after=run.next_event_seq, messages_after=run.next_message_seq),
 )
-# client.prospecting.cancel(run.run_id)
+# client.prospecting.cancel(run.run_id)  # Stop the run; it and its results stay readable.
+# client.prospecting.delete(run.run_id)  # Cancel if active, then remove it from list() and get().
 ```
 
 The async client exposes the same methods with `await`. Starts and messages require separate idempotency keys; reuse each key when retrying that operation. Approving an already approved version is safe. A stale plan version is rejected: fetch the current plan and review it again.

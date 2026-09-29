@@ -10,6 +10,7 @@ from pydantic import ValidationError
 import discolike.resources.prospecting as module
 from discolike import CHECKPOINT_STOP_REASONS
 from discolike import JobTimeoutError
+from discolike import NotFoundError
 from discolike.requests import ProspectingApproveRequest
 from discolike.requests import ProspectingBrief
 from discolike.requests import ProspectingGetParams
@@ -82,10 +83,12 @@ async def test_async_start_wait_and_cancel(make_async_client: AsyncClientFactory
     seen = []
 
     def handler(request: httpx2.Request) -> httpx2.Response:
-        seen.append(request.method)
+        seen.append((request.method, request.url.path))
+        if request.url.path.endswith("/cancel"):
+            return httpx2.Response(200, json=payload("cancelled"))
         if request.method == "POST":
             assert request.headers["Idempotency-Key"] == "async-key"
-        return httpx2.Response(200, json=payload("cancelled" if request.method == "DELETE" else "completed"))
+        return httpx2.Response(200, json=payload("completed"))
 
     async with make_async_client(handler) as client:
         run = await client.prospecting.start(
@@ -93,7 +96,55 @@ async def test_async_start_wait_and_cancel(make_async_client: AsyncClientFactory
         )
         assert (await client.prospecting.wait(run.run_id)).status == "completed"
         assert (await client.prospecting.cancel(run.run_id)).status == "cancelled"
-    assert seen == ["POST", "GET", "DELETE"]
+    assert seen == [
+        ("POST", "/v1/prospecting/runs"),
+        ("GET", f"/v1/prospecting/runs/{RUN_ID}"),
+        ("POST", f"/v1/prospecting/runs/{RUN_ID}/cancel"),
+    ]
+
+
+def test_cancel_posts_to_the_cancel_route(make_client: ClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, json=payload("cancelled"))
+
+    with make_client(handler) as client:
+        assert client.prospecting.cancel(RUN_ID).status == "cancelled"
+    assert [(r.method, r.url.path) for r in seen] == [("POST", f"/v1/prospecting/runs/{RUN_ID}/cancel")]
+    assert seen[0].content == b""
+
+
+def test_delete_hides_the_run_and_returns_nothing(make_client: ClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        if request.method == "DELETE":
+            return httpx2.Response(204)
+        return httpx2.Response(404, json={"detail": "Prospecting run not found"})
+
+    with make_client(handler) as client:
+        assert client.prospecting.delete(RUN_ID) is None
+        with pytest.raises(NotFoundError):
+            client.prospecting.get(RUN_ID)
+    assert [(r.method, r.url.path) for r in seen] == [
+        ("DELETE", f"/v1/prospecting/runs/{RUN_ID}"),
+        ("GET", f"/v1/prospecting/runs/{RUN_ID}"),
+    ]
+
+
+async def test_async_delete_returns_nothing(make_async_client: AsyncClientFactory) -> None:
+    seen: list[tuple[str, str]] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append((request.method, request.url.path))
+        return httpx2.Response(204)
+
+    async with make_async_client(handler) as client:
+        assert await client.prospecting.delete(RUN_ID) is None
+    assert seen == [("DELETE", f"/v1/prospecting/runs/{RUN_ID}")]
 
 
 def test_wait_returns_a_proposed_plan(make_client: ClientFactory) -> None:

@@ -79,7 +79,7 @@ def test_cancel_and_wait_preserve_terminal_outcomes(install_build_client: Callab
     methods = []
 
     def handler(request: httpx2.Request) -> httpx2.Response:
-        methods.append(request.method)
+        methods.append((request.method, request.url.path))
         return httpx2.Response(200, json=run_payload("cancelled"))
 
     install_build_client(handler)
@@ -87,7 +87,7 @@ def test_cancel_and_wait_preserve_terminal_outcomes(install_build_client: Callab
         result = runner.invoke(app, ["prospecting", command, RUN_ID])
         assert result.exit_code == 0, result.output
         assert json.loads(result.stdout)["status"] == "cancelled"
-    assert methods == ["DELETE", "GET"]
+    assert methods == [("POST", f"/v1/prospecting/runs/{RUN_ID}/cancel"), ("GET", f"/v1/prospecting/runs/{RUN_ID}")]
 
 
 def test_start_omits_unspecified_quantities_and_caps(install_build_client: Callable[[Handler], None]) -> None:

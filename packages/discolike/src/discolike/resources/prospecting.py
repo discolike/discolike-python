@@ -226,10 +226,18 @@ class ProspectingResource(SyncAPIResource):
         response = self._transport.request("GET", _path(run_id), params=params.to_wire() if params else None)
         return ProspectingRun.model_validate(response.json())
 
-    @api_route("DELETE", "/prospecting/runs/{run_id}")
+    @api_route("POST", "/prospecting/runs/{run_id}/cancel")
     def cancel(self, run_id: str | UUID) -> ProspectingRun:
-        response = self._transport.request("DELETE", _path(run_id))
+        response = self._transport.request("POST", _path(run_id) + "/cancel")
         return ProspectingRun.model_validate(response.json())
+
+    @api_route("DELETE", "/prospecting/runs/{run_id}")
+    def delete(self, run_id: str | UUID) -> None:
+        """Cancel the run if it is still active, then hide it; charges already incurred stay.
+
+        The run is gone from list() and get() afterwards, which raise NotFoundError for it.
+        """
+        self._transport.request("DELETE", _path(run_id))
 
     def wait(self, run_id: str | UUID, *, max_wait: float = 3600, poll_interval: float = 5) -> ProspectingRun:
         """Return the first page when approval, input, or a terminal outcome is ready.
@@ -300,10 +308,18 @@ class AsyncProspectingResource(AsyncAPIResource):
         response = await self._transport.request("GET", _path(run_id), params=params.to_wire() if params else None)
         return ProspectingRun.model_validate(response.json())
 
-    @api_route("DELETE", "/prospecting/runs/{run_id}")
+    @api_route("POST", "/prospecting/runs/{run_id}/cancel")
     async def cancel(self, run_id: str | UUID) -> ProspectingRun:
-        response = await self._transport.request("DELETE", _path(run_id))
+        response = await self._transport.request("POST", _path(run_id) + "/cancel")
         return ProspectingRun.model_validate(response.json())
+
+    @api_route("DELETE", "/prospecting/runs/{run_id}")
+    async def delete(self, run_id: str | UUID) -> None:
+        """Cancel the run if it is still active, then hide it; charges already incurred stay.
+
+        The run is gone from list() and get() afterwards, which raise NotFoundError for it.
+        """
+        await self._transport.request("DELETE", _path(run_id))
 
     async def wait(self, run_id: str | UUID, *, max_wait: float = 3600, poll_interval: float = 5) -> ProspectingRun:
         """Return the first page on proposed/needs_input/completed/failed/cancelled; inspect status.
