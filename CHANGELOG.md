@@ -19,6 +19,7 @@
 
 - SDK/CLI: `discogen.process` / `discogen.process_personas` with `typed_columns=True` now raise a 400 `ValidationError` at submit when the account has no TypeSafe integration, instead of returning a job whose typed cells all read `Error: No TypeSafe integration is configured`. No SDK code change; the server rejects earlier.
 - **Breaking:** `ProspectingBrief` defaults change from `target_companies=25` / `contacts_per_company=2` to `target_companies=1000` / `contacts_per_company=1`, matching the API's own fallback when a brief omits both and planning can't infer a count. Unset fields are still omitted from the wire, so this only changes what an unset `ProspectingBrief` reports locally; the server-side fallback moves too. CLI `prospecting start --target-companies`/`--contacts-per-company` help text updated to match.
+- SDK/CLI: `ProspectingRun.reply_pending` also stays true while a "segment these" request on a finished run is in progress, past the acknowledgement and until the segments message is posted (which can take more than an hour); it clears on its own after about 90 minutes if grouping stops without an outcome. Code that waits for it to go false should allow for that. No SDK code change.
 
 ## 0.4.1 (2026-09-23)
 

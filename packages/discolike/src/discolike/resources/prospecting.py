@@ -141,7 +141,12 @@ class ProspectingRun(DiscolikeModel):
     in_flight: list[ProspectingInFlight] = Field(default_factory=list)
     fit_companies: int = 0
     emails_found: int = 0
-    reply_pending: bool = False
+    reply_pending: bool = Field(
+        default=False,
+        description="The agent still owes a reply to a user message. After a 'segment these' request on a "
+        "finished run it stays true past the acknowledgement until the segments message is posted, which can "
+        "take more than an hour, and clears on its own after about 90 minutes if grouping stops without an outcome.",
+    )
     chat_closed: bool = Field(
         default=False,
         description="The chat was closed for off-topic use: every new message gets the same fixed reply. "
