@@ -50,7 +50,7 @@ CODEGEN_ARGS = [
     "--enum-field-as-literal",
     "all",
     "--target-python-version",
-    "3.10",
+    "3.11",
     "--use-double-quotes",
     "--disable-timestamp",
     "--formatters",
@@ -66,56 +66,6 @@ _SUB_INDUSTRY_DESCRIPTION = (
     "parent category is unambiguous adds that parent to the category filter. Call list-industry-categories for "
     "the label list."
 )
-_RADIUS_DESCRIPTION = (
-    "Search radius around lat/lon: a number optionally suffixed with km or mi (50km, 30mi, 50). A bare number is "
-    "kilometres. Defaults to 50km when lat/lon are supplied, maximum 1000km."
-)
-_SHAPE_UNION_SENTENCE = (
-    "Repeatable: every geo circle, every bbox and the lat/lon/radius centre are OR'd together, up to 10 "
-    "shapes in total."
-)
-_GEO_DESCRIPTION = (
-    "A circular area to search, written lat,lon or lat,lon,radius (30.27,-97.74 or 30.27,-97.74,30mi). The "
-    "radius is a number optionally suffixed with km or mi, a bare number meaning kilometres; it defaults to "
-    "50km and may not exceed 1000km. " + _SHAPE_UNION_SENTENCE
-)
-_BBOX_DESCRIPTION = (
-    "Bounding box as min_lat,min_lon,max_lat,max_lon. Longitudes may wrap the antimeridian (min_lon above "
-    "max_lon). " + _SHAPE_UNION_SENTENCE
-)
-_GEO_PROPERTIES: dict[str, dict[str, Any]] = {
-    "lat": {
-        "type": "number",
-        "minimum": -90.0,
-        "maximum": 90.0,
-        "nullable": True,
-        "description": "Latitude of the search centre. Must be supplied together with lon.",
-        "title": "Lat",
-    },
-    "lon": {
-        "type": "number",
-        "minimum": -180.0,
-        "maximum": 180.0,
-        "nullable": True,
-        "description": "Longitude of the search centre. Must be supplied together with lat.",
-        "title": "Lon",
-    },
-    "radius": {"type": "string", "nullable": True, "description": _RADIUS_DESCRIPTION, "title": "Radius"},
-    "geo": {
-        "type": "array",
-        "items": {"type": "string"},
-        "nullable": True,
-        "description": _GEO_DESCRIPTION,
-        "title": "Geo",
-    },
-    "bbox": {
-        "type": "array",
-        "items": {"type": "string"},
-        "nullable": True,
-        "description": _BBOX_DESCRIPTION,
-        "title": "Bbox",
-    },
-}
 _SUB_INDUSTRY_PROPERTIES: dict[str, dict[str, Any]] = {
     "sub_industry": {
         "type": "array",
@@ -137,21 +87,36 @@ _SUB_INDUSTRY_PROPERTIES: dict[str, dict[str, Any]] = {
     },
 }
 
+_CHECKPOINT_MODES = ["ask", "auto"]
+_BRIEF_CHECKPOINTS_DESCRIPTION = (
+    "ask: pause at checkpoints (pilot, tail_quality, short, target_reached) with status needs_input and a "
+    "question to answer through message(). auto: never pause; a poor pilot is sharpened once and the run "
+    "continues with a notice, stopping with stop_reason pilot_failed only if the re-pilot fit is still "
+    "under 20%."
+)
+
 # Properties the SDK ships before the deployed spec has them. Merged in only while the spec
 # lacks them, so each entry clears itself once the platform release lands -- generation prints
 # the ones that have, to be deleted here.
-PENDING_PROPERTIES: dict[str, dict[str, dict[str, Any]]] = {
-    "DiscoverParams": _GEO_PROPERTIES,
-    "CountParams": _GEO_PROPERTIES,
-}
+PENDING_PROPERTIES: dict[str, dict[str, dict[str, Any]]] = {}
 
 # Properties generated from this schema rather than the spec's, whatever the spec says. The
 # platform's sub-industry enum lists parent-qualified keys only; a bare label reaches it through
 # a server-side normalizer with no client-side counterpart, so generating that enum would reject
 # values the API accepts.
+# ProspectingBrief.checkpoints is SkipJsonSchema on the platform, so the spec never carries it.
 PROPERTY_OVERRIDES: dict[str, dict[str, dict[str, Any]]] = {
     "DiscoverParams": _SUB_INDUSTRY_PROPERTIES,
     "CountParams": _SUB_INDUSTRY_PROPERTIES,
+    "ProspectingBrief": {
+        "checkpoints": {
+            "type": "string",
+            "enum": _CHECKPOINT_MODES,
+            "default": "auto",
+            "description": _BRIEF_CHECKPOINTS_DESCRIPTION,
+            "title": "Checkpoints",
+        }
+    },
 }
 
 

@@ -26,6 +26,12 @@ from discolike.resources.companies import Score
 from discolike.resources.companies import Subsidiary
 from discolike.resources.companies import Vendor
 from discolike.resources.match import MatchResponse
+from discolike.resources.prospecting import ProspectingEvent
+from discolike.resources.prospecting import ProspectingInFlight
+from discolike.resources.prospecting import ProspectingMessage
+from discolike.resources.prospecting import ProspectingPlan
+from discolike.resources.prospecting import ProspectingRun
+from discolike.resources.prospecting import ProspectingRunSummary
 from discolike.resources.queries import SavedQueries
 
 IGNORE_PARAMS = {"file"}
@@ -36,6 +42,12 @@ ASYNC_CLASS_PREFIX = "Async"
 # checked field-by-field against the spec, so a platform-side model change surfaces as a
 # contract failure instead of silently landing in `extra`.
 MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
+    "ProspectingRunResponse": ProspectingRun,
+    "ProspectingPlan": ProspectingPlan,
+    "ProspectingEvent": ProspectingEvent,
+    "ProspectingMessage": ProspectingMessage,
+    "ProspectingInFlight": ProspectingInFlight,
+    "ProspectingRunSummary": ProspectingRunSummary,
     "CompanyResult": CompanyProfile,
     "ExtractResponse": ExtractResult,
     "ScoreResponse": Score,
@@ -47,6 +59,8 @@ MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
     "MatchResponse": MatchResponse,
     "SavedQueriesListResponse": SavedQueries,
 }
+# Request fields the platform accepts but hides from its OpenAPI schema (SkipJsonSchema), so the spec never lists them.
+HIDDEN_REQUEST_FIELDS: dict[str, frozenset[str]] = {"ProspectingBrief": frozenset({"checkpoints"})}
 SPEC_URL = "https://api.discolike.com/v1/openapi.json"
 REQUEST_TIMEOUT_SECONDS = 30.0
 
@@ -74,8 +88,9 @@ def _resource_modules() -> list[ModuleType]:
 
 def _request_model(member: object) -> type[DiscolikeRequest] | None:
     for annotation in typing.get_type_hints(member).values():
-        if inspect.isclass(annotation) and issubclass(annotation, DiscolikeRequest):
-            return annotation
+        for candidate in (annotation, *typing.get_args(annotation)):
+            if inspect.isclass(candidate) and issubclass(candidate, DiscolikeRequest):
+                return candidate
     return None
 
 
@@ -151,7 +166,7 @@ def check(spec: dict, routes: list[RouteEntry]) -> list[str]:
             )
             continue
         model = route.request_model
-        model_fields = set(model.model_fields)
+        model_fields = set(model.model_fields) - HIDDEN_REQUEST_FIELDS.get(model.__name__, frozenset())
         mismatches.extend(
             f"{label}: field '{field}' of {model.__name__} not found in spec"
             for field in sorted(model_fields - spec_fields)
@@ -163,6 +178,59 @@ def check(spec: dict, routes: list[RouteEntry]) -> list[str]:
     return mismatches
 
 
+TYPE_INFO_KEYS = {"type", "anyOf", "oneOf", "$ref", "nullable"}
+FieldShape = tuple[frozenset[str], str | None]
+
+
+def _resolved_type(node: dict, *, root: dict) -> str | None:
+    """A $ref resolves to its target's type, so a named enum alias reads as "string" rather than "object"."""
+    ref = node.get("$ref")
+    if ref is None:
+        return node.get("type")
+    target: object = root
+    for part in ref.lstrip("#/").split("/"):
+        target = target.get(part) if isinstance(target, dict) else None
+    return target.get("type", "object") if isinstance(target, dict) else "object"
+
+
+def _type_variants(prop: dict) -> list[dict]:
+    return prop.get("anyOf") or prop.get("oneOf") or [prop]
+
+
+def _field_types(prop: dict, *, root: dict) -> frozenset[str]:
+    types = {
+        resolved for variant in _type_variants(prop) if (resolved := _resolved_type(variant, root=root)) is not None
+    }
+    if prop.get("nullable"):
+        types.add("null")
+    return frozenset(types)
+
+
+def _item_type(prop: dict, *, root: dict) -> str | None:
+    for variant in _type_variants(prop):
+        items = variant.get("items")
+        if items is not None:
+            return _resolved_type(items, root=root)
+    return None
+
+
+def _has_type_info(prop: dict) -> bool:
+    return bool(prop.keys() & TYPE_INFO_KEYS)
+
+
+def _field_shape(prop: dict, *, root: dict) -> FieldShape:
+    return (_field_types(prop, root=root), _item_type(prop, root=root))
+
+
+def _describe(shape: FieldShape) -> str:
+    types = " | ".join(sorted(shape[0]))
+    return types if shape[1] is None else f"{types} of {shape[1]}"
+
+
+def _accepts(*, model_shape: FieldShape, spec_shape: FieldShape) -> bool:
+    return spec_shape[0] <= model_shape[0] and spec_shape[1] == model_shape[1]
+
+
 def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = None) -> list[str]:
     mismatches: list[str] = []
     schemas = spec.get("components", {}).get("schemas", {})
@@ -171,7 +239,10 @@ def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = 
         if schema is None:
             mismatches.append(f"{model.__name__}: schema '{schema_name}' not found in spec")
             continue
-        spec_fields = set(schema.get("properties", {}).keys())
+        spec_properties = schema.get("properties", {})
+        spec_fields = set(spec_properties)
+        model_schema = model.model_json_schema()
+        model_properties = model_schema.get("properties", {})
         model_fields = set(model.model_fields)
         mismatches.extend(
             f"{model.__name__}: field '{field}' not in spec schema '{schema_name}'"
@@ -181,6 +252,28 @@ def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = 
             f"{model.__name__}: spec schema '{schema_name}' has field '{field}' the SDK does not declare"
             for field in sorted(spec_fields - model_fields)
         )
+
+        # A fixture that doesn't spell out "type"/"required" info is asserting nothing about it, not
+        # that nothing is required or typed, so leave those fields alone rather than flag every one.
+        # Only drift that breaks parsing is flagged: an SDK looser than the spec still reads every response.
+        if "required" in schema:
+            mismatches.extend(
+                f"{model.__name__}: field '{field}' is optional in spec schema '{schema_name}' but required on "
+                f"the SDK model"
+                for field in sorted((set(model_schema.get("required", [])) - set(schema["required"])) & spec_fields)
+            )
+
+        for field in sorted(model_fields & spec_fields):
+            spec_prop = spec_properties[field]
+            if not _has_type_info(spec_prop):
+                continue
+            model_shape = _field_shape(model_properties.get(field, {}), root=model_schema)
+            spec_shape = _field_shape(spec_prop, root=spec)
+            if not _accepts(model_shape=model_shape, spec_shape=spec_shape):
+                mismatches.append(
+                    f"{model.__name__}: field '{field}' has type {_describe(model_shape)} but spec schema "
+                    f"'{schema_name}' declares {_describe(spec_shape)}"
+                )
     return mismatches
 
 

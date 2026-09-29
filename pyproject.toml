@@ -13,7 +13,7 @@ exclude = [".venv"]
 line-length = 120
 respect-gitignore = true
 indent-width = 4
-target-version = "py310"
+target-version = "py311"
 src = ["packages/discolike/src", "packages/discolike/tests", "packages/discolike-cli/src", "packages/discolike-cli/tests", "packages/discolike-testkit/src"]
 
 [tool.ruff.lint]

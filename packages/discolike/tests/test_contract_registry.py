@@ -3,9 +3,11 @@ import inspect
 import pathlib
 import sys
 
+from discolike._models import DiscolikeModel
 from discolike.resources._base import get_discolike_route
 
-ALLOW_UNSTAMPED = {"job", "batch"}
+# wait orchestrates repeated get() calls and is not a separate route.
+ALLOW_UNSTAMPED = {"job", "batch", "wait"}
 SCRIPT_PATH = pathlib.Path(__file__).parents[3] / "scripts" / "check_contract.py"
 
 
@@ -83,6 +85,133 @@ def test_check_models_reports_field_the_sdk_does_not_declare():
     spec = {"components": {"schemas": {"ExtractResponse": {"properties": {"text": {}, "language": {}, "summary": {}}}}}}
     mismatches = check_contract.check_models(spec, {"ExtractResponse": ExtractResult})
     assert mismatches == ["ExtractResult: spec schema 'ExtractResponse' has field 'summary' the SDK does not declare"]
+
+
+def test_check_models_ignores_type_and_requiredness_when_spec_gives_no_type_info():
+    check_contract = _load_check_contract()
+    from discolike.resources.companies import ExtractResult
+
+    spec = {"components": {"schemas": {"ExtractResponse": {"properties": {"text": {}, "language": {}}}}}}
+    assert check_contract.check_models(spec, {"ExtractResponse": ExtractResult}) == []
+
+
+def test_check_models_reports_a_type_change():
+    check_contract = _load_check_contract()
+    from discolike.resources.prospecting import ProspectingRun
+
+    schema = _spec_schema_for(ProspectingRun)
+    schema["properties"]["chat_closed"] = {"type": "string"}
+    spec = {"components": {"schemas": {"ProspectingRunResponse": schema}}}
+    mismatches = check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun})
+    assert mismatches == [
+        "ProspectingRun: field 'chat_closed' has type boolean but spec schema 'ProspectingRunResponse' declares string"
+    ]
+
+
+def test_check_models_reports_an_array_item_type_change():
+    check_contract = _load_check_contract()
+    from discolike.resources.prospecting import ProspectingRun
+
+    schema = _spec_schema_for(ProspectingRun)
+    schema["properties"]["saved_query_ids"] = {"type": "array", "items": {"type": "integer"}}
+    spec = {"components": {"schemas": {"ProspectingRunResponse": schema}}}
+    mismatches = check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun})
+    assert mismatches == [
+        "ProspectingRun: field 'saved_query_ids' has type array of string but spec schema "
+        "'ProspectingRunResponse' declares array of integer"
+    ]
+
+
+def test_check_models_passes_a_nullable_field_expressed_via_anyof():
+    check_contract = _load_check_contract()
+    from discolike.resources.companies import ExtractResult
+
+    spec = {
+        "components": {
+            "schemas": {
+                "ExtractResponse": {
+                    "properties": {
+                        "text": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                        "language": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                    },
+                }
+            }
+        }
+    }
+    assert check_contract.check_models(spec, {"ExtractResponse": ExtractResult}) == []
+
+
+def test_check_models_passes_a_nullable_field_expressed_via_openapi_nullable_flag():
+    check_contract = _load_check_contract()
+    from discolike.resources.companies import ExtractResult
+
+    spec = {
+        "components": {
+            "schemas": {
+                "ExtractResponse": {
+                    "properties": {
+                        "text": {"type": "string", "nullable": True},
+                        "language": {"type": "string", "nullable": True},
+                    },
+                }
+            }
+        }
+    }
+    assert check_contract.check_models(spec, {"ExtractResponse": ExtractResult}) == []
+
+
+def test_check_models_accepts_a_field_the_spec_marks_required_but_the_sdk_keeps_optional():
+    check_contract = _load_check_contract()
+    from discolike.resources.prospecting import ProspectingRun
+
+    schema = _spec_schema_for(ProspectingRun)
+    schema["required"] = [*schema.get("required", []), "chat_closed"]
+    spec = {"components": {"schemas": {"ProspectingRunResponse": schema}}}
+    assert check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun}) == []
+
+
+def test_check_models_accepts_an_sdk_field_nullable_where_the_spec_is_not():
+    check_contract = _load_check_contract()
+    from discolike.resources.companies import ExtractResult
+
+    spec = {
+        "components": {
+            "schemas": {"ExtractResponse": {"properties": {"text": {"type": "string"}, "language": {"type": "string"}}}}
+        }
+    }
+    assert check_contract.check_models(spec, {"ExtractResponse": ExtractResult}) == []
+
+
+def test_check_models_reports_a_spec_field_turning_nullable_under_a_non_null_sdk_field():
+    check_contract = _load_check_contract()
+    from discolike.resources.prospecting import ProspectingRun
+
+    schema = _spec_schema_for(ProspectingRun)
+    schema["properties"]["chat_closed"] = {"anyOf": [{"type": "boolean"}, {"type": "null"}]}
+    spec = {"components": {"schemas": {"ProspectingRunResponse": schema}}}
+    assert check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun}) == [
+        "ProspectingRun: field 'chat_closed' has type boolean but spec schema "
+        "'ProspectingRunResponse' declares boolean | null"
+    ]
+
+
+def test_check_models_reports_a_field_the_sdk_requires_but_the_spec_does_not():
+    check_contract = _load_check_contract()
+    from discolike.resources.prospecting import ProspectingRun
+
+    schema = _spec_schema_for(ProspectingRun)
+    schema["required"] = [field for field in schema["required"] if field != "run_id"]
+    spec = {"components": {"schemas": {"ProspectingRunResponse": schema}}}
+    mismatches = check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun})
+    assert mismatches == [
+        "ProspectingRun: field 'run_id' is optional in spec schema 'ProspectingRunResponse' but required on the "
+        "SDK model"
+    ]
+
+
+def _spec_schema_for(model: type[DiscolikeModel]) -> dict:
+    schema = model.model_json_schema()
+    return {"properties": schema.get("properties", {}), "required": list(schema.get("required", []))}
 
 
 def test_check_models_reports_missing_schema():
@@ -211,3 +340,75 @@ def test_check_compares_json_body_properties_bidirectionally():
         "components": {"schemas": {"FindEmailRequest": {"properties": properties}}},
     }
     assert check_contract.check(spec, routes) == []
+
+
+def _prospecting_start_spec(names: list[str]) -> dict:
+    body = {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProspectingBrief"}}}}
+    return {
+        "paths": {"/prospecting/runs": {"post": {"requestBody": body}}},
+        "components": {"schemas": {"ProspectingBrief": {"properties": {name: {} for name in names}}}},
+    }
+
+
+def test_check_allows_the_brief_checkpoints_field_the_spec_hides():
+    check_contract = _load_check_contract()
+    from discolike.requests import ProspectingBrief
+
+    routes = _route(check_contract, "ProspectingResource", "start")
+    names = [name for name in ProspectingBrief.model_fields if name != "checkpoints"]
+    assert check_contract.check(_prospecting_start_spec(names), routes) == []
+
+
+def test_check_still_reports_other_brief_fields_the_spec_lacks():
+    check_contract = _load_check_contract()
+    from discolike.requests import ProspectingBrief
+
+    routes = _route(check_contract, "ProspectingResource", "start")
+    names = [name for name in ProspectingBrief.model_fields if name not in {"checkpoints", "segment"}]
+    assert check_contract.check(_prospecting_start_spec(names), routes) == [
+        "ProspectingResource.start (POST /prospecting/runs): field 'segment' of ProspectingBrief not found in spec"
+    ]
+
+
+def _prospecting_run_spec(*, status: dict, status_schema: dict | None = None) -> dict:
+    from discolike.resources.prospecting import ProspectingRun
+
+    schema = _spec_schema_for(ProspectingRun)
+    schema["properties"]["status"] = status
+    schemas: dict[str, dict] = {"ProspectingRunResponse": schema}
+    if status_schema is not None:
+        schemas["ProspectingStatus"] = status_schema
+    return {"components": {"schemas": schemas}}
+
+
+def test_check_models_resolves_a_named_enum_ref_to_its_type():
+    check_contract = _load_check_contract()
+    from discolike.resources.prospecting import ProspectingRun
+
+    spec = _prospecting_run_spec(
+        status={"$ref": "#/components/schemas/ProspectingStatus"},
+        status_schema={"type": "string", "enum": ["running", "completed"]},
+    )
+    assert check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun}) == []
+
+
+def test_check_models_still_reports_a_ref_to_a_different_type():
+    check_contract = _load_check_contract()
+    from discolike.resources.prospecting import ProspectingRun
+
+    spec = _prospecting_run_spec(
+        status={"$ref": "#/components/schemas/ProspectingStatus"}, status_schema={"type": "integer", "enum": [1, 2]}
+    )
+    assert check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun}) == [
+        "ProspectingRun: field 'status' has type string but spec schema 'ProspectingRunResponse' declares integer"
+    ]
+
+
+def test_check_models_accepts_the_saved_companies_id_the_sdk_keeps_optional():
+    check_contract = _load_check_contract()
+    from discolike.resources.prospecting import ProspectingRun
+
+    schema = _spec_schema_for(ProspectingRun)
+    schema["required"] = [*schema["required"], "companies_saved_query_id"]
+    spec = {"components": {"schemas": {"ProspectingRunResponse": schema}}}
+    assert check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun}) == []

@@ -71,7 +71,7 @@ def _fetch_batch_snapshot(batch: EmailBatch) -> EmailBatchResults:
     """Fetch the batch results once, whether or not the batch has finished."""
     snapshot: dict[str, EmailBatchResults] = {}
     try:
-        return batch.results(timeout=0, on_poll=lambda results: snapshot.update(latest=results))
+        return batch.results(max_wait=0, on_poll=lambda results: snapshot.update(latest=results))
     except JobTimeoutError:
         return snapshot["latest"]
 
@@ -101,7 +101,7 @@ def find_command(
     if not wait:
         emit({"job_id": job.job_id, "hint": f"poll with: discolike email job {job.job_id}"})
         return
-    emit(job.wait(timeout=timeout, on_poll=_job_status_to_stderr), fmt=fmt)
+    emit(job.wait(max_wait=timeout, on_poll=_job_status_to_stderr), fmt=fmt)
 
 
 @app.command("find-batch")
@@ -136,7 +136,7 @@ def find_batch_command(
     if not wait:
         emit({"batch_id": batch.batch_id, "hint": f"fetch with: discolike email results {batch.batch_id}"})
         return
-    emit(batch.results(timeout=timeout, on_poll=_batch_progress_to_stderr), fmt=fmt)
+    emit(batch.results(max_wait=timeout, on_poll=_batch_progress_to_stderr), fmt=fmt)
 
 
 @app.command("results")
@@ -156,7 +156,7 @@ def results_command(
         raise typer.BadParameter(f"--kind must be one of: {', '.join(EMAIL_KINDS)}")
     batch = get_client(ctx).email.batch(batch_id, kind=kind)  # type: ignore[arg-type]
     if wait:
-        emit(batch.results(timeout=timeout, on_poll=_batch_progress_to_stderr), fmt=fmt)
+        emit(batch.results(max_wait=timeout, on_poll=_batch_progress_to_stderr), fmt=fmt)
         return
     emit(_fetch_batch_snapshot(batch), fmt=fmt)
 
@@ -175,6 +175,6 @@ def job_command(
 
     job = get_client(ctx).email.job(job_id)
     if wait:
-        emit(job.wait(timeout=timeout, on_poll=_job_status_to_stderr), fmt=fmt)
+        emit(job.wait(max_wait=timeout, on_poll=_job_status_to_stderr), fmt=fmt)
         return
     emit(job.status(), fmt=fmt)

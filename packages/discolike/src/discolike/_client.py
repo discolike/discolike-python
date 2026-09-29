@@ -40,6 +40,8 @@ from discolike.resources.enrich import AsyncEnrichResource
 from discolike.resources.enrich import EnrichResource
 from discolike.resources.match import AsyncMatchResource
 from discolike.resources.match import MatchResource
+from discolike.resources.prospecting import AsyncProspectingResource
+from discolike.resources.prospecting import ProspectingResource
 from discolike.resources.providers import AsyncLLMProvidersResource
 from discolike.resources.providers import AsyncSearchProvidersResource
 from discolike.resources.providers import LLMProvidersResource
@@ -60,6 +62,22 @@ def _build_auth(*, api_key: str | None, auth: Credential | None) -> DiscolikeAut
 
 
 class Discolike:
+    def _attach(self, transport: Transport) -> None:
+        self._transport = transport
+        self.account = AccountResource(self._transport)
+        self.companies = CompaniesResource(self._transport)
+        self.contacts = ContactsResource(self._transport)
+        self.match = MatchResource(self._transport)
+        self.discogen = DiscogenResource(self._transport)
+        self.email = EmailResource(self._transport)
+        self.prospecting = ProspectingResource(self._transport)
+        self.queries = QueriesResource(self._transport)
+        self.search_providers = SearchProvidersResource(self._transport)
+        self.llm_providers = LLMProvidersResource(self._transport)
+        self._discovery = DiscoveryResource(self._transport)
+        self._validate = ValidateResource(self._transport)
+        self._enrich = EnrichResource(self._transport)
+
     def __init__(
         self,
         *,
@@ -79,21 +97,6 @@ class Discolike:
                 http_client=http_client,
             )
         )
-
-    def _attach(self, transport: Transport) -> None:
-        self._transport = transport
-        self.account = AccountResource(self._transport)
-        self.companies = CompaniesResource(self._transport)
-        self.contacts = ContactsResource(self._transport)
-        self.match = MatchResource(self._transport)
-        self.discogen = DiscogenResource(self._transport)
-        self.email = EmailResource(self._transport)
-        self.queries = QueriesResource(self._transport)
-        self.search_providers = SearchProvidersResource(self._transport)
-        self.llm_providers = LLMProvidersResource(self._transport)
-        self._discovery = DiscoveryResource(self._transport)
-        self._validate = ValidateResource(self._transport)
-        self._enrich = EnrichResource(self._transport)
 
     def with_options(self, *, timeout: float | httpx2.Timeout) -> Discolike:
         """A client view with a different request timeout, sharing this client's connection pool."""
@@ -130,6 +133,22 @@ class Discolike:
 
 
 class AsyncDiscolike:
+    def _attach(self, transport: AsyncTransport) -> None:
+        self._transport = transport
+        self.account = AsyncAccountResource(self._transport)
+        self.companies = AsyncCompaniesResource(self._transport)
+        self.contacts = AsyncContactsResource(self._transport)
+        self.match = AsyncMatchResource(self._transport)
+        self.discogen = AsyncDiscogenResource(self._transport)
+        self.email = AsyncEmailResource(self._transport)
+        self.prospecting = AsyncProspectingResource(self._transport)
+        self.queries = AsyncQueriesResource(self._transport)
+        self.search_providers = AsyncSearchProvidersResource(self._transport)
+        self.llm_providers = AsyncLLMProvidersResource(self._transport)
+        self._discovery = AsyncDiscoveryResource(self._transport)
+        self._validate = AsyncValidateResource(self._transport)
+        self._enrich = AsyncEnrichResource(self._transport)
+
     def __init__(
         self,
         *,
@@ -149,21 +168,6 @@ class AsyncDiscolike:
                 http_client=http_client,
             )
         )
-
-    def _attach(self, transport: AsyncTransport) -> None:
-        self._transport = transport
-        self.account = AsyncAccountResource(self._transport)
-        self.companies = AsyncCompaniesResource(self._transport)
-        self.contacts = AsyncContactsResource(self._transport)
-        self.match = AsyncMatchResource(self._transport)
-        self.discogen = AsyncDiscogenResource(self._transport)
-        self.email = AsyncEmailResource(self._transport)
-        self.queries = AsyncQueriesResource(self._transport)
-        self.search_providers = AsyncSearchProvidersResource(self._transport)
-        self.llm_providers = AsyncLLMProvidersResource(self._transport)
-        self._discovery = AsyncDiscoveryResource(self._transport)
-        self._validate = AsyncValidateResource(self._transport)
-        self._enrich = AsyncEnrichResource(self._transport)
 
     def with_options(self, *, timeout: float | httpx2.Timeout) -> AsyncDiscolike:
         """A client view with a different request timeout, sharing this client's connection pool."""

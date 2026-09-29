@@ -63,7 +63,7 @@ Or run the CLI without installing:
 uvx --from discolike-cli discolike --help
 ```
 
-Requires Python 3.10+.
+Requires Python 3.11+.
 
 ## Authentication
 
@@ -274,6 +274,7 @@ Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `ap
 | 4 | Rate limited |
 | 5 | Network error |
 | 6 | Not found |
+| 7 | Needs input: `prospecting wait` reached a checkpoint with no terminal to ask (or `--no-input`) |
 
 ## What's in the box
 
@@ -421,3 +422,48 @@ Committed request models track the dev spec (`--spec-url https://api.dev.discoli
 ## License
 
 [MIT](LICENSE)
+
+
+### Managed prospecting
+
+REST starts in `drafting`, then waits at `proposed` for approval. Review the plan and approve its exact version before research starts.
+
+```python
+from discolike.requests import (
+    ProspectingApproveRequest, ProspectingBrief, ProspectingGetParams,
+    ProspectingListParams, ProspectingMessageRequest, ProspectingRunUpdate,
+)
+
+run = client.prospecting.start(
+    ProspectingBrief(brief="Find 100 US logistics companies and 3 operations directors each"),
+    idempotency_key="logistics-search-2026-09-26",
+)
+run = client.prospecting.wait(run.run_id)
+print(run.status, run.plan, run.messages)  # Review before approving.
+# After reviewing a proposed plan:
+# client.prospecting.approve(run.run_id, ProspectingApproveRequest(plan_version=run.plan_version))
+# run = client.prospecting.wait(run.run_id)
+
+recent = client.prospecting.list(ProspectingListParams(limit=20))
+message = client.prospecting.message(
+    run.run_id, ProspectingMessageRequest(text="Make it 250 companies"),
+    idempotency_key="logistics-target-edit-1",
+)
+page = client.prospecting.get(
+    run.run_id,
+    ProspectingGetParams(offset=0, limit=100, events_after=run.next_event_seq, messages_after=run.next_message_seq),
+)
+# client.prospecting.rename(run.run_id, ProspectingRunUpdate(title="Logistics ops leaders"))  # Any status.
+# client.prospecting.cancel(run.run_id)  # Stop the run; it and its results stay readable.
+# client.prospecting.delete(run.run_id)  # Cancel if active, then remove it from list() and get().
+```
+
+The async client exposes the same methods with `await`. Starts and messages require separate idempotency keys; reuse each key when retrying that operation. Approving an already approved version is safe. A stale plan version is rejected: fetch the current plan and review it again.
+
+`wait()` returns on `proposed`, `needs_input`, `completed`, `failed`, or `cancelled`. Inspect `status`, `stop_reason`, and `error`; completion does not guarantee the target was reached. A local timeout stops polling only. Partial results remain available. Use `get()` with event and message cursors to receive the agent's reply after sending a message; `reply_pending` indicates a pending reply. After a "segment these" request on a finished run it stays true past the acknowledgement until the segments message is posted, which can take more than an hour, and clears on its own after about 90 minutes if grouping stops without an outcome. A `needs_input` question can be answered with `message()`.
+
+Checkpoints: `ProspectingBrief(checkpoints=...)` picks how a run handles its decision points. `"auto"`, the API default, never pauses. A run of 500+ target companies from a brief (not a domain list) checks its first companies before looking up contacts; under 80% fit, auto sharpens the criteria once and checks again, then stops with `stop_reason="pilot_failed"` and `pilot_sample` holding the checked companies (`domain`, `name`, `company_fit`, `reason`); start a new run with a sharper brief. A search drifting off target is dropped, a run short of candidates finishes as `candidates_exhausted`, and a met target finishes the run. `"ask"` pauses with `status="needs_input"` and a `stop_reason` in `CHECKPOINT_STOP_REASONS` (`pilot`, `tail_quality`, `short`, `target_reached`). The latest `kind="question"` message carries `data.suggested_replies` and, at a pilot, `data.sample`; answer with `message()` using a suggested reply's exact text (or free-text steering), then `wait()` again. Choosing to finish at a checkpoint ends the run with `stop_reason="user_finished"`. `ProspectingApproveRequest(checkpoints=...)` overrides the brief's mode at approval; `None` keeps it. `checkpoints` on the brief is not in the published OpenAPI schema; the SDK sends it anyway.
+
+Initial planning extracts company counts and contacts per company from the brief. Omitted settings keep that inference available, falling back to 1,000 companies and 1 contact per company. Explicit settings, including explicit defaults, override the text. Targets support 1–10,000 companies and 1–5 contacts per company. Candidate and action caps default to automatic (`0`); explicit maxima are 100,000 candidates and 10,000 actions. Result pages support up to 500 rows; recent-run lists support up to 50. Approved runs expose a stable `saved_query_id` for saved results.
+
+Existing processing charges and configured BYOK/BYOS integrations apply. Wizard interpretation, segmentation, and prompt preparation use platform credentials. Agent coordination and independent contact qualification use your contact LLM integration; native contacts use your validation LLM integration or organization default, so this workflow requires a customer LLM even with native extraction. Missing keys and provider errors never fall back to platform keys. Limits bound work, not provider dollar spend. Email finder outcomes are exposed; raw email verification is not a public API.

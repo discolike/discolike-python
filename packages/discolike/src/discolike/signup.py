@@ -78,7 +78,7 @@ def signup(
     last_name: str,
     agent: str | None = None,
     base_url: str = DEFAULT_BASE_URL,
-    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    request_timeout: float = DEFAULT_TIMEOUT_SECONDS,
     http_client: httpx2.Client | None = None,
     allow_new_email: bool = False,
 ) -> SignupResult:
@@ -87,7 +87,7 @@ def signup(
     first_name = validate_name(first_name, field="first_name")
     last_name = validate_name(last_name, field="last_name")
     _check_email_change(email, allow_new_email)
-    client = http_client or httpx2.Client(timeout=timeout)
+    client = http_client or httpx2.Client(timeout=request_timeout)
     try:
         response = client.post(
             _signup_url(base_url),
@@ -111,14 +111,14 @@ async def async_signup(
     last_name: str,
     agent: str | None = None,
     base_url: str = DEFAULT_BASE_URL,
-    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    request_timeout: float = DEFAULT_TIMEOUT_SECONDS,
     http_client: httpx2.AsyncClient | None = None,
     allow_new_email: bool = False,
 ) -> SignupResult:
     first_name = validate_name(first_name, field="first_name")
     last_name = validate_name(last_name, field="last_name")
     _check_email_change(email, allow_new_email)
-    client = http_client or httpx2.AsyncClient(timeout=timeout)
+    client = http_client or httpx2.AsyncClient(timeout=request_timeout)
     try:
         response = await client.post(
             _signup_url(base_url),

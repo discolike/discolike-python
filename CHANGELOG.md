@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Breaking:** Python 3.10 is no longer supported (end of life October 2026); the SDK and CLI require Python 3.11+.
+- **Breaking:** the polling deadline on `Job.wait()`, `EmailJob.wait()` and `EmailBatch.results()` (sync and async) is renamed from `timeout=` to `max_wait=`, and `signup()` / `async_signup()` take `request_timeout=` instead of `timeout=`. Behavior is unchanged; the client constructor, `with_options(timeout=...)` and the CLI's `--timeout` keep their names.
+- SDK: response enums such as `JobStatus` are open, so a value a newer API adds parses instead of failing. Compare against the documented values and treat anything else as unknown.
+- SDK/CLI: managed prospecting. `client.prospecting` starts, reads, lists, approves, messages, renames, cancels, deletes and waits on runs (sync and async), with typed plans, chat, progress and saved contact lists (`saved_query_ids`, split into parts for large results). `ProspectingBrief.checkpoints="ask"` pauses the run at a pilot, a drifting search, a shortfall or the target for you to answer; `customer_domains` groups your customers into segments and finds lookalikes of each, picked on approval with `seed_segments`. `rename()` retitles a run in any status with `ProspectingRunUpdate(title=...)` and returns its `list()` summary; result lists it already saved keep their names. `cancel()` stops a run and keeps it; `delete()` cancels an active run, then removes it from `list()` and `get()` (charges already incurred stay). The CLI adds `prospecting start/status/list/approve/message/cancel/wait`, asks at checkpoints on a terminal, and exits 7 with the question on stderr under `--no-input`.
+
 ## 0.4.1 (2026-09-23)
 
 - CLI: fix `ImportError: cannot import name 'Abort' from 'typer._click.exceptions'` on every command in a fresh 0.4.0 install. Typer 0.27 moved `Abort`; the CLI now imports the public `typer.Abort` and requires `typer>=0.26.1,<0.28`, since it still relies on Typer's vendored Click for its error envelope and help formatting.

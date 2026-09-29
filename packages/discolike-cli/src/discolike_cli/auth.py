@@ -4,8 +4,8 @@ import json
 import secrets
 import sys
 import webbrowser
+from datetime import UTC
 from datetime import datetime
-from datetime import timezone
 from typing import Any
 from typing import NoReturn
 from urllib.parse import urlparse
@@ -88,7 +88,7 @@ def _offer_signup(ctx: typer.Context) -> None:
 
 
 def _iso(epoch_seconds: float) -> str:
-    return datetime.fromtimestamp(epoch_seconds, tz=timezone.utc).isoformat()
+    return datetime.fromtimestamp(epoch_seconds, tz=UTC).isoformat()
 
 
 def _global_key_source(ctx: typer.Context) -> str:

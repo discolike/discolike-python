@@ -50,7 +50,7 @@ def test_wait_polls_to_completion() -> None:
             {"status": "completed", "progress": 100, "results": [{"domain": "a.com"}]},
         ]
     )
-    final = make_job(handler).wait(timeout=60.0, poll_interval=1.0)
+    final = make_job(handler).wait(max_wait=60.0, poll_interval=1.0)
     assert final.status == "completed"
     assert final.results == [{"domain": "a.com"}]
 
@@ -104,7 +104,7 @@ def test_status_without_title_validation_defaults_to_none() -> None:
 def test_wait_failed_raises() -> None:
     handler = _status_sequence([{"status": "failed", "progress": 100, "result": "LLM exploded"}])
     with pytest.raises(JobFailedError, match="LLM exploded"):
-        make_job(handler).wait(timeout=60.0)
+        make_job(handler).wait(max_wait=60.0)
 
 
 def test_wait_timeout(monkeypatch) -> None:
@@ -117,7 +117,7 @@ def test_wait_timeout(monkeypatch) -> None:
     monkeypatch.setattr(jobs_module.time, "monotonic", mock_monotonic)
     handler = _status_sequence([{"status": "in_progress", "progress": 1}])
     with pytest.raises(JobTimeoutError, match="t-1"):
-        make_job(handler).wait(timeout=50.0)
+        make_job(handler).wait(max_wait=50.0)
 
 
 def test_cancel_issues_delete() -> None:
@@ -138,5 +138,5 @@ async def test_async_job_wait() -> None:
     )
     http = httpx2.AsyncClient(transport=httpx2.MockTransport(handler), base_url=BASE)
     transport = AsyncTransport(api_key_auth("k"), base_url=BASE, timeout=5.0, max_retries=0, http_client=http)
-    final = await AsyncJob(transport, task_family=FAMILY_DISCOGEN, task_id="t-1").wait(timeout=60.0)
+    final = await AsyncJob(transport, task_family=FAMILY_DISCOGEN, task_id="t-1").wait(max_wait=60.0)
     assert final.status == "completed"

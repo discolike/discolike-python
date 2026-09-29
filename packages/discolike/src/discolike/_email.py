@@ -5,9 +5,9 @@ import time
 from collections.abc import Callable
 from typing import Any
 from typing import Literal
+from typing import assert_never
 
 import pydantic
-from typing_extensions import assert_never
 
 from discolike._exceptions import JobFailedError
 from discolike._exceptions import JobTimeoutError
@@ -137,11 +137,11 @@ class EmailJob:
     def wait(
         self,
         *,
-        timeout: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
+        max_wait: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
         on_poll: Callable[[EmailJobResult], None] | None = None,
     ) -> EnumerationOutput | ValidationOutput:
-        deadline = time.monotonic() + timeout
+        deadline = time.monotonic() + max_wait
         while True:
             current = self.status()
             if on_poll is not None:
@@ -153,7 +153,7 @@ class EmailJob:
                     raise JobFailedError(f"email {self.kind} job completed without a result", payload=current.to_dict())
                 return current.result
             if time.monotonic() >= deadline:
-                raise _timeout_error("Email job", self.job_id, timeout)
+                raise _timeout_error("Email job", self.job_id, max_wait)
             time.sleep(poll_interval)
 
 
@@ -172,11 +172,11 @@ class AsyncEmailJob:
     async def wait(
         self,
         *,
-        timeout: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
+        max_wait: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
         on_poll: Callable[[EmailJobResult], None] | None = None,
     ) -> EnumerationOutput | ValidationOutput:
-        deadline = time.monotonic() + timeout
+        deadline = time.monotonic() + max_wait
         while True:
             current = await self.status()
             if on_poll is not None:
@@ -188,7 +188,7 @@ class AsyncEmailJob:
                     raise JobFailedError(f"email {self.kind} job completed without a result", payload=current.to_dict())
                 return current.result
             if time.monotonic() >= deadline:
-                raise _timeout_error("Email job", self.job_id, timeout)
+                raise _timeout_error("Email job", self.job_id, max_wait)
             await asyncio.sleep(poll_interval)
 
 
@@ -203,11 +203,11 @@ class EmailBatch:
     def results(
         self,
         *,
-        timeout: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
+        max_wait: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
         on_poll: Callable[[EmailBatchResults], None] | None = None,
     ) -> EmailBatchResults:
-        deadline = time.monotonic() + timeout
+        deadline = time.monotonic() + max_wait
         while True:
             raw = self._transport.request("GET", f"/email/batch/{self.batch_id}/results").json()
             parsed = _decode_batch_results(self.kind, raw)
@@ -216,7 +216,7 @@ class EmailBatch:
             if _batch_is_done(raw):
                 return parsed
             if time.monotonic() >= deadline:
-                raise _timeout_error("Email batch", self.batch_id, timeout)
+                raise _timeout_error("Email batch", self.batch_id, max_wait)
             time.sleep(poll_interval)
 
 
@@ -231,11 +231,11 @@ class AsyncEmailBatch:
     async def results(
         self,
         *,
-        timeout: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
+        max_wait: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
         on_poll: Callable[[EmailBatchResults], None] | None = None,
     ) -> EmailBatchResults:
-        deadline = time.monotonic() + timeout
+        deadline = time.monotonic() + max_wait
         while True:
             response = await self._transport.request("GET", f"/email/batch/{self.batch_id}/results")
             raw = response.json()
@@ -245,5 +245,5 @@ class AsyncEmailBatch:
             if _batch_is_done(raw):
                 return parsed
             if time.monotonic() >= deadline:
-                raise _timeout_error("Email batch", self.batch_id, timeout)
+                raise _timeout_error("Email batch", self.batch_id, max_wait)
             await asyncio.sleep(poll_interval)

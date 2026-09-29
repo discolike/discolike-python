@@ -44,7 +44,7 @@ TASK_ID_HELP = "Task ID returned when the job was started."
 app = typer.Typer(help="Run DiscoGen research jobs and check status of or cancel any async task (see --family)")
 
 
-class TaskFamily(str, enum.Enum):
+class TaskFamily(enum.StrEnum):
     discogen = "discogen"
     bulkmatch = "bulkmatch"
     contactmatch = "contactmatch"

@@ -75,6 +75,7 @@ class Transport:
         path: str,
         *,
         params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
         json_body: Any = None,  # noqa: ANN401 -- forwarded verbatim to httpx2.Client.request
         files: Any = None,  # noqa: ANN401 -- forwarded verbatim to httpx2.Client.request
         data: Any = None,  # noqa: ANN401 -- forwarded verbatim to httpx2.Client.request
@@ -86,7 +87,14 @@ class Transport:
         for attempt in range(self._max_retries + 1):
             try:
                 response = self._client.request(
-                    method, path, params=clean_params, json=json_body, files=files, data=data, timeout=timeout
+                    method,
+                    path,
+                    params=clean_params,
+                    json=json_body,
+                    files=files,
+                    data=data,
+                    timeout=timeout,
+                    headers=headers,
                 )
             except retryable_exceptions as exc:
                 if attempt == self._max_retries:
@@ -140,6 +148,7 @@ class AsyncTransport:
         path: str,
         *,
         params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
         json_body: Any = None,  # noqa: ANN401 -- forwarded verbatim to httpx2.Client.request
         files: Any = None,  # noqa: ANN401 -- forwarded verbatim to httpx2.Client.request
         data: Any = None,  # noqa: ANN401 -- forwarded verbatim to httpx2.Client.request
@@ -151,7 +160,14 @@ class AsyncTransport:
         for attempt in range(self._max_retries + 1):
             try:
                 response = await self._client.request(
-                    method, path, params=clean_params, json=json_body, files=files, data=data, timeout=timeout
+                    method,
+                    path,
+                    params=clean_params,
+                    json=json_body,
+                    files=files,
+                    data=data,
+                    timeout=timeout,
+                    headers=headers,
                 )
             except retryable_exceptions as exc:
                 if attempt == self._max_retries:

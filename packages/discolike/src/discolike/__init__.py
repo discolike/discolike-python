@@ -27,11 +27,13 @@ from discolike.resources.email import EmailJobResult
 from discolike.resources.email import EnumerationMatch
 from discolike.resources.email import EnumerationOutput
 from discolike.resources.email import ValidationOutput
+from discolike.resources.prospecting import CHECKPOINT_STOP_REASONS
 from discolike.signup import SignupResult
 from discolike.signup import async_signup
 from discolike.signup import signup
 
 __all__ = [
+    "CHECKPOINT_STOP_REASONS",
     "NATIVE_ENGINE",
     "NATIVE_ICP_ENGINE",
     "APIConnectionError",
