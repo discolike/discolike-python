@@ -2987,7 +2987,7 @@ class ProspectingPlanSettings(DiscolikeRequest):
     max_spend_usd: Annotated[
         float | None,
         Field(
-            description="Most the run may spend on DiscoLike records, in USD at your plan's per-record rate, before it stops; 0 removes the limit.",
+            description="Most the run may spend on DiscoLike records and per-call fees, in USD at your plan's rates, before it stops; 0 removes the limit.",
             ge=0.0,
             title="Max Spend Usd",
         ),

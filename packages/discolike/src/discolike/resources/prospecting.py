@@ -241,7 +241,7 @@ class ProspectingResource(SyncAPIResource):
 
         Fields left unset keep their current choice; ids come from the latest plan message's
         contact_engine, company_check_engine and search_provider options, and search_provider_id="none"
-        skips web research. max_spend_usd (USD at the plan's per-record rate) of 0 removes the limit;
+        skips web research. max_spend_usd (USD for records and per-call fees at the plan's rates) of 0 removes the limit;
         engines left unset are re-chosen around the picks. Pass the current plan_version: the plan is
         re-estimated at a new plan_version, which is the one to approve. A 422 means an id is not one of the
         plan's options or the plan has no per-record price, a 409 that the run is not awaiting approval or
@@ -348,7 +348,7 @@ class AsyncProspectingResource(AsyncAPIResource):
 
         Fields left unset keep their current choice; ids come from the latest plan message's
         contact_engine, company_check_engine and search_provider options, and search_provider_id="none"
-        skips web research. max_spend_usd (USD at the plan's per-record rate) of 0 removes the limit;
+        skips web research. max_spend_usd (USD for records and per-call fees at the plan's rates) of 0 removes the limit;
         engines left unset are re-chosen around the picks. Pass the current plan_version: the plan is
         re-estimated at a new plan_version, which is the one to approve. A 422 means an id is not one of the
         plan's options or the plan has no per-record price, a 409 that the run is not awaiting approval or
