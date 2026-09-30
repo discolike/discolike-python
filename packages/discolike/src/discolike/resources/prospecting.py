@@ -59,7 +59,8 @@ class ProspectingRunBrief(DiscolikeModel):
     segment: bool | None = None
     checkpoints: Literal["ask", "auto"] | str | None = None
     selected_seed_segments: list[int] | None = None
-    max_credits: int | None = None
+    max_records: int | None = None
+    max_spend_usd: float | None = None
 
 
 class ProspectingEvent(DiscolikeModel):
@@ -236,13 +237,15 @@ class ProspectingResource(SyncAPIResource):
 
     @api_route("PATCH", "/prospecting/runs/{run_id}/plan")
     def update_plan(self, run_id: str | UUID, request: ProspectingPlanSettings) -> ProspectingRun:
-        """Choose engines and a credit limit for a proposed plan; returns the run with the re-posted plan.
+        """Choose engines and a spending limit for a proposed plan; returns the run with the re-posted plan.
 
         Fields left unset keep their current choice; ids come from the latest plan message's
         contact_engine, company_check_engine and search_provider options, and search_provider_id="none"
-        skips web research. max_credits=0 removes the limit. Pass the current plan_version: the plan is
+        skips web research. max_spend_usd (USD at the plan's per-record rate) of 0 removes the limit;
+        engines left unset are re-chosen around the picks. Pass the current plan_version: the plan is
         re-estimated at a new plan_version, which is the one to approve. A 422 means an id is not one of the
-        plan's options, a 409 that the run is not awaiting approval or plan_version is stale.
+        plan's options or the plan has no per-record price, a 409 that the run is not awaiting approval or
+        plan_version is stale.
         """
         response = self._transport.request("PATCH", _path(run_id) + "/plan", json_body=request.to_wire())
         return ProspectingRun.model_validate(response.json())
@@ -341,13 +344,15 @@ class AsyncProspectingResource(AsyncAPIResource):
 
     @api_route("PATCH", "/prospecting/runs/{run_id}/plan")
     async def update_plan(self, run_id: str | UUID, request: ProspectingPlanSettings) -> ProspectingRun:
-        """Choose engines and a credit limit for a proposed plan; returns the run with the re-posted plan.
+        """Choose engines and a spending limit for a proposed plan; returns the run with the re-posted plan.
 
         Fields left unset keep their current choice; ids come from the latest plan message's
         contact_engine, company_check_engine and search_provider options, and search_provider_id="none"
-        skips web research. max_credits=0 removes the limit. Pass the current plan_version: the plan is
+        skips web research. max_spend_usd (USD at the plan's per-record rate) of 0 removes the limit;
+        engines left unset are re-chosen around the picks. Pass the current plan_version: the plan is
         re-estimated at a new plan_version, which is the one to approve. A 422 means an id is not one of the
-        plan's options, a 409 that the run is not awaiting approval or plan_version is stale.
+        plan's options or the plan has no per-record price, a 409 that the run is not awaiting approval or
+        plan_version is stale.
         """
         response = await self._transport.request("PATCH", _path(run_id) + "/plan", json_body=request.to_wire())
         return ProspectingRun.model_validate(response.json())

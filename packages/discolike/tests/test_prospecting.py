@@ -202,11 +202,11 @@ def test_update_plan_patches_only_the_set_fields(make_client: ClientFactory) -> 
 
     with make_client(handler) as client:
         run = client.prospecting.update_plan(
-            RUN_ID, ProspectingPlanSettings(plan_version=1, search_provider_id="none", max_credits=0)
+            RUN_ID, ProspectingPlanSettings(plan_version=1, search_provider_id="none", max_spend_usd=0)
         )
     assert run.plan_version == 2
     assert [(r.method, r.url.path) for r in seen] == [("PATCH", f"/v1/prospecting/runs/{RUN_ID}/plan")]
-    assert json.loads(seen[0].content) == {"plan_version": 1, "search_provider_id": "none", "max_credits": 0}
+    assert json.loads(seen[0].content) == {"plan_version": 1, "search_provider_id": "none", "max_spend_usd": 0}
 
 
 @pytest.mark.parametrize("status", [409, 422])
@@ -220,7 +220,7 @@ def test_update_plan_surfaces_rejections(make_client: ClientFactory, status: int
 
 def test_update_plan_validates_locally() -> None:
     with pytest.raises(ValidationError):
-        ProspectingPlanSettings(plan_version=1, max_credits=-1)
+        ProspectingPlanSettings(plan_version=1, max_spend_usd=-1)
     with pytest.raises(ValidationError):
         ProspectingPlanSettings(plan_version=0)
 
@@ -233,10 +233,10 @@ async def test_async_update_plan_patches_the_plan(make_async_client: AsyncClient
         return httpx2.Response(200, json=payload("proposed") | {"plan_version": 3})
 
     async with make_async_client(handler) as client:
-        run = await client.prospecting.update_plan(RUN_ID, ProspectingPlanSettings(plan_version=2, max_credits=500))
+        run = await client.prospecting.update_plan(RUN_ID, ProspectingPlanSettings(plan_version=2, max_spend_usd=25.0))
     assert run.plan_version == 3
     assert [(r.method, r.url.path) for r in seen] == [("PATCH", f"/v1/prospecting/runs/{RUN_ID}/plan")]
-    assert json.loads(seen[0].content) == {"plan_version": 2, "max_credits": 500}
+    assert json.loads(seen[0].content) == {"plan_version": 2, "max_spend_usd": 25.0}
 
 
 @pytest.mark.parametrize("reason", ["candidate_limit", "credit_limit", "a_reason_added_later"])

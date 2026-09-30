@@ -2984,12 +2984,12 @@ class ProspectingPlanSettings(DiscolikeRequest):
             title="Search Provider Id",
         ),
     ] = None
-    max_credits: Annotated[
-        int | None,
+    max_spend_usd: Annotated[
+        float | None,
         Field(
-            description="Most credits (billed records) the run may spend before it stops; 0 removes the limit.",
-            ge=0,
-            title="Max Credits",
+            description="Most the run may spend on DiscoLike records, in USD at your plan's per-record rate, before it stops; 0 removes the limit.",
+            ge=0.0,
+            title="Max Spend Usd",
         ),
     ] = None
 
