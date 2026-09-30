@@ -24,6 +24,7 @@ from discolike._generated.requests import DiscoGenProcessRequest
 from discolike._generated.requests import DiscoverParams
 from discolike._generated.requests import FindEmailBatchRequest
 from discolike._generated.requests import FindEmailRequest
+from discolike._generated.requests import IntakeAnswer
 from discolike._generated.requests import LLMProviderCreateRequest
 from discolike._generated.requests import LLMProviderUpdateRequest
 from discolike._generated.requests import MatchBulkParams
@@ -68,6 +69,7 @@ __all__ = [
     "DiscoverParams",
     "FindEmailBatchRequest",
     "FindEmailRequest",
+    "IntakeAnswer",
     "LLMProviderCreateRequest",
     "LLMProviderUpdateRequest",
     "MatchBulkParams",

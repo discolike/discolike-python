@@ -2915,10 +2915,6 @@ class ProspectingListParams(DiscolikeRequest):
     ] = None
 
 
-class ProspectingMessageRequest(DiscolikeRequest):
-    text: Annotated[str, Field(max_length=4000, min_length=1, title="Text")]
-
-
 class ProspectingBrief(DiscolikeRequest):
     brief: Annotated[str, Field(max_length=4000, min_length=10, title="Brief")]
     domains: Annotated[list[str] | None, Field(max_length=1000, title="Domains")] = None
@@ -3217,6 +3213,11 @@ class BulkContactMatchQueryItem(DiscolikeRequest):
     ] = None
 
 
+class IntakeAnswer(DiscolikeRequest):
+    values: Annotated[list[str] | None, Field(title="Values")] = None
+    other: Annotated[str | None, Field(max_length=200, title="Other")] = None
+
+
 class BulkContactMatchRequest(DiscolikeRequest):
     queries: Annotated[
         list[BulkContactMatchQueryItem],
@@ -3245,3 +3246,15 @@ class ProspectingApproveRequest(DiscolikeRequest):
     checkpoints: Literal["ask", "auto"] | None = None
     seed_segments: Annotated[list[int] | None, Field(min_length=1, title="Seed Segments")] = None
     segment: Annotated[bool | None, Field(title="Segment")] = None
+
+
+class ProspectingMessageRequest(DiscolikeRequest):
+    text: Annotated[str | None, Field(max_length=4000, min_length=1, title="Text")] = None
+    intake: Annotated[
+        dict[
+            Literal["company_activity", "industry", "geography", "company_size", "persona_roles", "list_size"],
+            IntakeAnswer,
+        ]
+        | None,
+        Field(title="Intake"),
+    ] = None

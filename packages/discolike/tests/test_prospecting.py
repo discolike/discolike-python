@@ -12,6 +12,7 @@ from discolike import CHECKPOINT_STOP_REASONS
 from discolike import DiscolikeError
 from discolike import JobTimeoutError
 from discolike import NotFoundError
+from discolike.requests import IntakeAnswer
 from discolike.requests import ProspectingApproveRequest
 from discolike.requests import ProspectingBrief
 from discolike.requests import ProspectingGetParams
@@ -485,3 +486,53 @@ def test_a_seeded_brief_sends_and_reads_back_its_customers(make_client: ClientFa
     assert (run.brief.customer_domains, run.brief.selected_seed_segments) == (customers, [1])
     with pytest.raises(ValidationError):
         ProspectingBrief(brief="Lookalikes of our customers", customer_domains=["acme.com"] * 1001)
+
+
+def test_answer_intake_posts_answers_with_key(make_client: ClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(202, json=message_payload())
+
+    with make_client(handler) as client:
+        client.prospecting.answer_intake(
+            RUN_ID, {"company_activity": IntakeAnswer(values=["sell"])}, idempotency_key="k"
+        )
+        message = client.prospecting.answer_intake(
+            RUN_ID,
+            {"company_activity": IntakeAnswer(values=["sell"]), "geography": IntakeAnswer(other="Ohio")},
+            idempotency_key="k2",
+            summary="Sellers in Ohio",
+        )
+    assert seen[0].url.path == f"/v1/prospecting/runs/{RUN_ID}/messages"
+    assert seen[0].headers["Idempotency-Key"] == "k"
+    assert json.loads(seen[0].content) == {"intake": {"company_activity": {"values": ["sell"]}}}
+    assert json.loads(seen[1].content) == {
+        "text": "Sellers in Ohio",
+        "intake": {"company_activity": {"values": ["sell"]}, "geography": {"other": "Ohio"}},
+    }
+    assert message.seq == 8
+
+
+async def test_async_answer_intake(make_async_client: AsyncClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(202, json=message_payload())
+
+    async with make_async_client(handler) as client:
+        message = await client.prospecting.answer_intake(
+            RUN_ID, {"list_size": IntakeAnswer(values=["1000"])}, idempotency_key="async-k"
+        )
+    assert seen[0].headers["Idempotency-Key"] == "async-k"
+    assert json.loads(seen[0].content) == {"intake": {"list_size": {"values": ["1000"]}}}
+    assert message.seq == 8
+
+
+def test_answer_intake_rejects_unknown_key_and_long_other() -> None:
+    with pytest.raises(ValidationError):
+        ProspectingMessageRequest.model_validate({"intake": {"bogus": {"values": ["x"]}}})
+    with pytest.raises(ValidationError):
+        IntakeAnswer(other="x" * 201)

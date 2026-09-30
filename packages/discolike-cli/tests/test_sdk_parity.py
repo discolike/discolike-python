@@ -25,6 +25,7 @@ DELIBERATELY_OMITTED: dict[str, frozenset[str]] = {
     "ContactsCountParams": frozenset({"icp_text"}),
     "ContactFilters": frozenset({"icp_text"}),
     "FindEmailBatchRequest": frozenset({"source_query_id", "refs", "round"}),
+    "ProspectingMessageRequest": frozenset({"intake"}),
 }
 # ``discolike bulk`` takes the full vocabulary through --params-file / --param and manages the paging
 # fields itself; its flags are the handful a volume run needs, not one per SDK field.

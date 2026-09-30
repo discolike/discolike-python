@@ -13,6 +13,7 @@ from pydantic import Field
 
 from discolike._exceptions import JobTimeoutError
 from discolike._models import DiscolikeModel
+from discolike.requests import IntakeAnswer
 from discolike.requests import ProspectingApproveRequest
 from discolike.requests import ProspectingBrief
 from discolike.requests import ProspectingGetParams
@@ -33,6 +34,8 @@ ProspectingStatus = (
 ProspectingStage = (
     Literal["plan", "discover", "validate", "contacts", "generate", "verify", "segment", "seed_segment"] | str
 )
+
+IntakeKey = Literal["company_activity", "industry", "geography", "company_size", "persona_roles", "list_size"]
 
 
 class ProspectingPlan(DiscolikeModel):
@@ -163,6 +166,12 @@ class ProspectingRun(DiscolikeModel):
     )
 
 
+def _intake_request(*, answers: dict[IntakeKey, IntakeAnswer], summary: str | None) -> ProspectingMessageRequest:
+    if summary is None:
+        return ProspectingMessageRequest(intake=answers)
+    return ProspectingMessageRequest(text=summary, intake=answers)
+
+
 def _key(value: str) -> str:
     if not value.strip() or len(value) > 128:
         raise ValueError("idempotency_key must contain 1-128 characters")
@@ -214,6 +223,18 @@ class ProspectingResource(SyncAPIResource):
             headers={"Idempotency-Key": _key(idempotency_key)},
         )
         return ProspectingMessage.model_validate(response.json())
+
+    @api_route("POST", "/prospecting/runs/{run_id}/messages")
+    def answer_intake(
+        self,
+        run_id: str | UUID,
+        answers: dict[IntakeKey, IntakeAnswer],
+        *,
+        idempotency_key: str,
+        summary: str | None = None,
+    ) -> ProspectingMessage:
+        """Answer the intake card on a run; `answers` maps each question key to its picked `values` and/or `other` text."""
+        return self.message(run_id, _intake_request(answers=answers, summary=summary), idempotency_key=idempotency_key)
 
     @api_route("POST", "/prospecting/runs")
     def start(self, request: ProspectingBrief, *, idempotency_key: str) -> ProspectingRun:
@@ -322,6 +343,20 @@ class AsyncProspectingResource(AsyncAPIResource):
             headers={"Idempotency-Key": _key(idempotency_key)},
         )
         return ProspectingMessage.model_validate(response.json())
+
+    @api_route("POST", "/prospecting/runs/{run_id}/messages")
+    async def answer_intake(
+        self,
+        run_id: str | UUID,
+        answers: dict[IntakeKey, IntakeAnswer],
+        *,
+        idempotency_key: str,
+        summary: str | None = None,
+    ) -> ProspectingMessage:
+        """Answer the intake card on a run; `answers` maps each question key to its picked `values` and/or `other` text."""
+        return await self.message(
+            run_id, _intake_request(answers=answers, summary=summary), idempotency_key=idempotency_key
+        )
 
     @api_route("POST", "/prospecting/runs")
     async def start(self, request: ProspectingBrief, *, idempotency_key: str) -> ProspectingRun:
