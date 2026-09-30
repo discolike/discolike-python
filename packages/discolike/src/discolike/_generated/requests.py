@@ -2953,8 +2953,6 @@ class ProspectingGetParams(DiscolikeRequest):
 
 
 class ProspectingPlanSettings(DiscolikeRequest):
-    """Engine choices for a proposed plan; each omitted field keeps its current choice."""
-
     plan_version: Annotated[int, Field(ge=1, title="Plan Version")]
     contact_integration_id: Annotated[
         str | None,

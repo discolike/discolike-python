@@ -88,6 +88,7 @@ class ProspectingInFlight(DiscolikeModel):
     plan_version: int
     state: Literal["dispatching", "running"] | str
     started_at: datetime
+    progress: int | None = None
 
 
 class ProspectingRunSummary(DiscolikeModel):
