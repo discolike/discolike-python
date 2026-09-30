@@ -59,8 +59,6 @@ class ProspectingRunBrief(DiscolikeModel):
     segment: bool | None = None
     checkpoints: Literal["ask", "auto"] | str | None = None
     selected_seed_segments: list[int] | None = None
-    max_records: int | None = None
-    max_spend_usd: float | None = None
 
 
 class ProspectingEvent(DiscolikeModel):
