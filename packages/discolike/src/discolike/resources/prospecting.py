@@ -18,6 +18,7 @@ from discolike.requests import ProspectingBrief
 from discolike.requests import ProspectingGetParams
 from discolike.requests import ProspectingListParams
 from discolike.requests import ProspectingMessageRequest
+from discolike.requests import ProspectingPlanSettings
 from discolike.requests import ProspectingRunUpdate
 from discolike.resources._base import AsyncAPIResource
 from discolike.resources._base import SyncAPIResource
@@ -58,6 +59,7 @@ class ProspectingRunBrief(DiscolikeModel):
     segment: bool | None = None
     checkpoints: Literal["ask", "auto"] | str | None = None
     selected_seed_segments: list[int] | None = None
+    max_credits: int | None = None
 
 
 class ProspectingEvent(DiscolikeModel):
@@ -232,6 +234,19 @@ class ProspectingResource(SyncAPIResource):
         response = self._transport.request("POST", _path(run_id) + "/cancel")
         return ProspectingRun.model_validate(response.json())
 
+    @api_route("PATCH", "/prospecting/runs/{run_id}/plan")
+    def update_plan(self, run_id: str | UUID, request: ProspectingPlanSettings) -> ProspectingRun:
+        """Choose engines and a credit limit for a proposed plan; returns the run with the re-posted plan.
+
+        Fields left unset keep their current choice; ids come from the latest plan message's
+        contact_engine, company_check_engine and search_provider options, and search_provider_id="none"
+        skips web research. max_credits=0 removes the limit. Pass the current plan_version: the plan is
+        re-estimated at a new plan_version, which is the one to approve. A 422 means an id is not one of the
+        plan's options, a 409 that the run is not awaiting approval or plan_version is stale.
+        """
+        response = self._transport.request("PATCH", _path(run_id) + "/plan", json_body=request.to_wire())
+        return ProspectingRun.model_validate(response.json())
+
     @api_route("PATCH", "/prospecting/runs/{run_id}")
     def rename(self, run_id: str | UUID, request: ProspectingRunUpdate) -> ProspectingRunSummary:
         """Rename the run in any status; returns its summary as list() shows it.
@@ -322,6 +337,19 @@ class AsyncProspectingResource(AsyncAPIResource):
     @api_route("POST", "/prospecting/runs/{run_id}/cancel")
     async def cancel(self, run_id: str | UUID) -> ProspectingRun:
         response = await self._transport.request("POST", _path(run_id) + "/cancel")
+        return ProspectingRun.model_validate(response.json())
+
+    @api_route("PATCH", "/prospecting/runs/{run_id}/plan")
+    async def update_plan(self, run_id: str | UUID, request: ProspectingPlanSettings) -> ProspectingRun:
+        """Choose engines and a credit limit for a proposed plan; returns the run with the re-posted plan.
+
+        Fields left unset keep their current choice; ids come from the latest plan message's
+        contact_engine, company_check_engine and search_provider options, and search_provider_id="none"
+        skips web research. max_credits=0 removes the limit. Pass the current plan_version: the plan is
+        re-estimated at a new plan_version, which is the one to approve. A 422 means an id is not one of the
+        plan's options, a 409 that the run is not awaiting approval or plan_version is stale.
+        """
+        response = await self._transport.request("PATCH", _path(run_id) + "/plan", json_body=request.to_wire())
         return ProspectingRun.model_validate(response.json())
 
     @api_route("PATCH", "/prospecting/runs/{run_id}")

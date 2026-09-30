@@ -33,6 +33,7 @@ from discolike._generated.requests import ProspectingBrief
 from discolike._generated.requests import ProspectingGetParams
 from discolike._generated.requests import ProspectingListParams
 from discolike._generated.requests import ProspectingMessageRequest
+from discolike._generated.requests import ProspectingPlanSettings
 from discolike._generated.requests import ProspectingRunUpdate
 from discolike._generated.requests import QueriesListParams
 from discolike._generated.requests import SaveResultsRequest
@@ -76,6 +77,7 @@ __all__ = [
     "ProspectingGetParams",
     "ProspectingListParams",
     "ProspectingMessageRequest",
+    "ProspectingPlanSettings",
     "ProspectingRunUpdate",
     "QueriesListParams",
     "SaveResultsRequest",

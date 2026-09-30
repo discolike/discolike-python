@@ -2956,6 +2956,44 @@ class ProspectingGetParams(DiscolikeRequest):
     messages_after: Annotated[int | None, Field(ge=0, title="Messages After")] = 0
 
 
+class ProspectingPlanSettings(DiscolikeRequest):
+    """Engine choices for a proposed plan; each omitted field keeps its current choice."""
+
+    plan_version: Annotated[int, Field(ge=1, title="Plan Version")]
+    contact_integration_id: Annotated[
+        str | None,
+        Field(
+            description="Contact research engine: an option id from the plan's contact_engine.",
+            max_length=128,
+            title="Contact Integration Id",
+        ),
+    ] = None
+    validation_integration_id: Annotated[
+        str | None,
+        Field(
+            description="Company check engine: an option id from the plan's company_check_engine.",
+            max_length=128,
+            title="Validation Integration Id",
+        ),
+    ] = None
+    search_provider_id: Annotated[
+        str | None,
+        Field(
+            description="Search provider: an option id from the plan's search_provider; 'none' skips web research.",
+            max_length=128,
+            title="Search Provider Id",
+        ),
+    ] = None
+    max_credits: Annotated[
+        int | None,
+        Field(
+            description="Most credits (billed records) the run may spend before it stops; 0 removes the limit.",
+            ge=0,
+            title="Max Credits",
+        ),
+    ] = None
+
+
 class ProspectingRunUpdate(DiscolikeRequest):
     title: Annotated[str, Field(max_length=80, min_length=1, title="Title")]
 

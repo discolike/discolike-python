@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 import discolike.resources.prospecting as module
 from discolike import CHECKPOINT_STOP_REASONS
+from discolike import DiscolikeError
 from discolike import JobTimeoutError
 from discolike import NotFoundError
 from discolike.requests import ProspectingApproveRequest
@@ -16,6 +17,7 @@ from discolike.requests import ProspectingBrief
 from discolike.requests import ProspectingGetParams
 from discolike.requests import ProspectingListParams
 from discolike.requests import ProspectingMessageRequest
+from discolike.requests import ProspectingPlanSettings
 from discolike.requests import ProspectingRunUpdate
 from discolike_testkit import AsyncClientFactory
 from discolike_testkit import ClientFactory
@@ -189,6 +191,60 @@ async def test_async_rename_patches_the_title(make_async_client: AsyncClientFact
     assert summary.run_id == UUID(RUN_ID)
     assert [(r.method, r.url.path) for r in seen] == [("PATCH", f"/v1/prospecting/runs/{RUN_ID}")]
     assert json.loads(seen[0].content) == {"title": "Renamed"}
+
+
+def test_update_plan_patches_only_the_set_fields(make_client: ClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, json=payload("proposed") | {"plan_version": 2})
+
+    with make_client(handler) as client:
+        run = client.prospecting.update_plan(
+            RUN_ID, ProspectingPlanSettings(plan_version=1, search_provider_id="none", max_credits=0)
+        )
+    assert run.plan_version == 2
+    assert [(r.method, r.url.path) for r in seen] == [("PATCH", f"/v1/prospecting/runs/{RUN_ID}/plan")]
+    assert json.loads(seen[0].content) == {"plan_version": 1, "search_provider_id": "none", "max_credits": 0}
+
+
+@pytest.mark.parametrize("status", [409, 422])
+def test_update_plan_surfaces_rejections(make_client: ClientFactory, status: int) -> None:
+    with (
+        make_client(lambda request: httpx2.Response(status, json={"detail": "rejected"})) as client,
+        pytest.raises(DiscolikeError),
+    ):
+        client.prospecting.update_plan(RUN_ID, ProspectingPlanSettings(plan_version=1, contact_integration_id="x"))
+
+
+def test_update_plan_validates_locally() -> None:
+    with pytest.raises(ValidationError):
+        ProspectingPlanSettings(plan_version=1, max_credits=-1)
+    with pytest.raises(ValidationError):
+        ProspectingPlanSettings(plan_version=0)
+
+
+async def test_async_update_plan_patches_the_plan(make_async_client: AsyncClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, json=payload("proposed") | {"plan_version": 3})
+
+    async with make_async_client(handler) as client:
+        run = await client.prospecting.update_plan(RUN_ID, ProspectingPlanSettings(plan_version=2, max_credits=500))
+    assert run.plan_version == 3
+    assert [(r.method, r.url.path) for r in seen] == [("PATCH", f"/v1/prospecting/runs/{RUN_ID}/plan")]
+    assert json.loads(seen[0].content) == {"plan_version": 2, "max_credits": 500}
+
+
+@pytest.mark.parametrize("reason", ["candidate_limit", "credit_limit", "a_reason_added_later"])
+def test_stop_reason_stays_an_open_string(make_client: ClientFactory, reason: str) -> None:
+    with make_client(
+        lambda request: httpx2.Response(200, json=payload("completed") | {"stop_reason": reason})
+    ) as client:
+        assert client.prospecting.get(RUN_ID).stop_reason == reason
 
 
 def test_wait_returns_a_proposed_plan(make_client: ClientFactory) -> None:
