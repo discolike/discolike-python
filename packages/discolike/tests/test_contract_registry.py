@@ -2,6 +2,7 @@ import importlib.util
 import inspect
 import pathlib
 import sys
+import typing
 
 from discolike._models import DiscolikeModel
 from discolike.resources._base import get_discolike_route
@@ -412,3 +413,89 @@ def test_check_models_accepts_the_saved_companies_id_the_sdk_keeps_optional():
     schema["required"] = [*schema["required"], "companies_saved_query_id"]
     spec = {"components": {"schemas": {"ProspectingRunResponse": schema}}}
     assert check_contract.check_models(spec, {"ProspectingRunResponse": ProspectingRun}) == []
+
+
+def _intake_spec(
+    *, keys: list[str], answer_fields: list[str], body_fields: tuple[str, ...] = ("text", "intake")
+) -> dict:
+    intake = {
+        "anyOf": [
+            {
+                "type": "object",
+                "propertyNames": {"enum": keys},
+                "additionalProperties": {"$ref": "#/components/schemas/IntakeAnswer"},
+            },
+            {"type": "null"},
+        ]
+    }
+    properties = {"text": {"anyOf": [{"type": "string"}, {"type": "null"}]}, "intake": intake}
+    body = {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/ProspectingMessageRequest"}}}}
+    return {
+        "paths": {"/prospecting/runs/{run_id}/messages": {"post": {"requestBody": body}}},
+        "components": {
+            "schemas": {
+                "ProspectingMessageRequest": {"properties": {name: properties[name] for name in body_fields}},
+                "IntakeAnswer": {"properties": {name: {} for name in answer_fields}},
+            }
+        },
+    }
+
+
+def _sdk_intake_keys() -> list[str]:
+    from discolike.resources.prospecting import IntakeKey
+
+    return list(typing.get_args(IntakeKey))
+
+
+def test_collect_routes_keeps_answer_intake_beside_message_on_the_shared_route():
+    check_contract = _load_check_contract()
+    (message,) = _route(check_contract, "ProspectingResource", "message")
+    (answer_intake,) = _route(check_contract, "ProspectingResource", "answer_intake")
+    assert message.path == answer_intake.path
+    assert answer_intake.request_model is None
+    assert set(answer_intake.body_arguments) == {"intake", "text"}
+
+
+def test_check_passes_answer_intake_against_a_matching_spec():
+    check_contract = _load_check_contract()
+    from discolike.requests import IntakeAnswer
+
+    routes = _route(check_contract, "ProspectingResource", "answer_intake")
+    spec = _intake_spec(keys=_sdk_intake_keys(), answer_fields=list(IntakeAnswer.model_fields))
+    assert check_contract.check(spec, routes) == []
+
+
+def test_check_reports_intake_key_drift_on_answer_intake():
+    check_contract = _load_check_contract()
+    from discolike.requests import IntakeAnswer
+
+    routes = _route(check_contract, "ProspectingResource", "answer_intake")
+    keys = [key for key in _sdk_intake_keys() if key != "list_size"] + ["budget"]
+    label = "ProspectingResource.answer_intake (POST /prospecting/runs/{run_id}/messages)"
+    assert check_contract.check(_intake_spec(keys=keys, answer_fields=list(IntakeAnswer.model_fields)), routes) == [
+        f"{label}: key 'list_size' of body field 'intake' not found in spec",
+        f"{label}: spec key 'budget' of body field 'intake' not accepted by the SDK",
+    ]
+
+
+def test_check_reports_intake_answer_field_drift_on_answer_intake():
+    check_contract = _load_check_contract()
+    routes = _route(check_contract, "ProspectingResource", "answer_intake")
+    spec = _intake_spec(keys=_sdk_intake_keys(), answer_fields=["values", "ranking"])
+    label = "ProspectingResource.answer_intake (POST /prospecting/runs/{run_id}/messages)"
+    assert check_contract.check(spec, routes) == [
+        f"{label}: field 'other' of IntakeAnswer not found in spec",
+        f"{label}: spec param 'ranking' not declared on IntakeAnswer",
+    ]
+
+
+def test_check_reports_a_body_field_answer_intake_fills_that_the_spec_dropped():
+    check_contract = _load_check_contract()
+    from discolike.requests import IntakeAnswer
+
+    routes = _route(check_contract, "ProspectingResource", "answer_intake")
+    spec = _intake_spec(keys=_sdk_intake_keys(), answer_fields=list(IntakeAnswer.model_fields), body_fields=("intake",))
+    assert check_contract.check(spec, routes) == [
+        "ProspectingResource.answer_intake (POST /prospecting/runs/{run_id}/messages): builds body field 'text' not "
+        "found in spec"
+    ]

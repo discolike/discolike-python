@@ -631,3 +631,22 @@ def test_answer_intake_rejects_unknown_key_and_long_other() -> None:
         ProspectingMessageRequest.model_validate({"intake": {"bogus": {"values": ["x"]}}})
     with pytest.raises(ValidationError):
         IntakeAnswer(other="x" * 201)
+
+
+def test_message_request_needs_text_or_intake() -> None:
+    with pytest.raises(ValidationError, match="send text or intake answers"):
+        ProspectingMessageRequest()
+    with pytest.raises(ValidationError, match="send text or intake answers"):
+        ProspectingMessageRequest(intake={})
+
+
+def test_answer_intake_rejects_empty_answers_before_sending(make_client: ClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(202, json=message_payload())
+
+    with make_client(handler) as client, pytest.raises(ValidationError):
+        client.prospecting.answer_intake(RUN_ID, {}, idempotency_key="k")
+    assert seen == []

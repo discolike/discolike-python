@@ -22,6 +22,7 @@ KM_PER_MILE = 1.609344
 RADIUS_KM_SUFFIX = "km"
 RADIUS_MILE_SUFFIX = "mi"
 MAX_GEO_SHAPES = 10
+MESSAGE_CONTENT_FIELDS = frozenset({"text", "intake"})
 
 
 class DiscolikeModel(pydantic.BaseModel):
@@ -64,6 +65,15 @@ class DiscolikeRequest(pydantic.BaseModel):
         total = (lat is not None) + len(getattr(self, "geo", None) or []) + len(getattr(self, "bbox", None) or [])
         if total > MAX_GEO_SHAPES:
             raise ValueError(f"{total} geo shapes (lat/lon, geo and bbox together); at most {MAX_GEO_SHAPES}")
+        return self
+
+    # Mirrors the platform's text_or_intake rule on ProspectingMessageRequest, which the spec cannot express.
+    @pydantic.model_validator(mode="after")
+    def _validate_message_content(self) -> DiscolikeRequest:
+        if not type(self).model_fields.keys() >= MESSAGE_CONTENT_FIELDS:
+            return self
+        if getattr(self, "text", None) is None and not getattr(self, "intake", None):
+            raise ValueError("send text or intake answers")
         return self
 
     def to_wire(self) -> dict[str, Any]:
