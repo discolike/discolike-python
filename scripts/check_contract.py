@@ -10,6 +10,8 @@ import sys
 import typing
 from dataclasses import dataclass
 from types import ModuleType
+from typing import Any
+from typing import Literal
 
 import httpx2
 
@@ -61,6 +63,11 @@ MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
 }
 # Request fields the platform accepts but hides from its OpenAPI schema (SkipJsonSchema), so the spec never lists them.
 HIDDEN_REQUEST_FIELDS: dict[str, frozenset[str]] = {"ProspectingBrief": frozenset({"checkpoints"})}
+# Methods that build a route's body from their own arguments instead of taking its request model, mapped
+# argument -> body field, so each argument is checked against the body field it fills.
+BODY_BUILDERS: dict[tuple[str, str], dict[str, str]] = {
+    ("ProspectingResource", "answer_intake"): {"answers": "intake", "summary": "text"},
+}
 SPEC_URL = "https://api.discolike.com/v1/openapi.json"
 REQUEST_TIMEOUT_SECONDS = 30.0
 
@@ -73,6 +80,7 @@ class RouteEntry:
     path: str
     openapi: bool
     request_model: type[DiscolikeRequest] | None
+    body_arguments: dict[str, Any]
 
 
 def _resource_modules() -> list[ModuleType]:
@@ -94,6 +102,14 @@ def _request_model(member: object) -> type[DiscolikeRequest] | None:
     return None
 
 
+def _body_arguments(*, class_name: str, method_name: str, member: object) -> dict[str, Any]:
+    mapping = BODY_BUILDERS.get((class_name, method_name))
+    if mapping is None:
+        return {}
+    hints = typing.get_type_hints(member)
+    return {body_field: hints[argument] for argument, body_field in mapping.items()}
+
+
 def collect_routes() -> list[RouteEntry]:
     seen: dict[tuple[str, str], RouteEntry] = {}
     for module in _resource_modules():
@@ -107,10 +123,14 @@ def collect_routes() -> list[RouteEntry]:
                 if route is None:
                     continue
                 http_method, path, openapi = route
-                key = (http_method, path)
+                key = (class_name, method_name)
                 if key in seen:
                     continue
-                seen[key] = RouteEntry(class_name, method_name, http_method, path, openapi, _request_model(member))
+                body_arguments = _body_arguments(class_name=class_name, method_name=method_name, member=member)
+                request_model = None if body_arguments else _request_model(member)
+                seen[key] = RouteEntry(
+                    class_name, method_name, http_method, path, openapi, request_model, body_arguments
+                )
     return list(seen.values())
 
 
@@ -158,6 +178,11 @@ def check(spec: dict, routes: list[RouteEntry]) -> list[str]:
         if operation is None:
             mismatches.append(f"{label}: route not found in spec")
             continue
+        if route.body_arguments:
+            mismatches.extend(
+                _check_body_arguments(spec=spec, operation=operation, label=label, arguments=route.body_arguments)
+            )
+            continue
         spec_fields = _spec_request_fields(spec=spec, operation=operation)
         if route.request_model is None:
             mismatches.extend(
@@ -174,6 +199,64 @@ def check(spec: dict, routes: list[RouteEntry]) -> list[str]:
         mismatches.extend(
             f"{label}: spec param '{field}' not declared on {model.__name__}"
             for field in sorted(spec_fields - model_fields)
+        )
+    return mismatches
+
+
+def _check_body_arguments(*, spec: dict, operation: dict, label: str, arguments: dict[str, Any]) -> list[str]:
+    properties = _request_body_properties(spec=spec, operation=operation)
+    mismatches: list[str] = []
+    for body_field, annotation in sorted(arguments.items()):
+        prop = properties.get(body_field)
+        if prop is None:
+            mismatches.append(f"{label}: builds body field '{body_field}' not found in spec")
+            continue
+        mismatches.extend(
+            _mapping_mismatches(spec=spec, label=label, body_field=body_field, annotation=annotation, prop=prop)
+        )
+    return mismatches
+
+
+def _mapping_type(annotation: Any) -> tuple[Any, ...] | None:  # noqa: ANN401 -- arbitrary type hint
+    for candidate in (annotation, *typing.get_args(annotation)):
+        if typing.get_origin(candidate) is dict:
+            return typing.get_args(candidate)
+    return None
+
+
+def _mapping_mismatches(*, spec: dict, label: str, body_field: str, annotation: Any, prop: dict) -> list[str]:  # noqa: ANN401
+    mapping = _mapping_type(annotation)
+    if mapping is None:
+        return []
+    key_type, value_type = mapping
+    variant = next((variant for variant in _type_variants(prop) if "additionalProperties" in variant), None)
+    if variant is None:
+        return [f"{label}: body field '{body_field}' is a mapping in the SDK but not in the spec"]
+    mismatches: list[str] = []
+    spec_keys = set(variant.get("propertyNames", {}).get("enum", []))
+    if typing.get_origin(key_type) is Literal and not spec_keys:
+        mismatches.append(f"{label}: spec accepts any key of body field '{body_field}' but the SDK restricts them")
+    elif typing.get_origin(key_type) is Literal:
+        sdk_keys = set(typing.get_args(key_type))
+        mismatches.extend(
+            f"{label}: key '{key}' of body field '{body_field}' not found in spec"
+            for key in sorted(sdk_keys - spec_keys)
+        )
+        mismatches.extend(
+            f"{label}: spec key '{key}' of body field '{body_field}' not accepted by the SDK"
+            for key in sorted(spec_keys - sdk_keys)
+        )
+    value_schema = variant["additionalProperties"]
+    if inspect.isclass(value_type) and issubclass(value_type, DiscolikeRequest) and isinstance(value_schema, dict):
+        spec_fields = set(_resolve_ref(spec=spec, schema=value_schema).get("properties", {}))
+        model_fields = set(value_type.model_fields)
+        mismatches.extend(
+            f"{label}: field '{name}' of {value_type.__name__} not found in spec"
+            for name in sorted(model_fields - spec_fields)
+        )
+        mismatches.extend(
+            f"{label}: spec param '{name}' not declared on {value_type.__name__}"
+            for name in sorted(spec_fields - model_fields)
         )
     return mismatches
 
