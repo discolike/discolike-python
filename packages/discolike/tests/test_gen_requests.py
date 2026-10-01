@@ -274,5 +274,5 @@ def test_compare_prints_a_diff_and_returns_one_on_drift(gen, capsys) -> None:
 
 def test_collect_routes_covers_every_stamped_sync_route(gen) -> None:
     routes = gen.collect_routes()
-    assert len(routes) == 56
+    assert len(routes) == 57
     assert all(not route.class_name.startswith("Async") for route in routes)

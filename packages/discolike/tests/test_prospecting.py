@@ -9,13 +9,16 @@ from pydantic import ValidationError
 
 import discolike.resources.prospecting as module
 from discolike import CHECKPOINT_STOP_REASONS
+from discolike import DiscolikeError
 from discolike import JobTimeoutError
 from discolike import NotFoundError
+from discolike.requests import IntakeAnswer
 from discolike.requests import ProspectingApproveRequest
 from discolike.requests import ProspectingBrief
 from discolike.requests import ProspectingGetParams
 from discolike.requests import ProspectingListParams
 from discolike.requests import ProspectingMessageRequest
+from discolike.requests import ProspectingPlanSettings
 from discolike.requests import ProspectingRunUpdate
 from discolike_testkit import AsyncClientFactory
 from discolike_testkit import ClientFactory
@@ -191,6 +194,104 @@ async def test_async_rename_patches_the_title(make_async_client: AsyncClientFact
     assert json.loads(seen[0].content) == {"title": "Renamed"}
 
 
+def test_update_plan_patches_only_the_set_fields(make_client: ClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, json=payload("proposed") | {"plan_version": 2})
+
+    with make_client(handler) as client:
+        run = client.prospecting.update_plan(
+            RUN_ID, ProspectingPlanSettings(plan_version=1, search_provider_id="none", max_spend_usd=0)
+        )
+    assert run.plan_version == 2
+    assert [(r.method, r.url.path) for r in seen] == [("PATCH", f"/v1/prospecting/runs/{RUN_ID}/plan")]
+    assert json.loads(seen[0].content) == {"plan_version": 1, "search_provider_id": "none", "max_spend_usd": 0}
+
+
+def test_update_plan_sends_run_shape_and_provider_limit(make_client: ClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, json=payload("proposed") | {"plan_version": 2})
+
+    settings = ProspectingPlanSettings(
+        plan_version=1,
+        target_companies=250,
+        contacts_per_company=10,
+        max_provider_spend_usd=12.5,
+        deliverable="accounts",
+        goal="companies",
+    )
+    with make_client(handler) as client:
+        client.prospecting.update_plan(RUN_ID, settings)
+    assert json.loads(seen[0].content) == {
+        "plan_version": 1,
+        "target_companies": 250,
+        "contacts_per_company": 10,
+        "max_provider_spend_usd": 12.5,
+        "deliverable": "accounts",
+        "goal": "companies",
+    }
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"deliverable": "people"},
+        {"goal": "accounts"},
+        {"max_provider_spend_usd": -1},
+        {"target_companies": 0},
+        {"contacts_per_company": 11},
+    ],
+)
+def test_update_plan_rejects_bad_run_shape_locally(values: dict) -> None:
+    with pytest.raises(ValidationError):
+        ProspectingPlanSettings.model_validate({"plan_version": 1} | values)
+
+
+@pytest.mark.parametrize("status", [409, 422])
+def test_update_plan_surfaces_rejections(make_client: ClientFactory, status: int) -> None:
+    with (
+        make_client(lambda request: httpx2.Response(status, json={"detail": "rejected"})) as client,
+        pytest.raises(DiscolikeError),
+    ):
+        client.prospecting.update_plan(RUN_ID, ProspectingPlanSettings(plan_version=1, contact_integration_id="x"))
+
+
+def test_update_plan_validates_locally() -> None:
+    with pytest.raises(ValidationError):
+        ProspectingPlanSettings(plan_version=1, max_spend_usd=-1)
+    with pytest.raises(ValidationError):
+        ProspectingPlanSettings(plan_version=0)
+
+
+async def test_async_update_plan_patches_the_plan(make_async_client: AsyncClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, json=payload("proposed") | {"plan_version": 3})
+
+    async with make_async_client(handler) as client:
+        run = await client.prospecting.update_plan(RUN_ID, ProspectingPlanSettings(plan_version=2, max_spend_usd=25.0))
+    assert run.plan_version == 3
+    assert [(r.method, r.url.path) for r in seen] == [("PATCH", f"/v1/prospecting/runs/{RUN_ID}/plan")]
+    assert json.loads(seen[0].content) == {"plan_version": 2, "max_spend_usd": 25.0}
+
+
+@pytest.mark.parametrize(
+    "reason", ["candidate_limit", "credit_limit", "provider_limit", "companies_worked", "a_reason_added_later"]
+)
+def test_stop_reason_stays_an_open_string(make_client: ClientFactory, reason: str) -> None:
+    with make_client(
+        lambda request: httpx2.Response(200, json=payload("completed") | {"stop_reason": reason})
+    ) as client:
+        assert client.prospecting.get(RUN_ID).stop_reason == reason
+
+
 def test_wait_returns_a_proposed_plan(make_client: ClientFactory) -> None:
     with make_client(lambda request: httpx2.Response(200, json=payload("proposed"))) as client:
         assert client.prospecting.wait(RUN_ID).status == "proposed"
@@ -328,6 +429,18 @@ def test_request_defaults_preserve_explicit_quantity_intent() -> None:
     assert (ProspectingListParams().limit, ProspectingListParams().before) == (20, None)
 
 
+def test_deliverable_and_goal_are_sent_only_when_set() -> None:
+    brief = "US logistics companies and operations leaders"
+    assert ProspectingBrief(brief=brief).to_wire() == {"brief": brief}
+    assert ProspectingBrief(brief=brief, deliverable="accounts", goal="companies").to_wire() == {
+        "brief": brief,
+        "deliverable": "accounts",
+        "goal": "companies",
+    }
+    with pytest.raises(ValidationError):
+        ProspectingBrief.model_validate({"brief": brief, "deliverable": "people"})
+
+
 def test_checkpoints_default_to_the_server_mode_and_send_only_when_set() -> None:
     brief = "US logistics companies and operations leaders"
     assert ProspectingBrief(brief=brief).checkpoints == "auto"
@@ -358,6 +471,40 @@ def test_wait_returns_at_a_checkpoint_with_its_question(make_client: ClientFacto
     assert run.stop_reason in CHECKPOINT_STOP_REASONS
     assert run.brief.checkpoints == "ask"
     assert run.messages[-1].data == question["data"]
+
+
+def test_a_top_up_round_is_a_checkpoint(make_client: ClientFactory) -> None:
+    replies = ["Raise the limit and run it", "Run a smaller round (40 companies)", "Finish with 60 found"]
+    question = message_payload() | {
+        "role": "agent",
+        "kind": "question",
+        "content": "60 of 100 companies had reachable people. Another round needs about 70 more matching companies.",
+        "data": {"reason": "top_up", "suggested_replies": replies, "sample": []},
+    }
+    paused = payload("needs_input") | {"stop_reason": "top_up", "messages": [question]}
+    with make_client(lambda request: httpx2.Response(200, json=paused)) as client:
+        run = client.prospecting.wait(RUN_ID)
+    assert run.stop_reason in CHECKPOINT_STOP_REASONS
+    assert run.messages[-1].data == question["data"]
+
+
+def test_a_run_reports_its_phase_provider_cost_and_shape(make_client: ClientFactory) -> None:
+    phased = payload("running") | {
+        "pipeline_phase": "people",
+        "provider_cost_usd": 3.25,
+        "brief": {"brief": "US logistics companies", "deliverable": "accounts", "goal": "companies"},
+    }
+    with make_client(lambda request: httpx2.Response(200, json=phased)) as client:
+        run = client.prospecting.get(RUN_ID)
+    assert (run.pipeline_phase, run.provider_cost_usd) == ("people", 3.25)
+    assert (run.brief.deliverable, run.brief.goal) == ("accounts", "companies")
+
+
+def test_a_run_from_before_phases_defaults_its_new_fields(make_client: ClientFactory) -> None:
+    with make_client(lambda request: httpx2.Response(200, json=payload("running"))) as client:
+        run = client.prospecting.get(RUN_ID)
+    assert (run.pipeline_phase, run.provider_cost_usd) == (None, None)
+    assert (run.brief.deliverable, run.brief.goal) == ("leads", "leads")
 
 
 def test_a_failed_pilot_carries_its_sample(make_client: ClientFactory) -> None:
@@ -429,3 +576,58 @@ def test_a_seeded_brief_sends_and_reads_back_its_customers(make_client: ClientFa
     assert (run.brief.customer_domains, run.brief.selected_seed_segments) == (customers, [1])
     with pytest.raises(ValidationError):
         ProspectingBrief(brief="Lookalikes of our customers", customer_domains=["acme.com"] * 1001)
+
+
+def test_answer_intake_posts_answers_with_key(make_client: ClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(202, json=message_payload())
+
+    with make_client(handler) as client:
+        client.prospecting.answer_intake(
+            RUN_ID, {"company_activity": IntakeAnswer(values=["sell"])}, idempotency_key="k"
+        )
+        message = client.prospecting.answer_intake(
+            RUN_ID,
+            {"company_activity": IntakeAnswer(values=["sell"]), "geography": IntakeAnswer(other="Ohio")},
+            idempotency_key="k2",
+            summary="Sellers in Ohio",
+        )
+    assert seen[0].url.path == f"/v1/prospecting/runs/{RUN_ID}/messages"
+    assert seen[0].headers["Idempotency-Key"] == "k"
+    assert json.loads(seen[0].content) == {"intake": {"company_activity": {"values": ["sell"]}}}
+    assert json.loads(seen[1].content) == {
+        "text": "Sellers in Ohio",
+        "intake": {"company_activity": {"values": ["sell"]}, "geography": {"other": "Ohio"}},
+    }
+    assert message.seq == 8
+
+
+async def test_async_answer_intake(make_async_client: AsyncClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(202, json=message_payload())
+
+    async with make_async_client(handler) as client:
+        message = await client.prospecting.answer_intake(
+            RUN_ID, {"list_size": IntakeAnswer(values=["1000"])}, idempotency_key="async-k"
+        )
+    assert seen[0].headers["Idempotency-Key"] == "async-k"
+    assert json.loads(seen[0].content) == {"intake": {"list_size": {"values": ["1000"]}}}
+    assert message.seq == 8
+
+
+def test_intake_accepts_a_deliverable_answer() -> None:
+    request = ProspectingMessageRequest(intake={"deliverable": IntakeAnswer(values=["accounts"])})
+    assert request.to_wire() == {"intake": {"deliverable": {"values": ["accounts"]}}}
+
+
+def test_answer_intake_rejects_unknown_key_and_long_other() -> None:
+    with pytest.raises(ValidationError):
+        ProspectingMessageRequest.model_validate({"intake": {"bogus": {"values": ["x"]}}})
+    with pytest.raises(ValidationError):
+        IntakeAnswer(other="x" * 201)

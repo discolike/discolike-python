@@ -89,10 +89,10 @@ _SUB_INDUSTRY_PROPERTIES: dict[str, dict[str, Any]] = {
 
 _CHECKPOINT_MODES = ["ask", "auto"]
 _BRIEF_CHECKPOINTS_DESCRIPTION = (
-    "ask: pause at checkpoints (pilot, tail_quality, short, target_reached) with status needs_input and a "
-    "question to answer through message(). auto: never pause; a poor pilot is sharpened once and the run "
+    "ask: pause at checkpoints (pilot, tail_quality, short, target_reached, top_up) with status needs_input and "
+    "a question to answer through message(). auto: never pause; a poor pilot is sharpened once and the run "
     "continues with a notice, stopping with stop_reason pilot_failed only if the re-pilot fit is still "
-    "under 20%."
+    "under 20%. Either mode pauses at top_up when another round would pass a spending limit."
 )
 
 # Properties the SDK ships before the deployed spec has them. Merged in only while the spec
@@ -118,6 +118,11 @@ PROPERTY_OVERRIDES: dict[str, dict[str, dict[str, Any]]] = {
         }
     },
 }
+
+
+# The platform names the REST start body ProspectingStartBrief; the SDK keeps the ProspectingBrief name
+# callers already import.
+SCHEMA_RENAMES: dict[str, str] = {"ProspectingStartBrief": "ProspectingBrief"}
 
 
 @dataclass(frozen=True)
@@ -192,7 +197,7 @@ def request_schemas(*, spec: dict[str, Any], routes: list[Route]) -> dict[str, d
             raise SystemExit(f"{route.http_method} {route.path} is not in the spec; run scripts/check_contract.py")
         body_name = _body_ref_name(operation)
         if body_name is not None:
-            requested[body_name] = copy.deepcopy(schemas[body_name])
+            requested[SCHEMA_RENAMES.get(body_name, body_name)] = copy.deepcopy(schemas[body_name])
             continue
         synthesized = _synthesize_params_schema(operation)
         if synthesized is not None:

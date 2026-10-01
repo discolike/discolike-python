@@ -30,7 +30,12 @@ from discolike_cli.discover import _merge_params
 
 app = typer.Typer(help="Run managed prospecting; processing and provider charges apply.")
 
-AUTO_HELP = "Never pause to ask: a poor pilot is sharpened once and the run continues; it only stops if the re-pilot fit is still under 20%. Default: pause at checkpoints."
+AUTO_HELP = "Never pause to ask: a poor pilot is sharpened once and the run continues; it only stops if the re-pilot fit is still under 20%. A top_up round that would pass a spending limit still asks. Default: pause at checkpoints."
+DELIVERABLE_HELP = "leads (default) finds people at the companies; accounts returns the checked companies only."
+GOAL_HELP = (
+    "leads (default) keeps adding rounds until the target is met; companies works only --target-companies "
+    "matching companies."
+)
 CUSTOMERS_FILE_HELP = (
     "Your customers (CSV with a 'domain' column, or one per line): grouped into segments, lookalikes of each are "
     "found. Not with --domain or --company-name."
@@ -44,7 +49,7 @@ NEEDS_INPUT_CODE = "needs_input"
 WAIT_HELP = (
     "Return the first page on proposed, needs_input, completed, failed, or cancelled. Approve proposed plans; "
     "timeout stops polling only.\n\n"
-    "At a checkpoint (stop_reason pilot, tail_quality, short or target_reached) a terminal shows the question, "
+    "At a checkpoint (stop_reason pilot, tail_quality, short, target_reached or top_up) a terminal shows the question, "
     "any sample companies and numbered replies, sends your pick or your own text, and keeps waiting. Without a "
     "terminal, or with --no-input, it prints the run on stdout and a needs_input envelope with the question and "
     f"suggested_replies on stderr, then exits {NEEDS_INPUT_EXIT_CODE}; answer with `prospecting message --text "
@@ -181,7 +186,7 @@ def start_command(
         None,
         "--contacts-per-company",
         min=1,
-        max=5,
+        max=10,
         help="Override contacts per company; otherwise inferred, default 1.",
     ),
     max_candidates: int | None = typer.Option(
@@ -195,6 +200,8 @@ def start_command(
     search_provider_id: str | None = typer.Option(None, "--search-provider-id"),
     segment: bool = typer.Option(False, "--segment/--no-segment"),
     auto: bool = typer.Option(False, "--auto", help=AUTO_HELP),
+    deliverable: str | None = typer.Option(None, "--deliverable", help=DELIVERABLE_HELP),
+    goal: str | None = typer.Option(None, "--goal", help=GOAL_HELP),
 ) -> None:
     """Draft a plan. Wait for proposed, review it, then approve its plan version."""
     from discolike_cli.main import get_client
@@ -217,6 +224,8 @@ def start_command(
             search_provider_id=search_provider_id,
             segment=segment,
             checkpoints=_checkpoints(auto=auto),
+            deliverable=deliverable,
+            goal=goal,
         ),
     )
     emit(get_client(ctx).prospecting.start(request, idempotency_key=idempotency_key))
