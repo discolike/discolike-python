@@ -234,7 +234,9 @@ def _mapping_mismatches(*, spec: dict, label: str, body_field: str, annotation: 
         return [f"{label}: body field '{body_field}' is a mapping in the SDK but not in the spec"]
     mismatches: list[str] = []
     spec_keys = set(variant.get("propertyNames", {}).get("enum", []))
-    if spec_keys and typing.get_origin(key_type) is Literal:
+    if typing.get_origin(key_type) is Literal and not spec_keys:
+        mismatches.append(f"{label}: spec accepts any key of body field '{body_field}' but the SDK restricts them")
+    elif typing.get_origin(key_type) is Literal:
         sdk_keys = set(typing.get_args(key_type))
         mismatches.extend(
             f"{label}: key '{key}' of body field '{body_field}' not found in spec"

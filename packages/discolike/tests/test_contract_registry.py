@@ -416,15 +416,15 @@ def test_check_models_accepts_the_saved_companies_id_the_sdk_keeps_optional():
 
 
 def _intake_spec(
-    *, keys: list[str], answer_fields: list[str], body_fields: tuple[str, ...] = ("text", "intake")
+    *, keys: list[str] | None, answer_fields: list[str], body_fields: tuple[str, ...] = ("text", "intake")
 ) -> dict:
     intake = {
         "anyOf": [
             {
                 "type": "object",
-                "propertyNames": {"enum": keys},
                 "additionalProperties": {"$ref": "#/components/schemas/IntakeAnswer"},
-            },
+            }
+            | ({} if keys is None else {"propertyNames": {"enum": keys}}),
             {"type": "null"},
         ]
     }
@@ -498,4 +498,16 @@ def test_check_reports_a_body_field_answer_intake_fills_that_the_spec_dropped():
     assert check_contract.check(spec, routes) == [
         "ProspectingResource.answer_intake (POST /prospecting/runs/{run_id}/messages): builds body field 'text' not "
         "found in spec"
+    ]
+
+
+def test_check_reports_the_spec_dropping_the_intake_key_constraint():
+    check_contract = _load_check_contract()
+    from discolike.requests import IntakeAnswer
+
+    routes = _route(check_contract, "ProspectingResource", "answer_intake")
+    spec = _intake_spec(keys=None, answer_fields=list(IntakeAnswer.model_fields))
+    assert check_contract.check(spec, routes) == [
+        "ProspectingResource.answer_intake (POST /prospecting/runs/{run_id}/messages): spec accepts any key of body "
+        "field 'intake' but the SDK restricts them"
     ]
