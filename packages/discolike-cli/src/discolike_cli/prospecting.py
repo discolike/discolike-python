@@ -187,7 +187,7 @@ def start_command(
         "--contacts-per-company",
         min=1,
         max=10,
-        help="Override contacts per company; otherwise inferred, default 1.",
+        help="Override contacts per company; otherwise inferred, default 3.",
     ),
     max_candidates: int | None = typer.Option(
         None, "--max-candidates", min=0, max=100000, help="Candidate work cap; omitted or 0 means automatic."

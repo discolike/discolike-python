@@ -3208,7 +3208,7 @@ class ProspectingBrief(DiscolikeRequest):
     ] = None
     exclude_domains: Annotated[list[str] | None, Field(max_length=1000, title="Exclude Domains")] = None
     target_companies: Annotated[int | None, Field(ge=1, le=10000, title="Target Companies")] = 1000
-    contacts_per_company: Annotated[int | None, Field(ge=1, le=10, title="Contacts Per Company")] = 1
+    contacts_per_company: Annotated[int | None, Field(ge=1, le=10, title="Contacts Per Company")] = 3
     max_candidates: Annotated[int | None, Field(ge=0, le=100000, title="Max Candidates")] = 0
     max_actions: Annotated[int | None, Field(ge=0, le=10000, title="Max Actions")] = 0
     validation_integration_id: Annotated[str | None, Field(max_length=128, title="Validation Integration Id")] = None
