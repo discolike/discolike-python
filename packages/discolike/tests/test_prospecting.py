@@ -210,6 +210,48 @@ def test_update_plan_patches_only_the_set_fields(make_client: ClientFactory) -> 
     assert json.loads(seen[0].content) == {"plan_version": 1, "search_provider_id": "none", "max_spend_usd": 0}
 
 
+def test_update_plan_sends_run_shape_and_provider_limit(make_client: ClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, json=payload("proposed") | {"plan_version": 2})
+
+    settings = ProspectingPlanSettings(
+        plan_version=1,
+        target_companies=250,
+        contacts_per_company=10,
+        max_provider_spend_usd=12.5,
+        deliverable="accounts",
+        goal="companies",
+    )
+    with make_client(handler) as client:
+        client.prospecting.update_plan(RUN_ID, settings)
+    assert json.loads(seen[0].content) == {
+        "plan_version": 1,
+        "target_companies": 250,
+        "contacts_per_company": 10,
+        "max_provider_spend_usd": 12.5,
+        "deliverable": "accounts",
+        "goal": "companies",
+    }
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"deliverable": "people"},
+        {"goal": "accounts"},
+        {"max_provider_spend_usd": -1},
+        {"target_companies": 0},
+        {"contacts_per_company": 11},
+    ],
+)
+def test_update_plan_rejects_bad_run_shape_locally(values: dict) -> None:
+    with pytest.raises(ValidationError):
+        ProspectingPlanSettings.model_validate({"plan_version": 1} | values)
+
+
 @pytest.mark.parametrize("status", [409, 422])
 def test_update_plan_surfaces_rejections(make_client: ClientFactory, status: int) -> None:
     with (
@@ -240,7 +282,9 @@ async def test_async_update_plan_patches_the_plan(make_async_client: AsyncClient
     assert json.loads(seen[0].content) == {"plan_version": 2, "max_spend_usd": 25.0}
 
 
-@pytest.mark.parametrize("reason", ["candidate_limit", "credit_limit", "a_reason_added_later"])
+@pytest.mark.parametrize(
+    "reason", ["candidate_limit", "credit_limit", "provider_limit", "companies_worked", "a_reason_added_later"]
+)
 def test_stop_reason_stays_an_open_string(make_client: ClientFactory, reason: str) -> None:
     with make_client(
         lambda request: httpx2.Response(200, json=payload("completed") | {"stop_reason": reason})
@@ -385,6 +429,18 @@ def test_request_defaults_preserve_explicit_quantity_intent() -> None:
     assert (ProspectingListParams().limit, ProspectingListParams().before) == (20, None)
 
 
+def test_deliverable_and_goal_are_sent_only_when_set() -> None:
+    brief = "US logistics companies and operations leaders"
+    assert ProspectingBrief(brief=brief).to_wire() == {"brief": brief}
+    assert ProspectingBrief(brief=brief, deliverable="accounts", goal="companies").to_wire() == {
+        "brief": brief,
+        "deliverable": "accounts",
+        "goal": "companies",
+    }
+    with pytest.raises(ValidationError):
+        ProspectingBrief.model_validate({"brief": brief, "deliverable": "people"})
+
+
 def test_checkpoints_default_to_the_server_mode_and_send_only_when_set() -> None:
     brief = "US logistics companies and operations leaders"
     assert ProspectingBrief(brief=brief).checkpoints == "auto"
@@ -415,6 +471,40 @@ def test_wait_returns_at_a_checkpoint_with_its_question(make_client: ClientFacto
     assert run.stop_reason in CHECKPOINT_STOP_REASONS
     assert run.brief.checkpoints == "ask"
     assert run.messages[-1].data == question["data"]
+
+
+def test_a_top_up_round_is_a_checkpoint(make_client: ClientFactory) -> None:
+    replies = ["Raise the limit and run it", "Run a smaller round (40 companies)", "Finish with 60 found"]
+    question = message_payload() | {
+        "role": "agent",
+        "kind": "question",
+        "content": "60 of 100 companies had reachable people. Another round needs about 70 more matching companies.",
+        "data": {"reason": "top_up", "suggested_replies": replies, "sample": []},
+    }
+    paused = payload("needs_input") | {"stop_reason": "top_up", "messages": [question]}
+    with make_client(lambda request: httpx2.Response(200, json=paused)) as client:
+        run = client.prospecting.wait(RUN_ID)
+    assert run.stop_reason in CHECKPOINT_STOP_REASONS
+    assert run.messages[-1].data == question["data"]
+
+
+def test_a_run_reports_its_phase_provider_cost_and_shape(make_client: ClientFactory) -> None:
+    phased = payload("running") | {
+        "pipeline_phase": "people",
+        "provider_cost_usd": 3.25,
+        "brief": {"brief": "US logistics companies", "deliverable": "accounts", "goal": "companies"},
+    }
+    with make_client(lambda request: httpx2.Response(200, json=phased)) as client:
+        run = client.prospecting.get(RUN_ID)
+    assert (run.pipeline_phase, run.provider_cost_usd) == ("people", 3.25)
+    assert (run.brief.deliverable, run.brief.goal) == ("accounts", "companies")
+
+
+def test_a_run_from_before_phases_defaults_its_new_fields(make_client: ClientFactory) -> None:
+    with make_client(lambda request: httpx2.Response(200, json=payload("running"))) as client:
+        run = client.prospecting.get(RUN_ID)
+    assert (run.pipeline_phase, run.provider_cost_usd) == (None, None)
+    assert (run.brief.deliverable, run.brief.goal) == ("leads", "leads")
 
 
 def test_a_failed_pilot_carries_its_sample(make_client: ClientFactory) -> None:
@@ -529,6 +619,11 @@ async def test_async_answer_intake(make_async_client: AsyncClientFactory) -> Non
     assert seen[0].headers["Idempotency-Key"] == "async-k"
     assert json.loads(seen[0].content) == {"intake": {"list_size": {"values": ["1000"]}}}
     assert message.seq == 8
+
+
+def test_intake_accepts_a_deliverable_answer() -> None:
+    request = ProspectingMessageRequest(intake={"deliverable": IntakeAnswer(values=["accounts"])})
+    assert request.to_wire() == {"intake": {"deliverable": {"values": ["accounts"]}}}
 
 
 def test_answer_intake_rejects_unknown_key_and_long_other() -> None:

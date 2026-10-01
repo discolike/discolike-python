@@ -49,6 +49,33 @@ def test_start_forwards_key_and_brief(install_build_client: Callable[[Handler], 
     assert json.loads(result.stdout)["run_id"] == RUN_ID
 
 
+def test_start_forwards_deliverable_and_goal(install_build_client: Callable[[Handler], None]) -> None:
+    seen = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(json.loads(request.content))
+        return httpx2.Response(202, json=run_payload("queued"))
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "prospecting",
+            "start",
+            "--brief",
+            "US logistics companies, accounts only",
+            "--idempotency-key",
+            "accounts",
+            "--deliverable",
+            "accounts",
+            "--goal",
+            "companies",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert (seen[0]["deliverable"], seen[0]["goal"]) == ("accounts", "companies")
+
+
 def test_status_paginates(install_build_client: Callable[[Handler], None]) -> None:
     def handler(request: httpx2.Request) -> httpx2.Response:
         assert request.url.params["offset"] == "100"

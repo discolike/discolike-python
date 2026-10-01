@@ -26,7 +26,7 @@ from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
 
 WAIT_STATUSES = frozenset({"proposed", "completed", "needs_input", "failed", "cancelled"})
-CHECKPOINT_STOP_REASONS = frozenset({"pilot", "tail_quality", "short", "target_reached"})
+CHECKPOINT_STOP_REASONS = frozenset({"pilot", "tail_quality", "short", "target_reached", "top_up"})
 # Response enums stay open (`| str`) so a value the platform adds later never fails parsing in released SDKs.
 ProspectingStatus = (
     Literal["drafting", "proposed", "queued", "running", "needs_input", "completed", "failed", "cancelled"] | str
@@ -35,7 +35,11 @@ ProspectingStage = (
     Literal["plan", "discover", "validate", "contacts", "generate", "verify", "segment", "seed_segment"] | str
 )
 
-IntakeKey = Literal["company_activity", "industry", "geography", "company_size", "persona_roles", "list_size"]
+IntakeKey = Literal[
+    "deliverable", "company_activity", "industry", "geography", "company_size", "persona_roles", "list_size"
+]
+ProspectingDeliverable = Literal["leads", "accounts"] | str
+ProspectingGoal = Literal["leads", "companies"] | str
 
 
 class ProspectingPlan(DiscolikeModel):
@@ -62,6 +66,14 @@ class ProspectingRunBrief(DiscolikeModel):
     segment: bool | None = None
     checkpoints: Literal["ask", "auto"] | str | None = None
     selected_seed_segments: list[int] | None = None
+    deliverable: ProspectingDeliverable = Field(
+        default="leads", description="leads finds people at the companies; accounts returns the checked companies only."
+    )
+    goal: ProspectingGoal = Field(
+        default="leads",
+        description="leads keeps adding rounds until the target is met; companies works only target_companies "
+        "matching companies.",
+    )
 
 
 class ProspectingEvent(DiscolikeModel):
@@ -140,13 +152,25 @@ class ProspectingRun(DiscolikeModel):
     saved_query_ids: list[UUID] = Field(
         default_factory=list,
         description="Every saved contact list for this run, in order. Large results are split across several "
-        "lists; the first is saved_query_id. Parts are final once the run reaches a terminal status.",
+        "lists; the first is saved_query_id. Parts are final once the run reaches a terminal status. Each row is "
+        "a fit company with its ICP Fit, Confidence, Reasoning, Segment and Customer segment columns and its "
+        "contacts; a company with no contact has contacts=[], and an accounts run saves company rows only.",
     )
     messages: list[ProspectingMessage] = Field(default_factory=list)
     next_message_seq: int = 0
     in_flight: list[ProspectingInFlight] = Field(default_factory=list)
     fit_companies: int = 0
     emails_found: int = 0
+    pipeline_phase: Literal["companies", "people"] | str | None = Field(
+        default=None,
+        description="Which phase a phased run is in: checking companies, or finding people at them. "
+        "None for runs that interleave both.",
+    )
+    provider_cost_usd: float | None = Field(
+        default=None,
+        description="What this run has spent so far on your own AI and search provider keys (USD), as the "
+        "providers report it; a custom AI endpoint reports no price. None when the run recorded no provider cost.",
+    )
     reply_pending: bool = Field(
         default=False,
         description="The agent still owes a reply to a user message. After a 'segment these' request on a "
@@ -257,15 +281,19 @@ class ProspectingResource(SyncAPIResource):
 
     @api_route("PATCH", "/prospecting/runs/{run_id}/plan")
     def update_plan(self, run_id: str | UUID, request: ProspectingPlanSettings) -> ProspectingRun:
-        """Choose engines and a spending limit for a proposed plan; returns the run with the re-posted plan.
+        """Change a proposed plan's engines, size, deliverable and spending limits; returns the re-estimated run.
 
         Fields left unset keep their current choice; ids come from the latest plan message's
         contact_engine, company_check_engine and search_provider options, and search_provider_id="none"
-        skips web research. max_spend_usd (USD for records and per-call fees at the plan's rates) of 0 removes the limit;
-        engines left unset are re-chosen around the picks. Pass the current plan_version: the plan is
-        re-estimated at a new plan_version, which is the one to approve. A 422 means an id is not one of the
-        plan's options or the plan has no per-record price, a 409 that the run is not awaiting approval or
-        plan_version is stale.
+        skips web research. max_spend_usd (USD for records and per-call fees at the plan's rates) and
+        max_provider_spend_usd (USD on your own AI and search provider keys) each take 0 to remove the limit;
+        engines left unset are re-chosen around the picks. target_companies and contacts_per_company resize
+        the plan, deliverable="accounts" returns checked companies only, and goal="companies" works only
+        target_companies matching companies. Pass the current plan_version: the plan is re-estimated at a new
+        plan_version, which is the one to approve, and the latest plan message is rewritten in place (same seq),
+        so read it from this response's messages rather than past a messages_after cursor. A 422 means an id is
+        not one of the plan's options or the plan has no per-record price, a 409 that the run is not awaiting
+        approval, plan_version is stale, or the run cannot switch to accounts.
         """
         response = self._transport.request("PATCH", _path(run_id) + "/plan", json_body=request.to_wire())
         return ProspectingRun.model_validate(response.json())
@@ -295,7 +323,7 @@ class ProspectingResource(SyncAPIResource):
         Inspect status and stop_reason; completed does not guarantee the target was met.
         A run in checkpoints="ask" mode returns needs_input with a stop_reason in
         CHECKPOINT_STOP_REASONS; answer the latest kind="question" message through message(),
-        then wait again.
+        then wait again. Either mode pauses at top_up when another round would pass a spending limit.
         Timeout stops local polling only. Fetch subsequent pages with get().
         """
         deadline = _deadline(max_wait, poll_interval)
@@ -378,15 +406,19 @@ class AsyncProspectingResource(AsyncAPIResource):
 
     @api_route("PATCH", "/prospecting/runs/{run_id}/plan")
     async def update_plan(self, run_id: str | UUID, request: ProspectingPlanSettings) -> ProspectingRun:
-        """Choose engines and a spending limit for a proposed plan; returns the run with the re-posted plan.
+        """Change a proposed plan's engines, size, deliverable and spending limits; returns the re-estimated run.
 
         Fields left unset keep their current choice; ids come from the latest plan message's
         contact_engine, company_check_engine and search_provider options, and search_provider_id="none"
-        skips web research. max_spend_usd (USD for records and per-call fees at the plan's rates) of 0 removes the limit;
-        engines left unset are re-chosen around the picks. Pass the current plan_version: the plan is
-        re-estimated at a new plan_version, which is the one to approve. A 422 means an id is not one of the
-        plan's options or the plan has no per-record price, a 409 that the run is not awaiting approval or
-        plan_version is stale.
+        skips web research. max_spend_usd (USD for records and per-call fees at the plan's rates) and
+        max_provider_spend_usd (USD on your own AI and search provider keys) each take 0 to remove the limit;
+        engines left unset are re-chosen around the picks. target_companies and contacts_per_company resize
+        the plan, deliverable="accounts" returns checked companies only, and goal="companies" works only
+        target_companies matching companies. Pass the current plan_version: the plan is re-estimated at a new
+        plan_version, which is the one to approve, and the latest plan message is rewritten in place (same seq),
+        so read it from this response's messages rather than past a messages_after cursor. A 422 means an id is
+        not one of the plan's options or the plan has no per-record price, a 409 that the run is not awaiting
+        approval, plan_version is stale, or the run cannot switch to accounts.
         """
         response = await self._transport.request("PATCH", _path(run_id) + "/plan", json_body=request.to_wire())
         return ProspectingRun.model_validate(response.json())
