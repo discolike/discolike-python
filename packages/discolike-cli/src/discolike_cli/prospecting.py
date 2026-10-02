@@ -55,8 +55,8 @@ WAIT_HELP = (
     "At a checkpoint (stop_reason pilot, tail_quality, short, target_reached, top_up or contacts_review) a terminal "
     "shows the question, "
     "any sample companies and numbered replies, sends your pick or your own text, and keeps waiting. Without a "
-    "terminal, or with --no-input, it prints the run on stdout and a needs_input envelope with the question and "
-    f"suggested_replies on stderr, then exits {NEEDS_INPUT_EXIT_CODE}; answer with `prospecting message --text "
+    "terminal, or with --no-input, it prints the run on stdout and a needs_input envelope with the question, "
+    f"suggested_replies and question_seq on stderr, then exits {NEEDS_INPUT_EXIT_CODE}; answer with `prospecting message --text "
     "<reply>` and wait again."
 )
 TIMEOUT_MESSAGE = "Timed out waiting for prospecting; the run continues on the server"
@@ -66,6 +66,12 @@ class Pause(NamedTuple):
     question: str | None
     suggested_replies: list[str]
     sample: list[dict[str, Any]]
+    question_seq: int | None
+
+
+class Answer(NamedTuple):
+    text: str
+    picked: bool
 
 
 def _checkpoints(*, auto: bool) -> Literal["ask", "auto"]:
@@ -96,6 +102,7 @@ def _pause(run: ProspectingRun, question: ProspectingMessage | None) -> Pause:
         question=question.content if question else run.error,
         suggested_replies=list(data.get("suggested_replies", [])),
         sample=list(data.get("sample", [])),
+        question_seq=question.seq if question else None,
     )
 
 
@@ -111,12 +118,13 @@ def _report_pause(run: ProspectingRun, pause: Pause) -> typer.Exit:
         "stop_reason": run.stop_reason,
         "suggested_replies": pause.suggested_replies,
         "sample": pause.sample,
+        "question_seq": pause.question_seq,
     }
     print(json.dumps(envelope, default=str), file=sys.stderr)
     return typer.Exit(code=NEEDS_INPUT_EXIT_CODE)
 
 
-def _ask(pause: Pause) -> str:
+def _ask(pause: Pause) -> Answer:
     if pause.question:
         typer.echo(pause.question, err=True)
     for company in pause.sample:
@@ -128,9 +136,16 @@ def _ask(pause: Pause) -> str:
     while True:
         answer = typer.prompt("Pick a number or type your answer", err=True).strip()
         if answer.isdigit() and 1 <= int(answer) <= len(replies):
-            return replies[int(answer) - 1]
+            return Answer(text=replies[int(answer) - 1], picked=True)
         if answer and not answer.isdigit():
-            return answer
+            return Answer(text=answer, picked=False)
+
+
+def _reply_request(pause: Pause, *, answer: Answer) -> ProspectingMessageRequest:
+    """A picked suggested reply names its question, which is how a contacts review takes consent to find emails."""
+    if answer.picked and pause.question_seq is not None:
+        return ProspectingMessageRequest(text=answer.text, question_seq=pause.question_seq)
+    return ProspectingMessageRequest(text=answer.text)
 
 
 def _remaining(deadline: float) -> float:
@@ -164,7 +179,7 @@ def _wait_answering(
         if no_input or not _is_interactive():
             raise _report_pause(run, pause)
         sent = client.prospecting.message(
-            run_id, ProspectingMessageRequest(text=_ask(pause)), idempotency_key=f"cli-checkpoint-{uuid4()}"
+            run_id, _reply_request(pause, answer=_ask(pause)), idempotency_key=f"cli-checkpoint-{uuid4()}"
         )
         _await_reply(client, run_id=run_id, after=sent.seq, deadline=deadline, poll_interval=poll_interval)
 

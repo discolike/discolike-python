@@ -309,12 +309,18 @@ def _checkpoint_handler(seen: list[httpx2.Request], *, answer_seq: int = 20) -> 
     return handler
 
 
-@pytest.mark.parametrize(("typed", "posted"), [("1", "Run the full list"), ("Only fleets over 50 trucks", None)])
+@pytest.mark.parametrize(
+    ("typed", "posted"),
+    [
+        ("1", {"text": "Run the full list", "question_seq": 8}),
+        ("Only fleets over 50 trucks", {"text": "Only fleets over 50 trucks"}),
+    ],
+)
 def test_wait_asks_at_a_checkpoint_and_keeps_waiting(
     install_build_client: Callable[[Handler], None],
     monkeypatch: pytest.MonkeyPatch,
     typed: str,
-    posted: str | None,
+    posted: dict,
 ) -> None:
     seen: list[httpx2.Request] = []
     install_build_client(_checkpoint_handler(seen))
@@ -325,7 +331,7 @@ def test_wait_asks_at_a_checkpoint_and_keeps_waiting(
     assert result.exit_code == 0, result.output
     assert _emitted(result.stdout)["status"] == "completed"
     (message,) = [request for request in seen if request.method == "POST"]
-    assert json.loads(message.content) == {"text": posted or typed}
+    assert json.loads(message.content) == posted
     assert message.headers["Idempotency-Key"].startswith("cli-checkpoint-")
     for shown in (PILOT_QUESTION, "fits.com: Runs a trucking fleet", "1. Run the full list", "2. Stop here", "On it."):
         assert shown in result.stderr
@@ -342,7 +348,7 @@ def test_wait_reprompts_for_a_number_out_of_range(
 
     assert result.exit_code == 0, result.output
     (message,) = [request for request in seen if request.method == "POST"]
-    assert json.loads(message.content) == {"text": "Stop here"}
+    assert json.loads(message.content) == {"text": "Stop here", "question_seq": 8}
 
 
 @pytest.mark.parametrize(("interactive", "flags"), [(False, []), (True, ["--no-input"])])
@@ -371,6 +377,7 @@ def test_wait_without_a_terminal_reports_the_checkpoint_and_exits_needs_input(
         "stop_reason": "pilot",
         "suggested_replies": PILOT_REPLIES,
         "sample": PILOT_SAMPLE,
+        "question_seq": 8,
     }
     assert all(request.method == "GET" for request in seen)
 
