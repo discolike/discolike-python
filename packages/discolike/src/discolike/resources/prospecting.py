@@ -300,10 +300,14 @@ class ProspectingResource(SyncAPIResource):
 
     @api_route("PATCH", "/prospecting/runs/{run_id}")
     def rename(self, run_id: str | UUID, request: ProspectingRunUpdate) -> ProspectingRunSummary:
-        """Rename the run in any status; returns its summary as list() shows it.
+        """Rename the run or switch its checkpoint mode; returns its summary as list() shows it.
 
-        The server strips the title, which must then be 1-80 characters. A title set before the agent
-        plans is kept. Result lists the run already saved keep their names.
+        Send title, checkpoints, or both. The server strips the title, which must then be 1-80 characters;
+        a title alone works in any status. A title set before the agent plans is kept. Result lists the run
+        already saved keep their names. checkpoints="ask" pauses at later checkpoints, "auto" never pauses,
+        and switching to "auto" while the run waits on a checkpoint answers it with continue and resumes.
+        A mode switch is gated like start(), and a 409 means the run has finished or another of your runs
+        is active.
         """
         response = self._transport.request("PATCH", _path(run_id), json_body=request.to_wire())
         return ProspectingRunSummary.model_validate(response.json())
@@ -425,10 +429,14 @@ class AsyncProspectingResource(AsyncAPIResource):
 
     @api_route("PATCH", "/prospecting/runs/{run_id}")
     async def rename(self, run_id: str | UUID, request: ProspectingRunUpdate) -> ProspectingRunSummary:
-        """Rename the run in any status; returns its summary as list() shows it.
+        """Rename the run or switch its checkpoint mode; returns its summary as list() shows it.
 
-        The server strips the title, which must then be 1-80 characters. A title set before the agent
-        plans is kept. Result lists the run already saved keep their names.
+        Send title, checkpoints, or both. The server strips the title, which must then be 1-80 characters;
+        a title alone works in any status. A title set before the agent plans is kept. Result lists the run
+        already saved keep their names. checkpoints="ask" pauses at later checkpoints, "auto" never pauses,
+        and switching to "auto" while the run waits on a checkpoint answers it with continue and resumes.
+        A mode switch is gated like start(), and a 409 means the run has finished or another of your runs
+        is active.
         """
         response = await self._transport.request("PATCH", _path(run_id), json_body=request.to_wire())
         return ProspectingRunSummary.model_validate(response.json())

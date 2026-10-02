@@ -2922,10 +2922,6 @@ class ProspectingGetParams(DiscolikeRequest):
     messages_after: Annotated[int | None, Field(ge=0, title="Messages After")] = 0
 
 
-class ProspectingRunUpdate(DiscolikeRequest):
-    title: Annotated[str, Field(max_length=80, min_length=1, title="Title")]
-
-
 class LLMProviderCreateRequest(DiscolikeRequest):
     integration_name: Annotated[
         str,
@@ -3304,3 +3300,8 @@ class ProspectingPlanSettings(DiscolikeRequest):
             title="Max Provider Spend Usd",
         ),
     ] = None
+
+
+class ProspectingRunUpdate(DiscolikeRequest):
+    title: Annotated[str | None, Field(max_length=80, min_length=1, title="Title")] = None
+    checkpoints: Literal["ask", "auto"] | None = None

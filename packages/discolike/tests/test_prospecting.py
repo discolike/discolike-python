@@ -166,6 +166,32 @@ def test_rename_patches_the_title_and_returns_the_summary(make_client: ClientFac
     assert json.loads(seen[0].content) == {"title": "  Logistics ops leaders "}
 
 
+def test_rename_switches_the_checkpoint_mode_without_a_title(make_client: ClientFactory) -> None:
+    seen: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, json=summary_payload())
+
+    with make_client(handler) as client:
+        summary = client.prospecting.rename(RUN_ID, ProspectingRunUpdate(checkpoints="auto"))
+    assert summary.run_id == UUID(RUN_ID)
+    assert json.loads(seen[0].content) == {"checkpoints": "auto"}
+
+
+def test_rename_surfaces_a_finished_run_on_a_mode_switch(make_client: ClientFactory) -> None:
+    with (
+        make_client(lambda request: httpx2.Response(409, json={"detail": "This run has finished"})) as client,
+        pytest.raises(DiscolikeError, match="This run has finished"),
+    ):
+        client.prospecting.rename(RUN_ID, ProspectingRunUpdate(checkpoints="ask"))
+
+
+def test_run_update_rejects_an_unknown_checkpoint_mode_before_sending() -> None:
+    with pytest.raises(ValidationError):
+        ProspectingRunUpdate.model_validate({"checkpoints": "sometimes"})
+
+
 def test_rename_surfaces_a_missing_run(make_client: ClientFactory) -> None:
     with (
         make_client(lambda request: httpx2.Response(404, json={"detail": "Prospecting run not found"})) as client,

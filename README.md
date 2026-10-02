@@ -456,6 +456,7 @@ page = client.prospecting.get(
 # Pick engines or a credit limit from the plan card's options before approving; approve the returned plan_version.
 # run = client.prospecting.update_plan(run.run_id, ProspectingPlanSettings(plan_version=run.plan_version, max_spend_usd=25))
 # client.prospecting.rename(run.run_id, ProspectingRunUpdate(title="Logistics ops leaders"))  # Any status.
+# client.prospecting.rename(run.run_id, ProspectingRunUpdate(checkpoints="auto"))  # Stop pausing; answers an open checkpoint.
 # client.prospecting.cancel(run.run_id)  # Stop the run; it and its results stay readable.
 # client.prospecting.delete(run.run_id)  # Cancel if active, then remove it from list() and get().
 ```
