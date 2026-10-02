@@ -26,7 +26,7 @@ from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
 
 WAIT_STATUSES = frozenset({"proposed", "completed", "needs_input", "failed", "cancelled"})
-CHECKPOINT_STOP_REASONS = frozenset({"pilot", "tail_quality", "short", "target_reached", "top_up"})
+CHECKPOINT_STOP_REASONS = frozenset({"pilot", "tail_quality", "short", "target_reached", "top_up", "contacts_review"})
 # Response enums stay open (`| str`) so a value the platform adds later never fails parsing in released SDKs.
 ProspectingStatus = (
     Literal["drafting", "proposed", "queued", "running", "needs_input", "completed", "failed", "cancelled"] | str

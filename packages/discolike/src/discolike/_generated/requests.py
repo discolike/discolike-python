@@ -3188,6 +3188,14 @@ class ProspectingMessageRequest(DiscolikeRequest):
         | None,
         Field(title="Intake"),
     ] = None
+    question_seq: Annotated[
+        int | None,
+        Field(
+            description="The seq of the question message whose suggested reply this is; the reply answers that question only, never a newer one.",
+            ge=1,
+            title="Question Seq",
+        ),
+    ] = None
 
 
 class ProspectingBrief(DiscolikeRequest):
@@ -3224,7 +3232,7 @@ class ProspectingBrief(DiscolikeRequest):
     checkpoints: Annotated[
         Literal["ask", "auto"] | None,
         Field(
-            description="ask: pause at checkpoints (pilot, tail_quality, short, target_reached, top_up) with status needs_input and a question to answer through message(). auto: never pause; a poor pilot is sharpened once and the run continues with a notice, stopping with stop_reason pilot_failed only if the re-pilot fit is still under 20%. Either mode pauses at top_up when another round would pass a spending limit.",
+            description="ask: pause at checkpoints (pilot, tail_quality, short, target_reached, top_up, contacts_review) with status needs_input and a question to answer through message(). auto: never pause; a poor pilot is sharpened once and the run continues with a notice, stopping with stop_reason pilot_failed only if the re-pilot fit is still under 20%. Either mode pauses at top_up when another round would pass a spending limit, and at contacts_review before a wave's email lookups.",
             title="Checkpoints",
         ),
     ] = "auto"

@@ -514,6 +514,61 @@ def test_a_top_up_round_is_a_checkpoint(make_client: ClientFactory) -> None:
     assert run.messages[-1].data == question["data"]
 
 
+CONTACTS_REVIEW_REPLIES = ["Find emails", "Find more companies first", "Finish"]
+
+
+def contacts_review_question() -> dict:
+    return message_payload() | {
+        "seq": 9,
+        "role": "agent",
+        "kind": "question",
+        "content": "Checked 480 companies: 470 fit, 260 contacts matched the persona at 210 companies.",
+        "data": {"reason": "contacts_review", "suggested_replies": CONTACTS_REVIEW_REPLIES, "sample": []},
+    }
+
+
+def test_wait_returns_contacts_review_with_open_stop_reason(make_client: ClientFactory) -> None:
+    question = contacts_review_question()
+    paused = payload("needs_input") | {"stop_reason": "contacts_review", "messages": [question]}
+    with make_client(lambda request: httpx2.Response(200, json=paused)) as client:
+        run = client.prospecting.wait(RUN_ID)
+    assert (run.status, run.stop_reason) == ("needs_input", "contacts_review")
+    assert run.stop_reason in CHECKPOINT_STOP_REASONS
+    assert run.messages[-1].data == question["data"]
+
+
+@pytest.mark.parametrize("reply", CONTACTS_REVIEW_REPLIES)
+def test_contacts_review_reply_uses_message(make_client: ClientFactory, reply: str) -> None:
+    bodies: list[dict] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        bodies.append(json.loads(request.content))
+        return httpx2.Response(202, json=message_payload())
+
+    with make_client(handler) as client:
+        client.prospecting.message(
+            RUN_ID, ProspectingMessageRequest(text=reply, question_seq=9), idempotency_key="review-1"
+        )
+    assert bodies == [{"text": reply, "question_seq": 9}]
+
+
+def test_message_without_question_seq_sends_the_same_body(make_client: ClientFactory) -> None:
+    bodies: list[dict] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        bodies.append(json.loads(request.content))
+        return httpx2.Response(202, json=message_payload())
+
+    with make_client(handler) as client:
+        client.prospecting.message(RUN_ID, ProspectingMessageRequest(text="Find emails"), idempotency_key="k")
+    assert bodies == [{"text": "Find emails"}]
+
+
+def test_question_seq_must_be_positive() -> None:
+    with pytest.raises(ValidationError):
+        ProspectingMessageRequest(text="Find emails", question_seq=0)
+
+
 def test_a_run_reports_its_phase_provider_cost_and_shape(make_client: ClientFactory) -> None:
     phased = payload("running") | {
         "pipeline_phase": "people",

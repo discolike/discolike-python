@@ -171,11 +171,26 @@ def test_chat_commands_send_exact_payloads(install_build_client: Callable[[Handl
     assert len(seen) == 5
 
 
+def test_message_forwards_question_seq(install_build_client: Callable[[Handler], None]) -> None:
+    seen = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(202, json=message_payload())
+
+    install_build_client(handler)
+    command = ["message", RUN_ID, "--text", "Find emails", "--idempotency-key", "cli-review", "--question-seq", "9"]
+    result = runner.invoke(app, ["prospecting", *command])
+    assert result.exit_code == 0, result.output
+    assert json.loads(seen[0].content) == {"text": "Find emails", "question_seq": 9}
+
+
 @pytest.mark.parametrize(
     "arguments",
     [
         ["approve", RUN_ID],
         ["message", RUN_ID, "--text", "Continue"],
+        ["message", RUN_ID, "--text", "Continue", "--idempotency-key", "k", "--question-seq", "0"],
         ["list", "--limit", "51"],
         ["list", "--before", "not-a-uuid"],
         ["status", RUN_ID, "--messages-after", "-1"],

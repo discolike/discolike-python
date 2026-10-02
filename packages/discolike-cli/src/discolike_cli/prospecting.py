@@ -44,12 +44,16 @@ SEED_SEGMENT_HELP = (
     "A customer segment id from the plan card to expand (repeatable); omitted keeps the card's selection."
 )
 RESULTS_SEGMENT_HELP = "Group the finished results into segments; omitted keeps the brief's setting."
+QUESTION_SEQ_HELP = (
+    "The seq of the question this suggested reply answers; if a newer question was posted since, it answers none."
+)
 NO_INPUT_HELP = f"Never prompt: at a checkpoint, print the question and exit {NEEDS_INPUT_EXIT_CODE}."
 NEEDS_INPUT_CODE = "needs_input"
 WAIT_HELP = (
     "Return the first page on proposed, needs_input, completed, failed, or cancelled. Approve proposed plans; "
     "timeout stops polling only.\n\n"
-    "At a checkpoint (stop_reason pilot, tail_quality, short, target_reached or top_up) a terminal shows the question, "
+    "At a checkpoint (stop_reason pilot, tail_quality, short, target_reached, top_up or contacts_review) a terminal "
+    "shows the question, "
     "any sample companies and numbered replies, sends your pick or your own text, and keeps waiting. Without a "
     "terminal, or with --no-input, it prints the run on stdout and a needs_input envelope with the question and "
     f"suggested_replies on stderr, then exits {NEEDS_INPUT_EXIT_CODE}; answer with `prospecting message --text "
@@ -330,12 +334,15 @@ def message_command(
     run_id: str = typer.Argument(...),
     text: str = typer.Option(..., "--text"),
     idempotency_key: str = typer.Option(..., "--idempotency-key", help="Reuse when retrying this message."),
+    question_seq: int | None = typer.Option(None, "--question-seq", min=1, help=QUESTION_SEQ_HELP),
 ) -> None:
     """Send steering or a clarification answer; poll status --messages-after for the reply."""
     from discolike_cli.main import get_client
 
     emit(
         get_client(ctx).prospecting.message(
-            run_id, build_request(ProspectingMessageRequest, {"text": text}), idempotency_key=idempotency_key
+            run_id,
+            build_request(ProspectingMessageRequest, _merge_params(None, text=text, question_seq=question_seq)),
+            idempotency_key=idempotency_key,
         )
     )
