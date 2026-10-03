@@ -573,11 +573,14 @@ def test_a_run_reports_its_phase_provider_cost_and_shape(make_client: ClientFact
     phased = payload("running") | {
         "pipeline_phase": "people",
         "provider_cost_usd": 3.25,
+        "provider_ai_cost_usd": 0.25,
+        "provider_search_cost_usd": 3.0,
         "brief": {"brief": "US logistics companies", "deliverable": "accounts", "goal": "companies"},
     }
     with make_client(lambda request: httpx2.Response(200, json=phased)) as client:
         run = client.prospecting.get(RUN_ID)
     assert (run.pipeline_phase, run.provider_cost_usd) == ("people", 3.25)
+    assert (run.provider_ai_cost_usd, run.provider_search_cost_usd) == (0.25, 3.0)
     assert (run.brief.deliverable, run.brief.goal) == ("accounts", "companies")
 
 
@@ -585,6 +588,7 @@ def test_a_run_from_before_phases_defaults_its_new_fields(make_client: ClientFac
     with make_client(lambda request: httpx2.Response(200, json=payload("running"))) as client:
         run = client.prospecting.get(RUN_ID)
     assert (run.pipeline_phase, run.provider_cost_usd) == (None, None)
+    assert (run.provider_ai_cost_usd, run.provider_search_cost_usd) == (None, None)
     assert (run.brief.deliverable, run.brief.goal) == ("leads", "leads")
 
 

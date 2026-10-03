@@ -171,6 +171,16 @@ class ProspectingRun(DiscolikeModel):
         description="What this run has spent so far on your own AI and search provider keys (USD), as the "
         "providers report it; a custom AI endpoint reports no price. None when the run recorded no provider cost.",
     )
+    provider_ai_cost_usd: float | None = Field(
+        default=None,
+        description="The AI provider's part of provider_cost_usd (USD). None when provider_cost_usd is, and for "
+        "runs that recorded their provider cost only in total.",
+    )
+    provider_search_cost_usd: float | None = Field(
+        default=None,
+        description="The search provider's part of provider_cost_usd (USD). None when provider_cost_usd is, and "
+        "for runs that recorded their provider cost only in total.",
+    )
     reply_pending: bool = Field(
         default=False,
         description="The agent still owes a reply to a user message. After a 'segment these' request on a "
