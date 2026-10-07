@@ -189,6 +189,10 @@ def test_message_forwards_question_seq(install_build_client: Callable[[Handler],
     "arguments",
     [
         ["approve", RUN_ID],
+        ["plan", RUN_ID],
+        ["plan", RUN_ID, "--plan-version", "1", "--contacts-per-company", "11"],
+        ["plan", RUN_ID, "--plan-version", "1", "--deliverable", "people"],
+        ["plan", RUN_ID, "--plan-version", "1", "--max-spend-usd", "-1"],
         ["message", RUN_ID, "--text", "Continue"],
         ["message", RUN_ID, "--text", "Continue", "--idempotency-key", "k", "--question-seq", "0"],
         ["list", "--limit", "51"],
@@ -455,3 +459,91 @@ def test_approve_sends_the_chosen_segments_and_results_grouping(
         {"plan_version": 1, "checkpoints": "ask", "seed_segments": [1, 2], "segment": True},
         {"plan_version": 1, "checkpoints": "ask"},
     ]
+
+
+def test_plan_sends_only_the_settings_passed(install_build_client: Callable[[Handler], None]) -> None:
+    seen = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request)
+        return httpx2.Response(200, json=run_payload("proposed") | {"plan_version": 4})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "prospecting",
+            "plan",
+            RUN_ID,
+            "--plan-version",
+            "3",
+            "--contact-integration-id",
+            "llm-1",
+            "--search-provider-id",
+            "none",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert seen[0].method == "PATCH"
+    assert seen[0].url.path.endswith(f"/prospecting/runs/{RUN_ID}/plan")
+    assert json.loads(seen[0].content) == {
+        "plan_version": 3,
+        "contact_integration_id": "llm-1",
+        "search_provider_id": "none",
+    }
+    printed = json.loads(result.stdout)
+    assert (printed["run_id"], printed["plan_version"]) == (RUN_ID, 4)
+
+
+def test_plan_forwards_every_setting(install_build_client: Callable[[Handler], None]) -> None:
+    bodies = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        bodies.append(json.loads(request.content))
+        return httpx2.Response(200, json=run_payload("proposed") | {"plan_version": 3})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "prospecting",
+            "plan",
+            RUN_ID,
+            "--plan-version",
+            "2",
+            "--contact-integration-id",
+            "llm-1",
+            "--validation-integration-id",
+            "llm-2",
+            "--search-provider-id",
+            "search-1",
+            "--target-companies",
+            "250",
+            "--contacts-per-company",
+            "5",
+            "--deliverable",
+            "accounts",
+            "--goal",
+            "companies",
+            "--max-spend-usd",
+            "0",
+            "--max-provider-spend-usd",
+            "12.5",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert bodies == [
+        {
+            "plan_version": 2,
+            "contact_integration_id": "llm-1",
+            "validation_integration_id": "llm-2",
+            "search_provider_id": "search-1",
+            "target_companies": 250,
+            "contacts_per_company": 5,
+            "deliverable": "accounts",
+            "goal": "companies",
+            "max_spend_usd": 0.0,
+            "max_provider_spend_usd": 12.5,
+        }
+    ]
+    assert json.loads(result.stdout)["plan_version"] == 3
