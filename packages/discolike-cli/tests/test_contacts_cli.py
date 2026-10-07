@@ -394,7 +394,7 @@ def _assert_new_contact_filters(params: httpx2.QueryParams) -> None:
     assert params.get_list("persona_id") == ["7"]
     assert params.get_list("filter_state") == ["TX"]
     assert params.get_list("negate_filter_state") == ["NY"]
-    assert params.get("email_validated") == "true"
+    assert "email_validated" not in params
     assert params.get("has_phone") == "true"
     assert params.get("has_mobile") == "false"
     assert params.get("has_linkedin") == "true"
@@ -455,7 +455,6 @@ def test_contacts_discover_forwards_every_new_flag(install_build_client: Callabl
         "persona_id": [7],
         "filter_state": ["TX"],
         "negate_filter_state": ["NY"],
-        "email_validated": True,
         "has_phone": True,
         "has_mobile": False,
         "has_linkedin": True,
@@ -467,6 +466,40 @@ def test_contacts_discover_forwards_every_new_flag(install_build_client: Callabl
         "include_search_contacts": True,
         "consensus": 3,
     }
+
+
+EMAIL_VALIDATED_RESPONSES = {
+    "search": [],
+    "count": {"count": 1},
+    "discover": {"results": {}, "total_contacts": 0},
+}
+
+
+@pytest.mark.parametrize("command", sorted(EMAIL_VALIDATED_RESPONSES))
+@pytest.mark.parametrize("flag", ["--email-validated", "--no-email-validated"])
+def test_contacts_email_validated_warns_and_is_not_sent(
+    install_build_client: Callable[[Handler], None], command: str, flag: str
+) -> None:
+    captured: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured.append(request)
+        return httpx2.Response(200, json=EMAIL_VALIDATED_RESPONSES[command])
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["contacts", command, "--name", "Jane", flag])
+    assert result.exit_code == 0, result.output
+    assert "--email-validated is deprecated and ignored" in result.stderr
+    (request,) = captured
+    assert "email_validated" not in request.url.params
+    assert b"email_validated" not in request.content
+
+
+def test_contacts_without_email_validated_does_not_warn(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(lambda request: httpx2.Response(200, json=[]))
+    result = runner.invoke(app, ["contacts", "search", "--name", "Jane"])
+    assert result.exit_code == 0, result.output
+    assert "deprecated" not in result.stderr
 
 
 def test_contacts_generate_forwards_full_and_partial_domains(install_build_client: Callable[[Handler], None]) -> None:
