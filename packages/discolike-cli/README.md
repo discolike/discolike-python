@@ -55,8 +55,10 @@ discolike bulk contacts  --domains-file companies.csv --per-company 10 --summary
 discolike prospecting start --brief "Find 100 US logistics companies and 3 operations directors each" --idempotency-key logistics-1
 discolike prospecting start --brief "Find lookalikes of our customers and their CTOs" --customers-file customers.csv --idempotency-key seeded-1
 discolike prospecting wait RUN_ID
-# Review the proposed plan, then approve the exact version you saw:
-discolike prospecting approve RUN_ID --plan-version 1
+# Review the proposed plan; change its engines or size if needed (returns a new plan_version):
+discolike prospecting plan RUN_ID --plan-version 1 --contact-integration-id LLM_ID --search-provider-id SEARCH_ID
+# Then approve the exact version you saw:
+discolike prospecting approve RUN_ID --plan-version 2
 discolike prospecting list --limit 20
 discolike prospecting message RUN_ID --text "Make it 250 companies" --idempotency-key logistics-edit-1
 discolike prospecting status RUN_ID --events-after 12 --messages-after 8 --limit 100
@@ -64,6 +66,8 @@ discolike prospecting cancel RUN_ID
 ```
 
 `wait` returns on `proposed`, `needs_input`, `completed`, `failed`, or `cancelled`. A timeout stops polling only. Inspect status and stop reason; completion does not guarantee full coverage. Message replies arrive through `status --messages-after`; follow `next_message_seq` and `reply_pending`. A "segment these" request keeps `reply_pending` true until the segments message is posted, which can take more than an hour. If grouping stops without an outcome, the flag clears on its own after about 90 minutes.
+
+`plan` changes a proposed plan before approval and sends only the flags you pass: `--contact-integration-id`, `--validation-integration-id` and `--search-provider-id` take option ids from the plan message's `contact_engine`, `company_check_engine` and `search_provider` (`--search-provider-id none` skips web research), and `--target-companies`, `--contacts-per-company`, `--deliverable`, `--goal`, `--max-spend-usd` and `--max-provider-spend-usd` (`0` removes a limit) resize or re-scope it. When your organization has several AI or search providers and none is the default, the plan shows that engine with `selected: null` and `approve` returns 409 until `plan` picks one. The run comes back re-estimated at a new `plan_version`; approve that one.
 
 `start` and `approve` default to pausing at checkpoints, like the web chat: a pilot check on large lists (`pilot`), a search drifting off target (`tail_quality`), candidates running out short of the target (`short`), the target being met (`target_reached`), another round of companies when the ones checked yield too few contacts (`top_up`), and, on wave runs, the researched contacts found before their emails are looked up (`contacts_review`, asked with `--auto` too; contacts already in DiscoLike's database get their lookups during research, which approving the plan starts; picking "Find emails" by number sends the question's `seq`, which the API needs to accept it). Pass `--auto` to never pause (except at a `top_up` round that would pass a spending limit); a poor pilot is then sharpened once and the run continues with a notice, stopping with `pilot_failed` only if the re-pilot fit is still under 20%. If sharpening itself fails, the run continues on the original criteria. On a terminal, `wait` shows the question, any sample companies and numbered replies at a checkpoint, sends your pick or your own text, and keeps waiting. Without a terminal, or with `--no-input`, it prints the run on stdout, a `needs_input` envelope (`message`, `stop_reason`, `suggested_replies`, `sample`) on stderr, and exits 7; answer with `prospecting message --text "<reply>"` (add `--question-seq` with the question's `seq` to answer only that question) and run `wait` again.
 

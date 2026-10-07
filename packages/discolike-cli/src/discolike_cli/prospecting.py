@@ -19,6 +19,7 @@ from discolike.requests import ProspectingBrief
 from discolike.requests import ProspectingGetParams
 from discolike.requests import ProspectingListParams
 from discolike.requests import ProspectingMessageRequest
+from discolike.requests import ProspectingPlanSettings
 from discolike.resources.prospecting import ProspectingMessage
 from discolike.resources.prospecting import ProspectingRun
 from discolike_cli._inputs import read_domains_file
@@ -42,6 +43,18 @@ CUSTOMERS_FILE_HELP = (
 )
 SEED_SEGMENT_HELP = (
     "A customer segment id from the plan card to expand (repeatable); omitted keeps the card's selection."
+)
+PLAN_DELIVERABLE_HELP = "leads finds people at the companies; accounts returns the checked companies only."
+PLAN_GOAL_HELP = (
+    "leads keeps adding rounds until the target is met; companies works only --target-companies matching companies."
+)
+SEARCH_PROVIDER_HELP = "An option id from the plan's search_provider; none skips web research."
+SPEND_HELP_SUFFIX = "0 removes the limit."
+PLAN_HELP = (
+    "Change a proposed plan's engines, size, deliverable or spending limits before approving it. Flags left out "
+    "keep their current choice; engine ids come from the latest plan message's contact_engine, "
+    "company_check_engine and search_provider options, and an engine shown with selected null must be picked "
+    "here before approve. The run comes back re-estimated at a new plan_version: approve that one."
 )
 RESULTS_SEGMENT_HELP = "Group the finished results into segments; omitted keeps the brief's setting."
 QUESTION_SEQ_HELP = (
@@ -322,7 +335,10 @@ def approve_command(
     seed_segment: list[int] | None = typer.Option(None, "--seed-segment", help=SEED_SEGMENT_HELP),
     segment: bool | None = typer.Option(None, "--segment/--no-segment", help=RESULTS_SEGMENT_HELP),
 ) -> None:
-    """Approve the reviewed plan version and start research."""
+    """Approve the reviewed plan version and start research.
+
+    A plan with an engine left unselected (selected null) returns 409 until `prospecting plan` picks one.
+    """
     from discolike_cli.main import get_client
 
     emit(
@@ -336,6 +352,65 @@ def approve_command(
                     checkpoints=_checkpoints(auto=auto),
                     seed_segments=seed_segment,
                     segment=segment,
+                ),
+            ),
+        )
+    )
+
+
+@app.command("plan", help=PLAN_HELP)
+@handle_errors
+def plan_command(
+    ctx: typer.Context,
+    run_id: str = typer.Argument(...),
+    plan_version: int = typer.Option(..., "--plan-version", min=1, help="The plan version you reviewed."),
+    contact_integration_id: str | None = typer.Option(
+        None, "--contact-integration-id", help="An option id from the plan's contact_engine."
+    ),
+    validation_integration_id: str | None = typer.Option(
+        None, "--validation-integration-id", help="An option id from the plan's company_check_engine."
+    ),
+    search_provider_id: str | None = typer.Option(None, "--search-provider-id", help=SEARCH_PROVIDER_HELP),
+    target_companies: int | None = typer.Option(
+        None, "--target-companies", min=1, max=10000, help="Qualified companies to aim for."
+    ),
+    contacts_per_company: int | None = typer.Option(
+        None, "--contacts-per-company", min=1, max=10, help="Most contacts to find at each company."
+    ),
+    deliverable: str | None = typer.Option(None, "--deliverable", help=PLAN_DELIVERABLE_HELP),
+    goal: str | None = typer.Option(None, "--goal", help=PLAN_GOAL_HELP),
+    max_spend_usd: float | None = typer.Option(
+        None,
+        "--max-spend-usd",
+        min=0,
+        help=f"USD limit on DiscoLike records and per-call fees at your plan's rates; {SPEND_HELP_SUFFIX}",
+    ),
+    max_provider_spend_usd: float | None = typer.Option(
+        None,
+        "--max-provider-spend-usd",
+        min=0,
+        help=f"USD limit on your own AI and search provider keys; {SPEND_HELP_SUFFIX}",
+    ),
+) -> None:
+    from discolike_cli.main import get_client
+
+    emit(
+        get_client(ctx).prospecting.update_plan(
+            run_id,
+            build_request(
+                ProspectingPlanSettings,
+                _merge_params(
+                    None,
+                    plan_version=plan_version,
+                    contact_integration_id=contact_integration_id,
+                    validation_integration_id=validation_integration_id,
+                    search_provider_id=search_provider_id,
+                    target_companies=target_companies,
+                    contacts_per_company=contacts_per_company,
+                    deliverable=deliverable,
+                    goal=goal,
+                    max_spend_usd=max_spend_usd,
+                    max_provider_spend_usd=max_provider_spend_usd,
                 ),
             ),
         )
