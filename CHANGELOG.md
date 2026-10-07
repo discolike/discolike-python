@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 (2026-10-06)
 
 - **Breaking:** Python 3.10 is no longer supported (end of life October 2026); the SDK and CLI require Python 3.11+.
 - **Breaking:** the polling deadline on `Job.wait()`, `EmailJob.wait()` and `EmailBatch.results()` (sync and async) is renamed from `timeout=` to `max_wait=`, and `signup()` / `async_signup()` take `request_timeout=` instead of `timeout=`. Behavior is unchanged; the client constructor, `with_options(timeout=...)` and the CLI's `--timeout` keep their names.
