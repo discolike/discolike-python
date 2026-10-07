@@ -38,12 +38,17 @@ FILTER_STATE_HELP = "Filter by company state/region (repeatable)."
 NEGATE_FILTER_STATE_HELP = "Exclude contacts at companies in this state (repeatable)."
 PERSON_STATE_HELP = "Filter by contact state/region (repeatable)."
 PERSONA_ID_HELP = "Filter by persona ID (repeatable)."
-EMAIL_VALIDATED_HELP = "Deprecated: same as --has-email. Emails are not pre-verified; run email verification instead."
-EMAIL_VALIDATED_WARNING = (
-    "warning: --email-validated is deprecated: same as --has-email. "
-    "Emails are not pre-verified; run email verification instead."
+EMAIL_VALIDATED_HELP = (
+    "Deprecated. Treated as has_email: contact search no longer filters on email verification; verify emails instead."
 )
-NO_EMAIL_VALIDATED_WARNING = "warning: --no-email-validated is deprecated and has no effect."
+EMAIL_VALIDATED_WARNING = (
+    "warning: --email-validated is deprecated. Treated as has_email: "
+    "contact search no longer filters on email verification; verify emails instead."
+)
+NO_EMAIL_VALIDATED_WARNING = (
+    "warning: --no-email-validated is deprecated and has no effect. "
+    "Contact search no longer filters on email verification; verify emails instead."
+)
 HAS_PHONE_HELP = "Only contacts with (or without) a phone number."
 HAS_MOBILE_HELP = "Only contacts with (or without) a mobile phone number."
 HAS_LINKEDIN_HELP = "Only contacts with (or without) a LinkedIn profile."
@@ -63,7 +68,7 @@ def _email_validated_as_has_email(*, email_validated: bool | None, has_email: bo
         typer.echo(NO_EMAIL_VALIDATED_WARNING, err=True)
         return has_email
     typer.echo(EMAIL_VALIDATED_WARNING, err=True)
-    return True
+    return True if has_email is None else has_email
 
 
 app = typer.Typer(

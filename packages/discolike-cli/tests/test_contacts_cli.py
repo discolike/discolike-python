@@ -503,7 +503,7 @@ def test_contacts_email_validated_warns_and_sends_has_email(
     install_build_client: Callable[[Handler], None], command: str
 ) -> None:
     result, sent = _invoke_contacts(install_build_client, command, "--email-validated")
-    assert "--email-validated is deprecated: same as --has-email" in result.stderr
+    assert "--email-validated is deprecated. Treated as has_email" in result.stderr
     assert sent["has_email"] is True
     assert "email_validated" not in sent
 
@@ -518,11 +518,14 @@ def test_contacts_no_email_validated_warns_and_sends_nothing(
     assert "email_validated" not in sent
 
 
-def test_contacts_email_validated_wins_over_no_has_email_like_the_api(
-    install_build_client: Callable[[Handler], None],
+@pytest.mark.parametrize(("has_email_flag", "expected"), [("--has-email", True), ("--no-has-email", False)])
+def test_contacts_explicit_has_email_wins_over_email_validated(
+    install_build_client: Callable[[Handler], None], has_email_flag: str, expected: bool
 ) -> None:
-    _, sent = _invoke_contacts(install_build_client, "search", "--no-has-email", "--email-validated")
-    assert sent["has_email"] is True
+    result, sent = _invoke_contacts(install_build_client, "search", has_email_flag, "--email-validated")
+    assert "--email-validated is deprecated" in result.stderr
+    assert sent["has_email"] is expected
+    assert "email_validated" not in sent
 
 
 def test_contacts_without_email_validated_does_not_warn(install_build_client: Callable[[Handler], None]) -> None:
