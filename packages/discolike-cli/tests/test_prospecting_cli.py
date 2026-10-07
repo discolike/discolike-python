@@ -466,7 +466,7 @@ def test_plan_sends_only_the_settings_passed(install_build_client: Callable[[Han
 
     def handler(request: httpx2.Request) -> httpx2.Response:
         seen.append(request)
-        return httpx2.Response(200, json=run_payload("proposed"))
+        return httpx2.Response(200, json=run_payload("proposed") | {"plan_version": 4})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -491,7 +491,8 @@ def test_plan_sends_only_the_settings_passed(install_build_client: Callable[[Han
         "contact_integration_id": "llm-1",
         "search_provider_id": "none",
     }
-    assert json.loads(result.stdout)["run_id"] == RUN_ID
+    printed = json.loads(result.stdout)
+    assert (printed["run_id"], printed["plan_version"]) == (RUN_ID, 4)
 
 
 def test_plan_forwards_every_setting(install_build_client: Callable[[Handler], None]) -> None:
@@ -499,7 +500,7 @@ def test_plan_forwards_every_setting(install_build_client: Callable[[Handler], N
 
     def handler(request: httpx2.Request) -> httpx2.Response:
         bodies.append(json.loads(request.content))
-        return httpx2.Response(200, json=run_payload("proposed"))
+        return httpx2.Response(200, json=run_payload("proposed") | {"plan_version": 3})
 
     install_build_client(handler)
     result = runner.invoke(
@@ -545,3 +546,4 @@ def test_plan_forwards_every_setting(install_build_client: Callable[[Handler], N
             "max_provider_spend_usd": 12.5,
         }
     ]
+    assert json.loads(result.stdout)["plan_version"] == 3
