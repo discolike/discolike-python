@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 from typing import Any
 from typing import Literal
+from uuid import UUID
 
 from pydantic import Field
 
@@ -321,14 +322,14 @@ class ContactsSearchParams(DiscolikeRequest):
     summary: Annotated[
         str | None,
         Field(
-            description="Filter by profile summary text (semantic search).",
+            description="Match the profile summary text: a contact matches when its summary contains every word of any one term, in any order. Words are separate terms; quote a multi-word term to keep it together, prefix + to require a term.",
             title="Summary",
         ),
     ] = None
     negate_summary: Annotated[
         str | None,
         Field(
-            description="Exclude contacts matching this summary description.",
+            description="Exclude contacts whose profile summary contains every word of any one term, in any order. Quote a multi-word term to keep it together.",
             title="Negate Summary",
         ),
     ] = None
@@ -750,14 +751,14 @@ class ContactsCountParams(DiscolikeRequest):
     summary: Annotated[
         str | None,
         Field(
-            description="Filter by profile summary text (semantic search).",
+            description="Match the profile summary text: a contact matches when its summary contains every word of any one term, in any order. Words are separate terms; quote a multi-word term to keep it together, prefix + to require a term.",
             title="Summary",
         ),
     ] = None
     negate_summary: Annotated[
         str | None,
         Field(
-            description="Exclude contacts matching this summary description.",
+            description="Exclude contacts whose profile summary contains every word of any one term, in any order. Quote a multi-word term to keep it together.",
             title="Negate Summary",
         ),
     ] = None
@@ -1211,14 +1212,14 @@ class ContactFilters(DiscolikeRequest):
     summary: Annotated[
         str | None,
         Field(
-            description="Filter by profile summary text (semantic search).",
+            description="Match the profile summary text: a contact matches when its summary contains every word of any one term, in any order. Words are separate terms; quote a multi-word term to keep it together, prefix + to require a term.",
             title="Summary",
         ),
     ] = None
     negate_summary: Annotated[
         str | None,
         Field(
-            description="Exclude contacts matching this summary description.",
+            description="Exclude contacts whose profile summary contains every word of any one term, in any order. Quote a multi-word term to keep it together.",
             title="Negate Summary",
         ),
     ] = None
@@ -1460,7 +1461,7 @@ class DiscoGenProcessRequest(DiscolikeRequest):
         ),
     ]
     context_mode: Annotated[Literal["website", "profile", "domain"] | None, Field(title="Context Mode")] = "website"
-    previous_discogen_data: Annotated[dict[str, Any] | None, Field(title="Previous Discogen Data")] = None
+    previous_discogen_data: Annotated[dict[str, dict[str, Any]] | None, Field(title="Previous Discogen Data")] = None
 
 
 class DiscoGenPersonaProcessRequest(DiscolikeRequest):
@@ -1506,7 +1507,7 @@ class DiscoGenPersonaProcessRequest(DiscolikeRequest):
         Literal["name_only", "profile", "profile_summary", "company", "full"] | None,
         Field(title="Context Mode"),
     ] = "profile"
-    previous_discogen_data: Annotated[dict[str, Any] | None, Field(title="Previous Discogen Data")] = None
+    previous_discogen_data: Annotated[dict[str, dict[str, Any]] | None, Field(title="Previous Discogen Data")] = None
 
 
 class ValidateIcpRequest(DiscolikeRequest):
@@ -2906,6 +2907,21 @@ class MatchBulkParams(DiscolikeRequest):
     ] = 50
 
 
+class ProspectingListParams(DiscolikeRequest):
+    limit: Annotated[int | None, Field(ge=1, le=50, title="Limit")] = 20
+    before: Annotated[
+        UUID | None,
+        Field(description="Return the runs created before this run.", title="Before"),
+    ] = None
+
+
+class ProspectingGetParams(DiscolikeRequest):
+    offset: Annotated[int | None, Field(ge=0, title="Offset")] = 0
+    limit: Annotated[int | None, Field(ge=1, le=500, title="Limit")] = 100
+    events_after: Annotated[int | None, Field(ge=0, title="Events After")] = 0
+    messages_after: Annotated[int | None, Field(ge=0, title="Messages After")] = 0
+
+
 class LLMProviderCreateRequest(DiscolikeRequest):
     integration_name: Annotated[
         str,
@@ -3125,6 +3141,11 @@ class BulkContactMatchQueryItem(DiscolikeRequest):
     ] = None
 
 
+class IntakeAnswer(DiscolikeRequest):
+    values: Annotated[list[str] | None, Field(title="Values")] = None
+    other: Annotated[str | None, Field(max_length=200, title="Other")] = None
+
+
 class BulkContactMatchRequest(DiscolikeRequest):
     queries: Annotated[
         list[BulkContactMatchQueryItem],
@@ -3146,3 +3167,149 @@ class BulkContactMatchRequest(DiscolikeRequest):
         int | None,
         Field(description="Maximum matches per query (1-20).", ge=1, le=20, title="Limit"),
     ] = 10
+
+
+class ProspectingApproveRequest(DiscolikeRequest):
+    plan_version: Annotated[int, Field(ge=1, title="Plan Version")]
+    checkpoints: Literal["ask", "auto"] | None = None
+    seed_segments: Annotated[list[int] | None, Field(min_length=1, title="Seed Segments")] = None
+    segment: Annotated[bool | None, Field(title="Segment")] = None
+
+
+class ProspectingMessageRequest(DiscolikeRequest):
+    text: Annotated[str | None, Field(max_length=4000, min_length=1, title="Text")] = None
+    intake: Annotated[
+        dict[
+            Literal[
+                "deliverable", "company_activity", "industry", "geography", "company_size", "persona_roles", "list_size"
+            ],
+            IntakeAnswer,
+        ]
+        | None,
+        Field(title="Intake"),
+    ] = None
+    question_seq: Annotated[
+        int | None,
+        Field(
+            description="The seq of the question message whose suggested reply this is; the reply answers that question only, never a newer one.",
+            ge=1,
+            title="Question Seq",
+        ),
+    ] = None
+
+
+class ProspectingBrief(DiscolikeRequest):
+    brief: Annotated[str, Field(max_length=4000, min_length=10, title="Brief")]
+    domains: Annotated[list[str] | None, Field(max_length=1000, title="Domains")] = None
+    company_names: Annotated[list[str] | None, Field(max_length=100, title="Company Names")] = None
+    customer_domains: Annotated[
+        list[str] | None,
+        Field(
+            description="Your customers' domains, grouped into segments; lookalikes of each are found. Cannot be combined with domains or company_names.",
+            max_length=1000,
+            title="Customer Domains",
+        ),
+    ] = None
+    exclude_domains: Annotated[list[str] | None, Field(max_length=1000, title="Exclude Domains")] = None
+    target_companies: Annotated[int | None, Field(ge=1, le=10000, title="Target Companies")] = 1000
+    contacts_per_company: Annotated[int | None, Field(ge=1, le=10, title="Contacts Per Company")] = 3
+    max_candidates: Annotated[int | None, Field(ge=0, le=100000, title="Max Candidates")] = 0
+    max_actions: Annotated[int | None, Field(ge=0, le=10000, title="Max Actions")] = 0
+    validation_integration_id: Annotated[str | None, Field(max_length=128, title="Validation Integration Id")] = None
+    contact_integration_id: Annotated[str | None, Field(max_length=128, title="Contact Integration Id")] = None
+    search_provider_id: Annotated[str | None, Field(max_length=128, title="Search Provider Id")] = None
+    segment: Annotated[bool | None, Field(title="Segment")] = False
+    deliverable: Annotated[
+        Literal["leads", "accounts"] | None,
+        Field(description="leads finds people at the companies; accounts returns the checked companies only."),
+    ] = "leads"
+    goal: Annotated[
+        Literal["leads", "companies"] | None,
+        Field(
+            description="leads keeps adding rounds until the target is met; companies takes target_companies matching companies and works only those."
+        ),
+    ] = "leads"
+    checkpoints: Annotated[
+        Literal["ask", "auto"] | None,
+        Field(
+            description="ask: pause at checkpoints (pilot, tail_quality, short, target_reached, top_up, contacts_review) with status needs_input and a question to answer through message(). auto: never pause; a poor pilot is sharpened once and the run continues with a notice, stopping with stop_reason pilot_failed only if the re-pilot fit is still under 20%. Either mode pauses at top_up when another round would pass a spending limit, and at contacts_review before a wave's email lookups.",
+            title="Checkpoints",
+        ),
+    ] = "auto"
+
+
+class ProspectingPlanSettings(DiscolikeRequest):
+    plan_version: Annotated[int, Field(ge=1, title="Plan Version")]
+    contact_integration_id: Annotated[
+        str | None,
+        Field(
+            description="Contact research engine: an option id from the plan's contact_engine.",
+            max_length=128,
+            title="Contact Integration Id",
+        ),
+    ] = None
+    validation_integration_id: Annotated[
+        str | None,
+        Field(
+            description="Company check engine: an option id from the plan's company_check_engine.",
+            max_length=128,
+            title="Validation Integration Id",
+        ),
+    ] = None
+    search_provider_id: Annotated[
+        str | None,
+        Field(
+            description="Search provider: an option id from the plan's search_provider; 'none' skips web research.",
+            max_length=128,
+            title="Search Provider Id",
+        ),
+    ] = None
+    max_spend_usd: Annotated[
+        float | None,
+        Field(
+            description="Most the run may spend on DiscoLike records and per-call fees, in USD at your plan's rates, before it stops; 0 removes the limit.",
+            ge=0.0,
+            title="Max Spend Usd",
+        ),
+    ] = None
+    target_companies: Annotated[
+        int | None,
+        Field(
+            description="How many qualified companies the run aims for; the plan's limits are re-derived around it.",
+            ge=1,
+            le=10000,
+            title="Target Companies",
+        ),
+    ] = None
+    contacts_per_company: Annotated[
+        int | None,
+        Field(
+            description="Most contacts to find at each qualified company.",
+            ge=1,
+            le=10,
+            title="Contacts Per Company",
+        ),
+    ] = None
+    deliverable: Annotated[
+        Literal["leads", "accounts"] | None,
+        Field(description="leads finds people at the companies; accounts returns the checked companies only."),
+    ] = None
+    goal: Annotated[
+        Literal["leads", "companies"] | None,
+        Field(
+            description="leads keeps adding rounds until the target is met; companies takes target_companies matching companies and works only those."
+        ),
+    ] = None
+    max_provider_spend_usd: Annotated[
+        float | None,
+        Field(
+            description="Most the run may spend on your own AI and search provider keys, in USD, before it stops starting new work; batches already running finish, so the total can end slightly above it. 0 removes the limit.",
+            ge=0.0,
+            title="Max Provider Spend Usd",
+        ),
+    ] = None
+
+
+class ProspectingRunUpdate(DiscolikeRequest):
+    title: Annotated[str | None, Field(max_length=80, min_length=1, title="Title")] = None
+    checkpoints: Literal["ask", "auto"] | None = None

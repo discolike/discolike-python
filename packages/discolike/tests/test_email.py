@@ -122,7 +122,7 @@ def test_verify_batch_results_polls_and_decodes_validation_output(make_client: C
 
     with make_client(handler) as client:
         batch = client.email.batch("b-2", kind="verify")
-        results = batch.results(timeout=60.0, poll_interval=1.0)
+        results = batch.results(max_wait=60.0, poll_interval=1.0)
 
     assert results.batch_id == "b-2"
     assert results.total == 1
@@ -179,7 +179,7 @@ def test_find_batch_results_decodes_enumeration_output_and_failed_item(make_clie
     )
 
     with make_client(handler) as client:
-        results = client.email.batch("b-1", kind="find").results(timeout=60.0, poll_interval=1.0)
+        results = client.email.batch("b-1", kind="find").results(max_wait=60.0, poll_interval=1.0)
 
     assert results.total == 2
     assert results.failed == 1
@@ -238,7 +238,7 @@ def test_find_posts_and_job_wait_polls_jobs_endpoint(make_client: ClientFactory)
         job = client.email.find(FindEmailRequest(first_name="Grace", last_name="Hopper", domain="navy.mil"))
         assert isinstance(job, EmailJob)
         assert job.job_id == "j-9"
-        output = job.wait(timeout=60.0, poll_interval=1.0)
+        output = job.wait(max_wait=60.0, poll_interval=1.0)
 
     assert seen["path"] == "/v1/email/find"
     assert seen["body"] == {"first_name": "Grace", "last_name": "Hopper", "domain": "navy.mil"}
@@ -279,7 +279,7 @@ def test_find_wait_raises_on_failed_job(make_client: ClientFactory) -> None:
     with make_client(handler) as client:
         job = client.email.find(FindEmailRequest(first_name="No", last_name="One", domain="void.dev"))
         with pytest.raises(JobFailedError, match="boom"):
-            job.wait(timeout=60.0)
+            job.wait(max_wait=60.0)
 
 
 def test_job_reattaches_without_http_call(make_client: ClientFactory) -> None:
@@ -352,7 +352,7 @@ async def test_verify_batch_async_results_decodes(make_async_client: AsyncClient
 
     async with make_async_client(handler) as client:
         batch = client.email.batch("b-async2", kind="verify")
-        results = await batch.results(timeout=60.0, poll_interval=1.0)
+        results = await batch.results(max_wait=60.0, poll_interval=1.0)
 
     item = results.results[0]
     assert isinstance(item.result, ValidationOutput)
@@ -392,7 +392,7 @@ async def test_find_async_job_wait(make_async_client: AsyncClientFactory) -> Non
     async with make_async_client(handler) as client:
         job = await client.email.find(FindEmailRequest(first_name="Ada", last_name="Lovelace", domain="acme.com"))
         assert isinstance(job, AsyncEmailJob)
-        output = await job.wait(timeout=60.0, poll_interval=1.0)
+        output = await job.wait(max_wait=60.0, poll_interval=1.0)
 
     assert isinstance(output, EnumerationOutput)
     assert output.result is not None
@@ -454,7 +454,7 @@ def test_batch_can_still_re_attach_to_a_verify_batch(make_client: ClientFactory)
 
     with make_client(handler) as client:
         batch = client.email.batch("b-9", kind="verify")
-        results = batch.results(timeout=60.0, poll_interval=1.0)
+        results = batch.results(max_wait=60.0, poll_interval=1.0)
 
     assert isinstance(batch, EmailBatch)
     assert batch.batch_id == "b-9"
@@ -495,7 +495,7 @@ def test_server_reported_kind_overrides_handle_kind(make_client: ClientFactory) 
     )
 
     with make_client(handler) as client:
-        results = client.email.batch("b-10", kind="find").results(timeout=60.0, poll_interval=1.0)
+        results = client.email.batch("b-10", kind="find").results(max_wait=60.0, poll_interval=1.0)
 
     assert isinstance(results.results[0].result, ValidationOutput)
 
@@ -524,7 +524,7 @@ def test_job_wait_honors_server_reported_kind(make_client: ClientFactory) -> Non
     ValidationOutput. The server-reported kind picks the model, so wait() must not
     gate the result on the handle's kind."""
     with make_client(_verify_job_handler) as client:
-        output = client.email.job("j-11").wait(timeout=60.0, poll_interval=1.0)
+        output = client.email.job("j-11").wait(max_wait=60.0, poll_interval=1.0)
 
     assert isinstance(output, ValidationOutput)
     assert output.reason == "no_mailbox"
@@ -532,7 +532,7 @@ def test_job_wait_honors_server_reported_kind(make_client: ClientFactory) -> Non
 
 async def test_job_wait_honors_server_reported_kind_async(make_async_client: AsyncClientFactory) -> None:
     async with make_async_client(_verify_job_handler) as client:
-        output = await client.email.job("j-11").wait(timeout=60.0, poll_interval=1.0)
+        output = await client.email.job("j-11").wait(max_wait=60.0, poll_interval=1.0)
 
     assert isinstance(output, ValidationOutput)
     assert output.reason == "no_mailbox"

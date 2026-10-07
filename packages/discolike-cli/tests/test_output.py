@@ -235,8 +235,8 @@ class _FakeJob:
         self._final = final
         self.wait_calls: list[dict[str, object]] = []
 
-    def wait(self, *, timeout: float, on_poll: Callable[[_FakeJobStatus], None] | None = None) -> _FakeJobStatus:
-        self.wait_calls.append({"timeout": timeout})
+    def wait(self, *, max_wait: float, on_poll: Callable[[_FakeJobStatus], None] | None = None) -> _FakeJobStatus:
+        self.wait_calls.append({"max_wait": max_wait})
         if on_poll is not None:
             on_poll(_FakeJobStatus(progress=50, results=None))
         return self._final
@@ -260,7 +260,7 @@ def test_run_job_with_wait_emits_final_results_and_progress(capsys: pytest.Captu
     captured = capsys.readouterr()
     assert json.loads(captured.out) == [{"domain": "acme.com"}]
     assert "progress: 50%" in captured.err
-    assert job.wait_calls == [{"timeout": 30.0}]
+    assert job.wait_calls == [{"max_wait": 30.0}]
 
 
 def test_run_job_with_wait_emits_full_status_when_no_results(capsys: pytest.CaptureFixture[str]) -> None:

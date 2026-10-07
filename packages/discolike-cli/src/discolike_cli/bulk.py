@@ -382,8 +382,8 @@ def _persona_ids_in(path: pathlib.Path) -> set[str]:
 
 
 ICP_PROMPT_HELP = "Natural-language ICP prompt used to derive contact filters."
-SUMMARY_HELP = "Filter by profile summary text (semantic search); ranks who comes back per company."
-NEGATE_SUMMARY_HELP = "Exclude contacts matching this summary description."
+SUMMARY_HELP = "Match profile summary text: every word of any one term, in any order. Quote a multi-word term to keep it together, prefix + to require it. Ranks who comes back per company."
+NEGATE_SUMMARY_HELP = "Exclude contacts whose profile summary contains every word of any one term, in any order."
 HAS_EMAIL_HELP = "Only contacts with an email address (on by default)."
 
 

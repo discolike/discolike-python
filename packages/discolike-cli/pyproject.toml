@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "discolike-cli"
-version = "0.4.1"
+version = "0.5.0"
 description = "Official CLI for the DiscoLike API"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [{ name = "DiscoLike", email = "support@discolike.com" }]
 dependencies = [
-  "discolike==0.4.1",
+  "discolike==0.5.0",
   "typer>=0.26.1,<0.28",
   "rich>=13.0",
 ]
@@ -21,7 +21,6 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",

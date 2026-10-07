@@ -74,6 +74,9 @@ Exit codes:
   4  rate_limited       HTTP 429; wait "retry_after" seconds, then retry
   5  network_error      could not reach the API
   6  not_found          HTTP 404
+  7  needs_input        `prospecting wait` stopped at a checkpoint with no terminal to ask
+                        (or --no-input): the run is on stdout, the question and
+                        "suggested_replies" in the stderr envelope
 
 Environment:
   {ENV_API_KEY}   API key; overrides the config file written by `discolike auth login`.

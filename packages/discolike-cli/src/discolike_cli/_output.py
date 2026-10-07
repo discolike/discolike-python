@@ -43,6 +43,7 @@ EXIT_CODES: dict[type, int] = {
     NotFoundError: 6,
 }
 DEFAULT_EXIT_CODE = 1
+NEEDS_INPUT_EXIT_CODE = 7
 
 # Stable, snake_case error codes for agents and scripts to branch on. The class
 # name in `error` is kept for backwards compatibility; `code` is the contract.
@@ -82,7 +83,7 @@ class SupportsWait(Protocol):
     task_id: str
     task_family: str
 
-    def wait(self, *, timeout: float, on_poll: Callable[[_JobStatusLike], None] | None = None) -> _JobStatusLike: ...
+    def wait(self, *, max_wait: float, on_poll: Callable[[_JobStatusLike], None] | None = None) -> _JobStatusLike: ...
 
 
 def _normalize(data: Any) -> Any:  # noqa: ANN401 -- accepts arbitrary JSON-serializable CLI output data
@@ -203,5 +204,5 @@ def run_job(job: SupportsWait, *, wait: bool, timeout: float, fmt: str | None = 
     def _on_poll(status: _JobStatusLike) -> None:
         sys.stderr.write(f"progress: {status.progress}%\n")
 
-    final = job.wait(timeout=timeout, on_poll=_on_poll)
+    final = job.wait(max_wait=timeout, on_poll=_on_poll)
     emit(final.results if final.results is not None else final.to_dict(), fmt=fmt)

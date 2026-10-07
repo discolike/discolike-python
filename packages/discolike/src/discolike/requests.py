@@ -24,10 +24,18 @@ from discolike._generated.requests import DiscoGenProcessRequest
 from discolike._generated.requests import DiscoverParams
 from discolike._generated.requests import FindEmailBatchRequest
 from discolike._generated.requests import FindEmailRequest
+from discolike._generated.requests import IntakeAnswer
 from discolike._generated.requests import LLMProviderCreateRequest
 from discolike._generated.requests import LLMProviderUpdateRequest
 from discolike._generated.requests import MatchBulkParams
 from discolike._generated.requests import MatchCompanyParams
+from discolike._generated.requests import ProspectingApproveRequest
+from discolike._generated.requests import ProspectingBrief
+from discolike._generated.requests import ProspectingGetParams
+from discolike._generated.requests import ProspectingListParams
+from discolike._generated.requests import ProspectingMessageRequest
+from discolike._generated.requests import ProspectingPlanSettings
+from discolike._generated.requests import ProspectingRunUpdate
 from discolike._generated.requests import QueriesListParams
 from discolike._generated.requests import SaveResultsRequest
 from discolike._generated.requests import SearchProviderRequest
@@ -61,10 +69,18 @@ __all__ = [
     "DiscoverParams",
     "FindEmailBatchRequest",
     "FindEmailRequest",
+    "IntakeAnswer",
     "LLMProviderCreateRequest",
     "LLMProviderUpdateRequest",
     "MatchBulkParams",
     "MatchCompanyParams",
+    "ProspectingApproveRequest",
+    "ProspectingBrief",
+    "ProspectingGetParams",
+    "ProspectingListParams",
+    "ProspectingMessageRequest",
+    "ProspectingPlanSettings",
+    "ProspectingRunUpdate",
     "QueriesListParams",
     "SaveResultsRequest",
     "SearchProviderRequest",

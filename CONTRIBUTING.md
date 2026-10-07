@@ -24,7 +24,7 @@ uv run pytest packages/discolike/tests -q
 uv run pytest packages/discolike-cli/tests -q
 ```
 
-CI runs the same checks across Python 3.10–3.14.
+CI runs the same checks across Python 3.11–3.14.
 
 ## Branches
 
@@ -41,6 +41,30 @@ CI also runs `scripts/gen_requests.py --check` against the dev spec
 models in `discolike.requests` track dev, not prod. The prod spec lags, so
 both `check_contract.py` and `gen_requests.py --check` against prod stay red
 until the platform deploys; don't regenerate against prod to "fix" it.
+
+## Compatibility
+
+Released SDK versions stay installed long after a new one ships, and they
+all talk to the same live API. Keep them working:
+
+- **Response models parse anything a newer server can send.** Models allow
+  extra fields (`extra="allow"`). Response enums are open
+  (`Literal[...] | str`), never a closed `Literal`. Response fields carry no
+  request-side limits (`max_length`, `ge`/`le`). Don't reuse a request model
+  as a response field (see `ProspectingRunBrief`). A new response field gets
+  a default, so the SDK still parses servers from before it existed.
+- **The SDK may be looser than the spec, never stricter.** The contract check
+  flags only drift that breaks parsing: the SDK requiring a field the spec
+  makes optional, or the spec allowing a type the SDK rejects.
+- **Public signatures don't change silently.** Never rename or remove a
+  public method, kwarg, exception, or exported name in a patch release. When
+  one has to go, keep the old spelling working with a `DeprecationWarning`
+  that names the replacement for at least one minor release, and record the
+  removal under **Breaking** in `CHANGELOG.md`.
+- **New request fields are optional** and omitted from the wire when unset, so
+  a newer SDK still works against an API that hasn't deployed them yet.
+- **Python support follows upstream EOL.** Drop a version once it reaches
+  end of life, as a **Breaking** CHANGELOG line.
 
 ## Reporting bugs
 

@@ -42,7 +42,7 @@ class JobStatus(DiscolikeModel):
     # model's built-in search only; on a BYOS run read search_provider instead.
     estimated_cost: float | None = None
     cost_metadata: dict[str, dict[str, Any]] | None = None
-    title_validation: Literal["llm", "none"] | None = None
+    title_validation: Literal["llm", "none"] | str | None = None
 
 
 class Job:
@@ -62,11 +62,11 @@ class Job:
     def wait(
         self,
         *,
-        timeout: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
+        max_wait: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
         on_poll: Callable[[JobStatus], None] | None = None,
     ) -> JobStatus:
-        deadline = time.monotonic() + timeout
+        deadline = time.monotonic() + max_wait
         while True:
             current = self.status()
             if on_poll is not None:
@@ -77,7 +77,7 @@ class Job:
                 return current
             if time.monotonic() >= deadline:
                 raise JobTimeoutError(
-                    f"Task {self.task_id} did not finish within {timeout:.0f}s — it is still running "
+                    f"Task {self.task_id} did not finish within {max_wait:.0f}s — it is still running "
                     f"server-side; call wait() again to resume or check status() later"
                 )
             time.sleep(poll_interval)
@@ -102,11 +102,11 @@ class AsyncJob:
     async def wait(
         self,
         *,
-        timeout: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
+        max_wait: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
         on_poll: Callable[[JobStatus], None] | None = None,
     ) -> JobStatus:
-        deadline = time.monotonic() + timeout
+        deadline = time.monotonic() + max_wait
         while True:
             current = await self.status()
             if on_poll is not None:
@@ -117,7 +117,7 @@ class AsyncJob:
                 return current
             if time.monotonic() >= deadline:
                 raise JobTimeoutError(
-                    f"Task {self.task_id} did not finish within {timeout:.0f}s — it is still running "
+                    f"Task {self.task_id} did not finish within {max_wait:.0f}s — it is still running "
                     f"server-side; call wait() again to resume or check status() later"
                 )
             await asyncio.sleep(poll_interval)
