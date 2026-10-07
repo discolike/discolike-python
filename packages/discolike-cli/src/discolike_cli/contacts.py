@@ -38,10 +38,12 @@ FILTER_STATE_HELP = "Filter by company state/region (repeatable)."
 NEGATE_FILTER_STATE_HELP = "Exclude contacts at companies in this state (repeatable)."
 PERSON_STATE_HELP = "Filter by contact state/region (repeatable)."
 PERSONA_ID_HELP = "Filter by persona ID (repeatable)."
-EMAIL_VALIDATED_HELP = "Deprecated, ignored. Run email verification instead."
+EMAIL_VALIDATED_HELP = (
+    "Deprecated, ignored. Contact search no longer filters on email verification; verify emails instead."
+)
 EMAIL_VALIDATED_WARNING = (
-    "warning: --email-validated is deprecated and ignored; contact search no longer filters on email "
-    "validation. Run email verification on the results instead."
+    "warning: --email-validated is deprecated and ignored. "
+    "Contact search no longer filters on email verification; verify emails instead."
 )
 HAS_PHONE_HELP = "Only contacts with (or without) a phone number."
 HAS_MOBILE_HELP = "Only contacts with (or without) a mobile phone number."
