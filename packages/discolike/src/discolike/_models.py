@@ -26,8 +26,8 @@ MAX_GEO_SHAPES = 10
 MESSAGE_CONTENT_FIELDS = frozenset({"text", "intake"})
 DEPRECATED_REQUEST_FIELDS: dict[str, str] = {
     "email_validated": (
-        "email_validated is deprecated and ignored. "
-        "Contact search no longer filters on email verification; verify emails instead."
+        "email_validated is deprecated: the API treats it as has_email. "
+        "Emails are not pre-verified; run email verification instead."
     ),
 }
 

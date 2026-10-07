@@ -38,13 +38,12 @@ FILTER_STATE_HELP = "Filter by company state/region (repeatable)."
 NEGATE_FILTER_STATE_HELP = "Exclude contacts at companies in this state (repeatable)."
 PERSON_STATE_HELP = "Filter by contact state/region (repeatable)."
 PERSONA_ID_HELP = "Filter by persona ID (repeatable)."
-EMAIL_VALIDATED_HELP = (
-    "Deprecated, ignored. Contact search no longer filters on email verification; verify emails instead."
-)
+EMAIL_VALIDATED_HELP = "Deprecated: same as --has-email. Emails are not pre-verified; run email verification instead."
 EMAIL_VALIDATED_WARNING = (
-    "warning: --email-validated is deprecated and ignored. "
-    "Contact search no longer filters on email verification; verify emails instead."
+    "warning: --email-validated is deprecated: same as --has-email. "
+    "Emails are not pre-verified; run email verification instead."
 )
+NO_EMAIL_VALIDATED_WARNING = "warning: --no-email-validated is deprecated and has no effect."
 HAS_PHONE_HELP = "Only contacts with (or without) a phone number."
 HAS_MOBILE_HELP = "Only contacts with (or without) a mobile phone number."
 HAS_LINKEDIN_HELP = "Only contacts with (or without) a LinkedIn profile."
@@ -57,9 +56,14 @@ INCLUDE_SEARCH_CONTACTS_HELP = "Include contacts from the search index (broader 
 CONSENSUS_HELP = "Number of query vectors to combine for consensus search."
 
 
-def _warn_email_validated(*, email_validated: bool | None) -> None:
-    if email_validated is not None:
-        typer.echo(EMAIL_VALIDATED_WARNING, err=True)
+def _email_validated_as_has_email(*, email_validated: bool | None, has_email: bool | None) -> bool | None:
+    if email_validated is None:
+        return has_email
+    if not email_validated:
+        typer.echo(NO_EMAIL_VALIDATED_WARNING, err=True)
+        return has_email
+    typer.echo(EMAIL_VALIDATED_WARNING, err=True)
+    return True
 
 
 app = typer.Typer(
@@ -123,7 +127,6 @@ def search_command(
     """Search contacts matching the given filters."""
     from discolike_cli.main import get_client
 
-    _warn_email_validated(email_validated=email_validated)
     kwargs = _merge_params(
         param,
         params_file,
@@ -150,7 +153,7 @@ def search_command(
         filter_state=filter_state,
         negate_filter_state=negate_filter_state,
         employee_range=employee_range,
-        has_email=has_email,
+        has_email=_email_validated_as_has_email(email_validated=email_validated, has_email=has_email),
         has_phone=has_phone,
         has_mobile=has_mobile,
         has_linkedin=has_linkedin,
@@ -224,7 +227,6 @@ def count_command(
     """Count contacts matching the given filters."""
     from discolike_cli.main import get_client
 
-    _warn_email_validated(email_validated=email_validated)
     kwargs = _merge_params(
         param,
         params_file,
@@ -251,7 +253,7 @@ def count_command(
         filter_state=filter_state,
         negate_filter_state=negate_filter_state,
         employee_range=employee_range,
-        has_email=has_email,
+        has_email=_email_validated_as_has_email(email_validated=email_validated, has_email=has_email),
         has_phone=has_phone,
         has_mobile=has_mobile,
         has_linkedin=has_linkedin,
@@ -399,7 +401,6 @@ def discover_command(
     """Discover contacts grouped by company for the given filters."""
     from discolike_cli.main import get_client
 
-    _warn_email_validated(email_validated=email_validated)
     kwargs = _merge_params(
         param,
         params_file,
@@ -426,7 +427,7 @@ def discover_command(
         filter_state=filter_state,
         negate_filter_state=negate_filter_state,
         employee_range=employee_range,
-        has_email=has_email,
+        has_email=_email_validated_as_has_email(email_validated=email_validated, has_email=has_email),
         has_phone=has_phone,
         has_mobile=has_mobile,
         has_linkedin=has_linkedin,

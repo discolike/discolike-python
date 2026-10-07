@@ -6,6 +6,7 @@ from collections.abc import Callable
 import httpx2
 import pytest
 from typer.testing import CliRunner
+from typer.testing import Result
 
 from discolike_cli.main import app
 from discolike_testkit import Handler
@@ -395,6 +396,7 @@ def _assert_new_contact_filters(params: httpx2.QueryParams) -> None:
     assert params.get_list("filter_state") == ["TX"]
     assert params.get_list("negate_filter_state") == ["NY"]
     assert "email_validated" not in params
+    assert params.get("has_email") == "true"
     assert params.get("has_phone") == "true"
     assert params.get("has_mobile") == "false"
     assert params.get("has_linkedin") == "true"
@@ -455,6 +457,7 @@ def test_contacts_discover_forwards_every_new_flag(install_build_client: Callabl
         "persona_id": [7],
         "filter_state": ["TX"],
         "negate_filter_state": ["NY"],
+        "has_email": True,
         "has_phone": True,
         "has_mobile": False,
         "has_linkedin": True,
@@ -475,11 +478,9 @@ EMAIL_VALIDATED_RESPONSES = {
 }
 
 
-@pytest.mark.parametrize("command", sorted(EMAIL_VALIDATED_RESPONSES))
-@pytest.mark.parametrize("flag", ["--email-validated", "--no-email-validated"])
-def test_contacts_email_validated_warns_and_is_not_sent(
-    install_build_client: Callable[[Handler], None], command: str, flag: str
-) -> None:
+def _invoke_contacts(
+    install_build_client: Callable[[Handler], None], command: str, *flags: str
+) -> tuple[Result, dict[str, object]]:
     captured: list[httpx2.Request] = []
 
     def handler(request: httpx2.Request) -> httpx2.Response:
@@ -487,12 +488,41 @@ def test_contacts_email_validated_warns_and_is_not_sent(
         return httpx2.Response(200, json=EMAIL_VALIDATED_RESPONSES[command])
 
     install_build_client(handler)
-    result = runner.invoke(app, ["contacts", command, "--name", "Jane", flag])
+    result = runner.invoke(app, ["contacts", command, "--name", "Jane", *flags])
     assert result.exit_code == 0, result.output
-    assert "--email-validated is deprecated and ignored" in result.stderr
     (request,) = captured
-    assert "email_validated" not in request.url.params
-    assert b"email_validated" not in request.content
+    if request.method == "GET":
+        return result, {
+            key: json.loads(value) if value in ("true", "false") else value for key, value in request.url.params.items()
+        }
+    return result, json.loads(request.content)
+
+
+@pytest.mark.parametrize("command", sorted(EMAIL_VALIDATED_RESPONSES))
+def test_contacts_email_validated_warns_and_sends_has_email(
+    install_build_client: Callable[[Handler], None], command: str
+) -> None:
+    result, sent = _invoke_contacts(install_build_client, command, "--email-validated")
+    assert "--email-validated is deprecated: same as --has-email" in result.stderr
+    assert sent["has_email"] is True
+    assert "email_validated" not in sent
+
+
+@pytest.mark.parametrize("command", sorted(EMAIL_VALIDATED_RESPONSES))
+def test_contacts_no_email_validated_warns_and_sends_nothing(
+    install_build_client: Callable[[Handler], None], command: str
+) -> None:
+    result, sent = _invoke_contacts(install_build_client, command, "--no-email-validated")
+    assert "--no-email-validated is deprecated and has no effect" in result.stderr
+    assert "has_email" not in sent
+    assert "email_validated" not in sent
+
+
+def test_contacts_email_validated_wins_over_no_has_email_like_the_api(
+    install_build_client: Callable[[Handler], None],
+) -> None:
+    _, sent = _invoke_contacts(install_build_client, "search", "--no-has-email", "--email-validated")
+    assert sent["has_email"] is True
 
 
 def test_contacts_without_email_validated_does_not_warn(install_build_client: Callable[[Handler], None]) -> None:
