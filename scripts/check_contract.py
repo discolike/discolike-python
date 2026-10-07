@@ -311,7 +311,7 @@ def _describe(shape: FieldShape) -> str:
 
 
 def _accepts(*, model_shape: FieldShape, spec_shape: FieldShape) -> bool:
-    return spec_shape[0] <= model_shape[0] and spec_shape[1] == model_shape[1]
+    return spec_shape[0] <= model_shape[0] and ("array" not in spec_shape[0] or spec_shape[1] == model_shape[1])
 
 
 def check_models(spec: dict, mirrored: dict[str, type[DiscolikeModel]] | None = None) -> list[str]:

@@ -123,6 +123,16 @@ def test_check_models_reports_an_array_item_type_change():
     ]
 
 
+def test_check_models_accepts_a_spec_narrowing_an_optional_array_to_null():
+    check_contract = _load_check_contract()
+    from discolike.resources.companies import CompanyProfile
+
+    schema = _spec_schema_for(CompanyProfile)
+    schema["properties"]["phones"] = {"type": "null"}
+    spec = {"components": {"schemas": {"CompanyResult": schema}}}
+    assert check_contract.check_models(spec, {"CompanyResult": CompanyProfile}) == []
+
+
 def test_check_models_passes_a_nullable_field_expressed_via_anyof():
     check_contract = _load_check_contract()
     from discolike.resources.companies import ExtractResult
