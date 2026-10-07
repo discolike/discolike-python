@@ -358,13 +358,6 @@ class ContactsSearchParams(DiscolikeRequest):
         bool | None,
         Field(description="Only include contacts with email addresses.", title="Has Email"),
     ] = False
-    email_validated: Annotated[
-        bool | None,
-        Field(
-            description="Only include contacts with validated email addresses.",
-            title="Email Validated",
-        ),
-    ] = False
     has_phone: Annotated[
         bool | None,
         Field(description="Only include contacts with phone numbers.", title="Has Phone"),
@@ -786,13 +779,6 @@ class ContactsCountParams(DiscolikeRequest):
     has_email: Annotated[
         bool | None,
         Field(description="Only include contacts with email addresses.", title="Has Email"),
-    ] = False
-    email_validated: Annotated[
-        bool | None,
-        Field(
-            description="Only include contacts with validated email addresses.",
-            title="Email Validated",
-        ),
     ] = False
     has_phone: Annotated[
         bool | None,
@@ -1247,13 +1233,6 @@ class ContactFilters(DiscolikeRequest):
     has_email: Annotated[
         bool | None,
         Field(description="Only include contacts with email addresses.", title="Has Email"),
-    ] = False
-    email_validated: Annotated[
-        bool | None,
-        Field(
-            description="Only include contacts with validated email addresses.",
-            title="Email Validated",
-        ),
     ] = False
     has_phone: Annotated[
         bool | None,

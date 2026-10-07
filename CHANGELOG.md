@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- SDK: the `email_validated` contact filter on `contacts.search`, `contacts.count` and `contacts.discover` is deprecated. Treated as has_email: contact search no longer filters on email verification; verify emails instead. The flag behind it only recorded that a third-party verifier had run at some point, not what it found, so a large share of "validated" addresses were catch-all. It is dropped from `ContactsSearchParams`, `ContactsCountParams` and `ContactFilters`; passing it still works (it goes out as an extra field and the API applies it as `has_email`) but raises a `DeprecationWarning`. Contact results keep their `email_validated` field, which is now `None` until you run email verification on the contact, then `True` or `False`.
+- CLI: `contacts search`, `count` and `discover` keep `--email-validated/--no-email-validated` so existing scripts keep running. `--email-validated` is deprecated and treated as `--has-email` (an explicit `--has-email` or `--no-has-email` takes precedence) and prints a deprecation warning on stderr; `--no-email-validated` warns and has no effect. Neither sends `email_validated`. `bulk contacts` keeps its `email_validated` CSV column, empty unless the contact was verified.
+- SDK (note for maintainers): `email_validated` was removed from `discolike/_generated/requests.py` by hand, ahead of the platform deploy that marks it deprecated in the OpenAPI spec (the generator drops deprecated fields). Until the deployed spec carries that flag, `scripts/gen_requests.py --check` reports the three fields as a diff and `scripts/check_contract.py` reports them as undeclared params; that is the pending release, not drift.
+- SDK (note for maintainers): `scripts/check_contract.py` now skips a query parameter marked deprecated inside its `schema`, which is where FastAPI puts a deprecated model field. `scripts/gen_requests.py` already dropped those, so the two scripts disagreed on GET routes.
+
 ## 0.5.0 (2026-10-06)
 
 - **Breaking:** Python 3.10 is no longer supported (end of life October 2026); the SDK and CLI require Python 3.11+.

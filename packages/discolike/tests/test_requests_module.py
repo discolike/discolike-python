@@ -1,8 +1,13 @@
+import warnings
+
 import pydantic
 import pytest
 
 import discolike.requests as requests_module
 from discolike._models import DiscolikeRequest
+from discolike.requests import ContactFilters
+from discolike.requests import ContactsCountParams
+from discolike.requests import ContactsSearchParams
 from discolike.requests import DiscoverParams
 from discolike.requests import LLMProviderUpdateRequest
 from discolike.requests import MatchCompanyParams
@@ -38,3 +43,17 @@ def test_required_nullable_field_survives_generation() -> None:
 
 def test_models_allow_extra_fields() -> None:
     assert MatchCompanyParams.model_validate({"name": "Acme", "future_flag": 1}).to_wire()["future_flag"] == 1
+
+
+@pytest.mark.parametrize("model", [ContactsSearchParams, ContactsCountParams, ContactFilters])
+def test_email_validated_is_deprecated_but_still_accepted(model: type[DiscolikeRequest]) -> None:
+    assert "email_validated" not in model.model_fields
+    with pytest.warns(DeprecationWarning, match="email_validated is deprecated"):
+        request = model.model_validate({"email_validated": True})
+    assert request.to_wire() == {"email_validated": True}
+
+
+def test_unset_email_validated_does_not_warn() -> None:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert ContactsSearchParams(has_email=True).to_wire() == {"has_email": True}
