@@ -193,7 +193,7 @@ class ContactsSearchParams(DiscolikeRequest):
     filter_country: Annotated[
         list[str] | None,
         Field(
-            description="Filter by company country using ISO-3166-1 alpha-2 codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ.",
+            description="Filter by company country using ISO-3166-1 alpha-2 codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ, EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, OCEANIA, ANTARCTICA.",
             title="Filter Country",
         ),
     ] = None
@@ -336,7 +336,7 @@ class ContactsSearchParams(DiscolikeRequest):
     person_country: Annotated[
         list[str] | None,
         Field(
-            description="Filter by contact's country using ISO-3166-1 alpha-2 codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ.",
+            description="Filter by contact's country using ISO-3166-1 alpha-2 codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ, EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, OCEANIA, ANTARCTICA.",
             title="Person Country",
         ),
     ] = None
@@ -615,7 +615,7 @@ class ContactsCountParams(DiscolikeRequest):
     filter_country: Annotated[
         list[str] | None,
         Field(
-            description="Filter by company country using ISO-3166-1 alpha-2 codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ.",
+            description="Filter by company country using ISO-3166-1 alpha-2 codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ, EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, OCEANIA, ANTARCTICA.",
             title="Filter Country",
         ),
     ] = None
@@ -758,7 +758,7 @@ class ContactsCountParams(DiscolikeRequest):
     person_country: Annotated[
         list[str] | None,
         Field(
-            description="Filter by contact's country using ISO-3166-1 alpha-2 codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ.",
+            description="Filter by contact's country using ISO-3166-1 alpha-2 codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ, EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, OCEANIA, ANTARCTICA.",
             title="Person Country",
         ),
     ] = None
@@ -1069,7 +1069,7 @@ class ContactFilters(DiscolikeRequest):
     filter_country: Annotated[
         list[str] | None,
         Field(
-            description="Filter by company country using ISO-3166-1 alpha-2 codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ.",
+            description="Filter by company country using ISO-3166-1 alpha-2 codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ, EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, OCEANIA, ANTARCTICA.",
             title="Filter Country",
         ),
     ] = None
@@ -1212,7 +1212,7 @@ class ContactFilters(DiscolikeRequest):
     person_country: Annotated[
         list[str] | None,
         Field(
-            description="Filter by contact's country using ISO-3166-1 alpha-2 codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ.",
+            description="Filter by contact's country using ISO-3166-1 alpha-2 codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ, EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, OCEANIA, ANTARCTICA.",
             title="Person Country",
         ),
     ] = None
@@ -1793,7 +1793,7 @@ class DiscoverParams(DiscolikeRequest):
     country: Annotated[
         list[str] | None,
         Field(
-            description="Filter by ISO-3166-1 alpha-2 country codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ.",
+            description="Filter by ISO-3166-1 alpha-2 country codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ, EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, OCEANIA, ANTARCTICA.",
             title="Country",
         ),
     ] = None
@@ -2430,7 +2430,7 @@ class CountParams(DiscolikeRequest):
     country: Annotated[
         list[str] | None,
         Field(
-            description="Filter by ISO-3166-1 alpha-2 country codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ.",
+            description="Filter by ISO-3166-1 alpha-2 country codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ, EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, OCEANIA, ANTARCTICA.",
             title="Country",
         ),
     ] = None
