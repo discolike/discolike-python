@@ -2121,7 +2121,7 @@ class DiscoverParams(DiscolikeRequest):
     ] = "UNRESTRICTED"
     offset: Annotated[
         int | None,
-        Field(description="Records to skip for pagination.", ge=0, title="Offset"),
+        Field(description="Records to skip for pagination.", ge=0, le=10000, title="Offset"),
     ] = 0
     exclusion_query_id: Annotated[
         list[str] | None,
