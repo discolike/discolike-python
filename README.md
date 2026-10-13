@@ -370,7 +370,7 @@ except ValidationError as err:
     ...
 ```
 
-`AuthenticationError`, `PlanAccessError`, `NotFoundError`, `ServerError`, and `APIConnectionError` cover the rest. A request the account's remaining balance cannot cover raises `InsufficientBalanceError` (a `PlanAccessError`), whose `max_affordable_records` is the largest record count that would fit. Transient failures are retried automatically (3 attempts by default).
+`AuthenticationError`, `PlanAccessError`, `NotFoundError`, `ServerError`, and `APIConnectionError` cover the rest. A request the account's remaining balance cannot cover raises `InsufficientBalanceError` (a `PlanAccessError`), whose `max_affordable_records` is the largest size that would fit, counted in the request's own unit (the message names it: records, contacts, domains, rows, queries or personas). Transient failures are retried automatically (3 attempts by default).
 
 ```python
 import pydantic

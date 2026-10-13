@@ -74,8 +74,11 @@ def test_all_are_discolike_errors() -> None:
 
 INSUFFICIENT_BALANCE_DETAIL = {
     "code": "INSUFFICIENT_BALANCE",
-    "message": "This request could cost up to $40.20 but the account has $12.50 left this cycle.",
-    "remaining_usd": 12.5,
+    "message": (
+        "This request could cost up to $140.70 but the account has $43.75 left this cycle. "
+        "Lower it to at most 3075 records, or upgrade or top up to continue."
+    ),
+    "remaining_usd": 43.75,
     "max_affordable_records": 3075,
     "requested_records": 10000,
     "upgrade_url": "https://app.discolike.com/account/management/plans",
@@ -90,10 +93,16 @@ def test_insufficient_balance_403_raises_typed_error_with_fields() -> None:
     assert str(err) == INSUFFICIENT_BALANCE_DETAIL["message"]
     assert err.status_code == 403
     assert err.max_affordable_records == 3075
-    assert err.remaining_usd == 12.5
+    assert err.remaining_usd == 43.75
     assert err.requested_records == 10000
     assert err.upgrade_url == "https://app.discolike.com/account/management/plans"
     assert err.payload == {"detail": INSUFFICIENT_BALANCE_DETAIL}
+
+
+def test_insufficient_balance_code_on_another_status_is_not_a_balance_error() -> None:
+    with pytest.raises(ServerError) as exc_info:
+        raise_for_status(_response(500, json_body={"detail": INSUFFICIENT_BALANCE_DETAIL}))
+    assert not isinstance(exc_info.value, InsufficientBalanceError)
 
 
 def test_other_dict_detail_uses_its_message() -> None:
