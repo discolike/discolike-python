@@ -38,7 +38,17 @@ FILTER_STATE_HELP = "Filter by company state/region (repeatable)."
 NEGATE_FILTER_STATE_HELP = "Exclude contacts at companies in this state (repeatable)."
 PERSON_STATE_HELP = "Filter by contact state/region (repeatable)."
 PERSONA_ID_HELP = "Filter by persona ID (repeatable)."
-EMAIL_VALIDATED_HELP = "Only contacts with (or without) a validated email address."
+EMAIL_VALIDATED_HELP = (
+    "Deprecated. Treated as has_email: contact search no longer filters on email verification; verify emails instead."
+)
+EMAIL_VALIDATED_WARNING = (
+    "warning: --email-validated is deprecated. Treated as has_email: "
+    "contact search no longer filters on email verification; verify emails instead."
+)
+NO_EMAIL_VALIDATED_WARNING = (
+    "warning: --no-email-validated is deprecated and has no effect. "
+    "Contact search no longer filters on email verification; verify emails instead."
+)
 HAS_PHONE_HELP = "Only contacts with (or without) a phone number."
 HAS_MOBILE_HELP = "Only contacts with (or without) a mobile phone number."
 HAS_LINKEDIN_HELP = "Only contacts with (or without) a LinkedIn profile."
@@ -49,6 +59,17 @@ MAX_COMPANIES_HELP = "Maximum number of enriched companies to return; cannot be 
 RESULTS_BY_COMPANY_HELP = "Maximum contacts per company domain (default 5; 0 removes the cap)."
 INCLUDE_SEARCH_CONTACTS_HELP = "Include contacts from the search index (broader coverage)."
 CONSENSUS_HELP = "Number of query vectors to combine for consensus search."
+
+
+def _email_validated_as_has_email(*, email_validated: bool | None, has_email: bool | None) -> bool | None:
+    if email_validated is None:
+        return has_email
+    if not email_validated:
+        typer.echo(NO_EMAIL_VALIDATED_WARNING, err=True)
+        return has_email
+    typer.echo(EMAIL_VALIDATED_WARNING, err=True)
+    return True if has_email is None else has_email
+
 
 app = typer.Typer(
     help="Find contacts: search and count by filters, look up or match individuals, and run bulk/generative discovery jobs."
@@ -137,8 +158,7 @@ def search_command(
         filter_state=filter_state,
         negate_filter_state=negate_filter_state,
         employee_range=employee_range,
-        has_email=has_email,
-        email_validated=email_validated,
+        has_email=_email_validated_as_has_email(email_validated=email_validated, has_email=has_email),
         has_phone=has_phone,
         has_mobile=has_mobile,
         has_linkedin=has_linkedin,
@@ -238,8 +258,7 @@ def count_command(
         filter_state=filter_state,
         negate_filter_state=negate_filter_state,
         employee_range=employee_range,
-        has_email=has_email,
-        email_validated=email_validated,
+        has_email=_email_validated_as_has_email(email_validated=email_validated, has_email=has_email),
         has_phone=has_phone,
         has_mobile=has_mobile,
         has_linkedin=has_linkedin,
@@ -413,8 +432,7 @@ def discover_command(
         filter_state=filter_state,
         negate_filter_state=negate_filter_state,
         employee_range=employee_range,
-        has_email=has_email,
-        email_validated=email_validated,
+        has_email=_email_validated_as_has_email(email_validated=email_validated, has_email=has_email),
         has_phone=has_phone,
         has_mobile=has_mobile,
         has_linkedin=has_linkedin,

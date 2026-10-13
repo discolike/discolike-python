@@ -156,7 +156,9 @@ def _spec_request_fields(*, spec: dict, operation: dict) -> set[str]:
     fields = {
         parameter["name"]
         for parameter in operation.get("parameters", [])
-        if parameter["in"] == QUERY_LOCATION and not parameter.get("deprecated", False)
+        if parameter["in"] == QUERY_LOCATION
+        and not parameter.get("deprecated", False)
+        and not parameter.get("schema", {}).get("deprecated", False)
     }
     fields |= {
         name

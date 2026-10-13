@@ -277,6 +277,18 @@ def test_check_passes_when_model_fields_match_spec_params():
     assert check_contract.check(spec, routes) == []
 
 
+def test_check_skips_query_params_deprecated_inside_their_schema():
+    check_contract = _load_check_contract()
+    from discolike.requests import MatchCompanyParams
+
+    routes = _route(check_contract, "MatchResource", "company")
+    spec = _spec_with_params("/match", list(MatchCompanyParams.model_fields))
+    spec["paths"]["/match"]["get"]["parameters"].append(
+        {"name": "legacy_flag", "in": "query", "schema": {"type": "boolean", "deprecated": True}}
+    )
+    assert check_contract.check(spec, routes) == []
+
+
 def test_check_reports_model_field_the_spec_lacks():
     check_contract = _load_check_contract()
     from discolike.requests import MatchCompanyParams

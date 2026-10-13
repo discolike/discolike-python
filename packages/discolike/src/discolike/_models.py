@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import warnings
 from collections.abc import Callable
 from typing import Any
 
@@ -23,6 +24,12 @@ RADIUS_KM_SUFFIX = "km"
 RADIUS_MILE_SUFFIX = "mi"
 MAX_GEO_SHAPES = 10
 MESSAGE_CONTENT_FIELDS = frozenset({"text", "intake"})
+DEPRECATED_REQUEST_FIELDS: dict[str, str] = {
+    "email_validated": (
+        "email_validated is deprecated. Treated as has_email: "
+        "contact search no longer filters on email verification; verify emails instead."
+    ),
+}
 
 
 class DiscolikeModel(pydantic.BaseModel):
@@ -66,6 +73,14 @@ class DiscolikeRequest(pydantic.BaseModel):
         if total > MAX_GEO_SHAPES:
             raise ValueError(f"{total} geo shapes (lat/lon, geo and bbox together); at most {MAX_GEO_SHAPES}")
         return self
+
+    @pydantic.model_validator(mode="before")
+    @classmethod
+    def _warn_deprecated_fields(cls, data: object) -> object:
+        if isinstance(data, dict):
+            for name in sorted(DEPRECATED_REQUEST_FIELDS.keys() & data.keys()):
+                warnings.warn(DEPRECATED_REQUEST_FIELDS[name], DeprecationWarning, stacklevel=2)
+        return data
 
     # Mirrors the platform's text_or_intake rule on ProspectingMessageRequest, which the spec cannot express.
     @pydantic.model_validator(mode="after")
