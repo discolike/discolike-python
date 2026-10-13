@@ -124,7 +124,7 @@ def test_no_credentials_401_object_detail_uses_its_message() -> None:
         "detail": {
             "code": "UNAUTHENTICATED",
             "message": "No credentials. A human can create a free account (no card).",
-            "signup_url": "https://api.discolike.com/public/signup",
+            "signup_url": "https://api.discolike.com/v1/public/signup",
             "plan": "free",
             "allowance_usd": 5.0,
             "cpc": 0.7,
@@ -134,3 +134,4 @@ def test_no_credentials_401_object_detail_uses_its_message() -> None:
     with pytest.raises(AuthenticationError) as exc_info:
         raise_for_status(_response(401, json_body=body))
     assert str(exc_info.value) == "No credentials. A human can create a free account (no card)."
+    assert exc_info.value.payload["detail"]["signup_url"] == "https://api.discolike.com/v1/public/signup"
