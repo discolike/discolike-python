@@ -28,7 +28,9 @@ class PlanAccessError(DiscolikeError): ...
 class InsufficientBalanceError(PlanAccessError):
     """A billed request priced above the account's remaining balance (403 ``INSUFFICIENT_BALANCE``).
 
-    Retry with at most ``max_affordable_records`` records, or top up at ``upgrade_url``.
+    ``requested_records`` and ``max_affordable_records`` count in the request's own size unit
+    (records, contacts, companies, domains, rows, queries or personas; the message names it), so a
+    retry at ``max_affordable_records`` fits. A fixed-size lookup reports 0; top up at ``upgrade_url``.
     """
 
     def __init__(
@@ -123,7 +125,7 @@ def raise_for_status(response: httpx2.Response) -> None:
         retry_after = float(header) if header and header.replace(".", "", 1).isdigit() else None
         raise RateLimitError(message, status_code=429, payload=payload, retry_after=retry_after)
     detail = payload.get("detail") if isinstance(payload, dict) else None
-    if isinstance(detail, dict) and detail.get("code") == INSUFFICIENT_BALANCE_CODE:
+    if response.status_code == 403 and isinstance(detail, dict) and detail.get("code") == INSUFFICIENT_BALANCE_CODE:
         raise InsufficientBalanceError(
             message,
             status_code=response.status_code,
