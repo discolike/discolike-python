@@ -30,7 +30,9 @@ class InsufficientBalanceError(PlanAccessError):
 
     ``requested_records`` and ``max_affordable_records`` count in the request's own size unit
     (records, contacts, companies, domains, rows, queries or personas; the message names it), so a
-    retry at ``max_affordable_records`` fits. A fixed-size lookup reports 0; top up at ``upgrade_url``.
+    retry at ``max_affordable_records`` fits; it is 0 when even the request fee does not fit. A request
+    with no size to lower (a single-company lookup or a single email find) cannot be retried smaller,
+    and its message only asks to top up at ``upgrade_url``.
     """
 
     def __init__(
