@@ -1380,7 +1380,7 @@ class ContactGenerateRequest(DiscolikeRequest):
     integration_id: Annotated[
         str | None,
         Field(
-            description="LLM provider integration UUID, or 'native' for keyless extraction without title validation. Omit for the org default (falls back to native when none is set).",
+            description="LLM provider integration UUID, or 'native' for keyless extraction without title validation. Omit for native when it is available and a search provider resolves (the org default, or its only one), else the org default LLM.",
             title="Integration Id",
         ),
     ] = None
@@ -1408,7 +1408,7 @@ class DiscoGenProcessRequest(DiscolikeRequest):
     integration_id: Annotated[
         str | None,
         Field(
-            description="LLM provider integration UUID (omit for org default), or 'native-icp' to score an ICP validation prompt with the native model",
+            description="LLM provider integration UUID (omit for the org default, or its only integration), or 'native-icp' to score an ICP validation prompt with the native model",
             title="Integration Id",
         ),
     ] = None
@@ -1425,7 +1425,7 @@ class DiscoGenProcessRequest(DiscolikeRequest):
     search_provider_id: Annotated[
         str | None,
         Field(
-            description="Search provider integration UUID (omit for org default)",
+            description="Search provider integration UUID (omit for the org default, or its only provider)",
             title="Search Provider Id",
         ),
     ] = None
@@ -1451,7 +1451,7 @@ class DiscoGenPersonaProcessRequest(DiscolikeRequest):
     integration_id: Annotated[
         str | None,
         Field(
-            description="LLM provider integration UUID (omit for org default), or 'native-icp' to score an ICP validation prompt with the native model",
+            description="LLM provider integration UUID (omit for the org default, or its only integration), or 'native-icp' to score an ICP validation prompt with the native model",
             title="Integration Id",
         ),
     ] = None
@@ -1468,7 +1468,7 @@ class DiscoGenPersonaProcessRequest(DiscolikeRequest):
     search_provider_id: Annotated[
         str | None,
         Field(
-            description="Search provider integration UUID (omit for org default)",
+            description="Search provider integration UUID (omit for the org default, or its only provider)",
             title="Search Provider Id",
         ),
     ] = None
@@ -1793,7 +1793,7 @@ class DiscoverParams(DiscolikeRequest):
     country: Annotated[
         list[str] | None,
         Field(
-            description="Filter by ISO-3166-1 alpha-2 country codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ, EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, OCEANIA, ANTARCTICA.",
+            description="ISO-3166-1 alpha-2 country codes (e.g., US, GB, DE) or region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ, EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, OCEANIA, ANTARCTICA.",
             title="Country",
         ),
     ] = None
@@ -2121,7 +2121,12 @@ class DiscoverParams(DiscolikeRequest):
     ] = "UNRESTRICTED"
     offset: Annotated[
         int | None,
-        Field(description="Records to skip for pagination.", ge=0, le=10000, title="Offset"),
+        Field(
+            description="Records to skip for pagination.",
+            ge=0,
+            le=10000,
+            title="Offset",
+        ),
     ] = 0
     exclusion_query_id: Annotated[
         list[str] | None,
@@ -2430,7 +2435,7 @@ class CountParams(DiscolikeRequest):
     country: Annotated[
         list[str] | None,
         Field(
-            description="Filter by ISO-3166-1 alpha-2 country codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ, EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, OCEANIA, ANTARCTICA.",
+            description="ISO-3166-1 alpha-2 country codes (e.g., US, GB, DE) or region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ, EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, OCEANIA, ANTARCTICA.",
             title="Country",
         ),
     ] = None
