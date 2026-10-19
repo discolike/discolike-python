@@ -159,7 +159,7 @@ def companies_command(
     revenue_range: str | None = typer.Option(None, help="Revenue range filter."),
     variance: str | None = typer.Option(
         None,
-        help="How strictly the list stops at the end of the ICP's market: LOW stops earliest, HIGH latest, UNRESTRICTED never.",
+        help="Where the list stops: LOW (earliest), MID_LOW, MEDIUM, MID_HIGH, HIGH (latest), UNRESTRICTED (never).",
     ),
     exclusion_query_id: list[str] | None = typer.Option(None, help=EXCLUSION_QUERY_ID_HELP),
     param: list[str] | None = typer.Option(None, "--param", help=PARAM_HELP),

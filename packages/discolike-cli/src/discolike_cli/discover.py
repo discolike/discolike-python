@@ -106,7 +106,7 @@ def discover_command(
     min_similarity: int | None = typer.Option(None, help="Minimum similarity score to include (0-99)."),
     variance: str | None = typer.Option(
         None,
-        help="How strictly the list stops at the end of the ICP's market: LOW stops earliest, HIGH latest, UNRESTRICTED never.",
+        help="Where the list stops: LOW (earliest), MID_LOW, MEDIUM, MID_HIGH, HIGH (latest), UNRESTRICTED (never).",
     ),
     consensus: int | None = typer.Option(
         None, help="Deprecated, no-op. Discover applies consensus itself to single-domain lookalike searches."
