@@ -43,6 +43,11 @@ LANGUAGE_HELP = "Filter by site language as an ISO 639-1 code, e.g. en, de, pb, 
 NEGATE_LANGUAGE_HELP = "Exclude this site language (repeatable); same values as --language."
 EXCLUDE_LEADGEN_HELP = "Exclude suspected lead generation sites (on by default)."
 COUNT_EXCLUDE_LEADGEN_HELP = "Exclude suspected lead generation sites (off by default for count)."
+RELEVANCE_HELP = (
+    "Where the list stops, by estimated ICP fit: MAX_RELEVANCE (tightest), BALANCED, MAX_COVERAGE (longest). "
+    "Omit for no automatic stop."
+)
+VARIANCE_HELP = "Deprecated, mapped onto --relevance by the API; use --relevance."
 
 
 def _parse_param(raw: str) -> tuple[str, str | list[str]]:
@@ -104,10 +109,8 @@ def discover_command(
     min_digital_footprint: int | None = typer.Option(None, help="Minimum digital footprint score."),
     max_digital_footprint: int | None = typer.Option(None, help="Maximum digital footprint score."),
     min_similarity: int | None = typer.Option(None, help="Minimum similarity score to include (0-99)."),
-    variance: str | None = typer.Option(
-        None,
-        help="Where the list stops: LOW (earliest), MID_LOW, MEDIUM, MID_HIGH, HIGH (latest), UNRESTRICTED (never).",
-    ),
+    relevance: str | None = typer.Option(None, help=RELEVANCE_HELP),
+    variance: str | None = typer.Option(None, help=VARIANCE_HELP),
     consensus: int | None = typer.Option(
         None, help="Deprecated, no-op. Discover applies consensus itself to single-domain lookalike searches."
     ),
@@ -187,6 +190,7 @@ def discover_command(
             min_digital_footprint=min_digital_footprint,
             max_digital_footprint=max_digital_footprint,
             min_similarity=min_similarity,
+            relevance=relevance,
             variance=variance,
             consensus=consensus,
             redirect=redirect,

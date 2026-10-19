@@ -34,6 +34,8 @@ DEPRECATED_MODEL_FIELDS: dict[str, dict[str, str]] = {
     "DiscoverParams": {
         "consensus": "consensus is deprecated and ignored: discover applies consensus itself to single-domain lookalike searches.",
         "enhanced": "enhanced is deprecated and ignored: discover no longer adds AI-suggested domains.",
+        "variance": "variance is deprecated: LOW, MID_LOW and MEDIUM map to relevance MAX_RELEVANCE, MID_HIGH and HIGH to BALANCED, "
+        "UNRESTRICTED to no stop; relevance wins when both are sent. Use relevance.",
     },
 }
 

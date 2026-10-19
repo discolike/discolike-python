@@ -120,17 +120,17 @@ def test_discover_params_file_under_param_under_flags(
     install_build_client: Callable[[Handler], None], tmp_path: Path
 ) -> None:
     form = tmp_path / "form.json"
-    form.write_text(json.dumps({"country": ["US"], "variance": "LOW", "min_similarity": 10, "consensus": 3}))
+    form.write_text(json.dumps({"country": ["US"], "relevance": "MAX_COVERAGE", "min_similarity": 10, "consensus": 3}))
     captured: dict[str, Any] = {}
     install_build_client(_capture_json(captured, []))
     result = runner.invoke(
         app,
-        ["discover", "--params-file", str(form), "--param", "min_similarity=50", "--variance", "HIGH"],
+        ["discover", "--params-file", str(form), "--param", "min_similarity=50", "--relevance", "BALANCED"],
     )
     assert result.exit_code == 0, result.output
     params = captured["params"]
     assert params.get_list("country") == ["US"]
-    assert params.get("variance") == "HIGH"
+    assert params.get("relevance") == "BALANCED"
     assert params.get("min_similarity") == "50"
     assert params.get("consensus") == "3"
 
@@ -139,7 +139,7 @@ def test_discover_params_file_is_validated_locally(
     install_build_client: Callable[[Handler], None], tmp_path: Path
 ) -> None:
     form = tmp_path / "form.json"
-    form.write_text(json.dumps({"variance": "BOGUS"}))
+    form.write_text(json.dumps({"relevance": "BOGUS"}))
     calls: list[str] = []
 
     def handler(request: httpx2.Request) -> httpx2.Response:

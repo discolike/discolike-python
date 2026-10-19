@@ -40,6 +40,8 @@ from discolike_cli._output import handle_errors
 from discolike_cli.discover import DOMAINS_FILE_HELP
 from discolike_cli.discover import PARAM_HELP
 from discolike_cli.discover import PARAMS_FILE_HELP
+from discolike_cli.discover import RELEVANCE_HELP
+from discolike_cli.discover import VARIANCE_HELP
 from discolike_cli.discover import _merge_params
 
 T = TypeVar("T")
@@ -157,10 +159,8 @@ def companies_command(
     state: list[str] | None = typer.Option(None, help="State or region filter (repeatable)."),
     employee_range: str | None = typer.Option(None, help="Employee count range filter."),
     revenue_range: str | None = typer.Option(None, help="Revenue range filter."),
-    variance: str | None = typer.Option(
-        None,
-        help="Where the list stops: LOW (earliest), MID_LOW, MEDIUM, MID_HIGH, HIGH (latest), UNRESTRICTED (never).",
-    ),
+    relevance: str | None = typer.Option(None, help=RELEVANCE_HELP),
+    variance: str | None = typer.Option(None, help=VARIANCE_HELP),
     exclusion_query_id: list[str] | None = typer.Option(None, help=EXCLUSION_QUERY_ID_HELP),
     param: list[str] | None = typer.Option(None, "--param", help=PARAM_HELP),
     params_file: pathlib.Path | None = typer.Option(None, help=PARAMS_FILE_HELP),
@@ -187,6 +187,7 @@ def companies_command(
             state=state,
             employee_range=employee_range,
             revenue_range=revenue_range,
+            relevance=relevance,
             variance=variance,
         ),
         COMPANIES_MANAGED,

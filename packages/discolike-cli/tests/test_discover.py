@@ -146,6 +146,8 @@ def test_discover_forwards_every_new_flag(install_build_client: Callable[[Handle
             "2020-01-01",
             "--min-similarity",
             "40",
+            "--relevance",
+            "MAX_RELEVANCE",
             "--variance",
             "MEDIUM",
             "--consensus",
@@ -171,6 +173,7 @@ def test_discover_forwards_every_new_flag(install_build_client: Callable[[Handle
     assert params.get_list("negate_social") == ["tiktok"]
     assert params.get("start_date") == "2020-01-01"
     assert params.get("min_similarity") == "40"
+    assert params.get("relevance") == "MAX_RELEVANCE"
     assert params.get("variance") == "MEDIUM"
     assert params.get("consensus") == "3"
     assert params.get("redirect") == "true"
@@ -183,9 +186,9 @@ def test_discover_forwards_every_new_flag(install_build_client: Callable[[Handle
     assert params.get_list("inclusion_query_id") == ["q1"]
 
 
-def test_discover_rejects_invalid_variance(install_build_client: Callable[[Handler], None]) -> None:
+def test_discover_rejects_invalid_relevance(install_build_client: Callable[[Handler], None]) -> None:
     install_build_client(_discover_ok)
-    result = runner.invoke(app, ["discover", "--variance", "BOGUS"])
+    result = runner.invoke(app, ["discover", "--relevance", "BOGUS"])
     assert result.exit_code == 2
 
 

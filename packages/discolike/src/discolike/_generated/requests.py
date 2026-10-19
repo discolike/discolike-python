@@ -2096,13 +2096,13 @@ class DiscoverParams(DiscolikeRequest):
             title="Min Similarity",
         ),
     ] = 0
-    variance: Annotated[
-        Literal["LOW", "MID_LOW", "MEDIUM", "MID_HIGH", "HIGH", "UNRESTRICTED"] | None,
+    relevance: Annotated[
+        Literal["MAX_RELEVANCE", "BALANCED", "MAX_COVERAGE"] | None,
         Field(
-            description="Where the list stops: LOW earliest (rows ~70% fit), MID_LOW, MEDIUM, MID_HIGH, HIGH latest (~30%). UNRESTRICTED never stops.",
-            title="Variance",
+            description="Where the list stops, by estimated ICP fit: MAX_RELEVANCE gives the tightest list, BALANCED the middle, MAX_COVERAGE the longest (stops where fit drops too low). Omit for no automatic stop.",
+            title="Relevance",
         ),
-    ] = "UNRESTRICTED"
+    ] = None
     offset: Annotated[
         int | None,
         Field(
