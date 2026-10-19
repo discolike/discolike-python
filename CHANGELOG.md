@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- SDK/CLI: the API now prices every billed request before it runs and refuses one the remaining balance cannot cover with a 403 whose `detail` is an object (`code: "INSUFFICIENT_BALANCE"`, `message`, `remaining_usd`, `max_affordable_records`, `requested_records`, `upgrade_url`). The SDK raises it as the new `InsufficientBalanceError`, a `PlanAccessError` subclass, so existing `except PlanAccessError` handlers still catch it; its message is the server's `message`, and `max_affordable_records`, `remaining_usd`, `requested_records` and `upgrade_url` are attributes, counted in the request's own size unit (records, or contacts, companies, domains, rows, queries or personas for requests sized by those; the message names it), so a caller can retry at `max_affordable_records`. Only a 403 carrying that code raises it. A request the API could not price answers 503 (`ServerError`), which the SDK retries automatically on GET calls. Any other object `detail` with a `message` now uses that message instead of the raw JSON. The CLI exits 3 with `"code": "insufficient_balance"` and adds `max_affordable_records` and `remaining_usd` to the error JSON. Older SDK versions raise a plain `PlanAccessError` whose message is the JSON body.
+
 ## 0.6.0 (2026-10-12)
 
 - SDK/CLI: the API now limits how much work one account can have queued or running: email lookups (2,000 times the plan multiplier) and three DiscoGen, bulk match, contact bulk match and segment tasks. A submit over a limit is answered 429 with `Retry-After: 60`, which the SDK already waits out and retries, so with the default `max_retries=3` the call blocks for up to three minutes and then raises `RateLimitError` carrying the count and the limit in its message. In the SDK, `Discolike(max_retries=0)` gets the error at once; the CLI has no retry option, so its commands wait and then exit 4. No SDK change; older versions behave the same.

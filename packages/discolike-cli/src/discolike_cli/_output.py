@@ -20,6 +20,7 @@ from discolike._config import NO_CREDENTIAL_MESSAGE
 from discolike._exceptions import APIConnectionError
 from discolike._exceptions import AuthenticationError
 from discolike._exceptions import DiscolikeError
+from discolike._exceptions import InsufficientBalanceError
 from discolike._exceptions import JobFailedError
 from discolike._exceptions import JobTimeoutError
 from discolike._exceptions import NotFoundError
@@ -38,6 +39,7 @@ EXIT_CODES: dict[type, int] = {
     ValidationError: 2,
     AuthenticationError: 3,
     PlanAccessError: 3,
+    InsufficientBalanceError: 3,
     RateLimitError: 4,
     APIConnectionError: 5,
     NotFoundError: 6,
@@ -51,6 +53,7 @@ ERROR_CODES: dict[type, str] = {
     ValidationError: "validation_error",
     AuthenticationError: "auth_invalid",
     PlanAccessError: "plan_access",
+    InsufficientBalanceError: "insufficient_balance",
     RateLimitError: "rate_limited",
     APIConnectionError: "network_error",
     NotFoundError: "not_found",
@@ -150,6 +153,9 @@ def fail(exc: DiscolikeError) -> typer.Exit:
     }
     if isinstance(exc, RateLimitError) and exc.retry_after is not None:
         payload["retry_after"] = exc.retry_after
+    if isinstance(exc, InsufficientBalanceError):
+        payload["max_affordable_records"] = exc.max_affordable_records
+        payload["remaining_usd"] = exc.remaining_usd
     print(json.dumps(payload), file=sys.stderr)
     return typer.Exit(code=exit_code)
 
