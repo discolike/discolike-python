@@ -105,10 +105,11 @@ def discover_command(
     max_digital_footprint: int | None = typer.Option(None, help="Maximum digital footprint score."),
     min_similarity: int | None = typer.Option(None, help="Minimum similarity score to include (0-99)."),
     variance: str | None = typer.Option(
-        None, help="Result diversity control: LOW, MID_LOW, MEDIUM, MID_HIGH, HIGH, UNRESTRICTED."
+        None,
+        help="Where the list stops: LOW (earliest), MID_LOW, MEDIUM, MID_HIGH, HIGH (latest), UNRESTRICTED (never).",
     ),
     consensus: int | None = typer.Option(
-        None, help="Number of top results for the consensus search vector (1-20); higher reduces specificity."
+        None, help="Deprecated, no-op. Discover applies consensus itself to single-domain lookalike searches."
     ),
     redirect: bool | None = typer.Option(None, "--redirect/--no-redirect", help=REDIRECT_HELP),
     exclude_leadgen: bool | None = typer.Option(
@@ -118,7 +119,7 @@ def discover_command(
         None, "--retrieval/--no-retrieval", help="Enable page data retrieval using the Extract API."
     ),
     enhanced: bool | None = typer.Option(
-        None, "--enhanced/--no-enhanced", help="Enable AI-powered result enhancement for improved relevance."
+        None, "--enhanced/--no-enhanced", help="Deprecated, no-op. Discover no longer adds AI-suggested domains."
     ),
     include_search_domains: bool | None = typer.Option(
         None,

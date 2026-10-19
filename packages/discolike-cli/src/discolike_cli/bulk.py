@@ -158,7 +158,8 @@ def companies_command(
     employee_range: str | None = typer.Option(None, help="Employee count range filter."),
     revenue_range: str | None = typer.Option(None, help="Revenue range filter."),
     variance: str | None = typer.Option(
-        None, help="Result diversity: LOW, MID_LOW, MEDIUM, MID_HIGH, HIGH, UNRESTRICTED."
+        None,
+        help="Where the list stops: LOW (earliest), MID_LOW, MEDIUM, MID_HIGH, HIGH (latest), UNRESTRICTED (never).",
     ),
     exclusion_query_id: list[str] | None = typer.Option(None, help=EXCLUSION_QUERY_ID_HELP),
     param: list[str] | None = typer.Option(None, "--param", help=PARAM_HELP),

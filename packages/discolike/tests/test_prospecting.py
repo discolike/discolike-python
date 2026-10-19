@@ -735,3 +735,12 @@ def test_answer_intake_rejects_empty_answers_before_sending(make_client: ClientF
     with make_client(handler) as client, pytest.raises(ValidationError):
         client.prospecting.answer_intake(RUN_ID, {}, idempotency_key="k")
     assert seen == []
+
+
+def test_run_parses_the_open_question_of_a_needs_input_run() -> None:
+    question = {"question_seq": 4, "reason": "plan_review", "content": "Approve the plan?", "replies": ["Approve"]}
+    run = module.ProspectingRun.model_validate(run_payload() | {"question": question})
+    assert run.question == module.ProspectingOpenQuestion(
+        question_seq=4, reason="plan_review", content="Approve the plan?", replies=["Approve"]
+    )
+    assert module.ProspectingRun.model_validate(run_payload()).question is None
