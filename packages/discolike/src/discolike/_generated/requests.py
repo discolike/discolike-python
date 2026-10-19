@@ -2071,13 +2071,6 @@ class DiscoverParams(DiscolikeRequest):
             title="Retrieval",
         ),
     ] = False
-    enhanced: Annotated[
-        bool | None,
-        Field(
-            description="Enable AI-powered result enhancement for improved relevance.",
-            title="Enhanced",
-        ),
-    ] = False
     include_search_domains: Annotated[
         bool | None,
         Field(
@@ -2094,15 +2087,6 @@ class DiscoverParams(DiscolikeRequest):
             title="Max Records",
         ),
     ] = 100
-    consensus: Annotated[
-        int | None,
-        Field(
-            description="Number of top results for consensus search vector (1-20). Higher values reduce specificity.",
-            ge=1,
-            le=20,
-            title="Consensus",
-        ),
-    ] = 1
     min_similarity: Annotated[
         int | None,
         Field(
@@ -2115,7 +2099,7 @@ class DiscoverParams(DiscolikeRequest):
     variance: Annotated[
         Literal["LOW", "MID_LOW", "MEDIUM", "MID_HIGH", "HIGH", "UNRESTRICTED"] | None,
         Field(
-            description="Result diversity control: LOW, MID_LOW, MEDIUM, MID_HIGH, HIGH, UNRESTRICTED.",
+            description="Where the list stops: LOW earliest (rows ~70% fit), MID_LOW, MEDIUM, MID_HIGH, HIGH latest (~30%). UNRESTRICTED never stops.",
             title="Variance",
         ),
     ] = "UNRESTRICTED"
