@@ -314,7 +314,10 @@ def test_discogen_models_hits_models_endpoint(install_build_client: Callable[[Ha
     install_build_client(handler)
     result = runner.invoke(app, ["discogen", "models"])
     assert result.exit_code == 0, result.output
-    assert json.loads(result.stdout) == {"models": {"openai": [{"name": "gpt-5.4", "supports_web_search": False}]}}
+    assert json.loads(result.stdout) == {
+        "models": {"openai": [{"name": "gpt-5.4", "supports_web_search": False}]},
+        "provider_regions": {},
+    }
 
 
 def test_discogen_status_default_family_discogen(install_build_client: Callable[[Handler], None]) -> None:

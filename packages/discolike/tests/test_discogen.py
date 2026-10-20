@@ -140,7 +140,8 @@ def test_models(make_client: ClientFactory) -> None:
                 "models": {
                     "xai": [{"name": "grok-4", "supports_web_search": True}],
                     "openai": [{"name": "gpt-5.4", "supports_web_search": False}],
-                }
+                },
+                "provider_regions": {"bedrock": ["us-east-1", "us-west-2"]},
             },
         )
 
@@ -152,6 +153,7 @@ def test_models(make_client: ClientFactory) -> None:
     assert result.models["xai"][0].name == "grok-4"
     assert result.models["xai"][0].supports_web_search is True
     assert result.models["openai"][0].name == "gpt-5.4"
+    assert result.provider_regions == {"bedrock": ["us-east-1", "us-west-2"]}
 
 
 def test_job_reattaches_without_http_call(make_client: ClientFactory) -> None:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import urlencode
+
 import typer
 
 from discolike.requests import LLMProviderCreateRequest
@@ -14,6 +16,20 @@ FORMAT_HELP = "Output format: json or table (table auto-selected on a TTY; falls
 
 search_providers_app = typer.Typer(help="Manage BYOK web search provider integrations (Tavily, Serper, etc.).")
 llm_providers_app = typer.Typer(help="Manage BYOK LLM provider integrations (OpenAI, Anthropic, custom endpoints).")
+
+LLM_PROVIDER_HELP = "LLM provider key, e.g. openai, anthropic, bedrock, snowflake, watsonx, or custom."
+REGION_HELP = (
+    "Provider region: an AWS region for bedrock and bedrock_mantle, a watsonx region (us-south, eu-de, ...) "
+    "for watsonx. `discogen models` lists them under provider_regions."
+)
+ACCOUNT_HELP = "Snowflake account identifier, e.g. orgname-accountname (snowflake only)."
+PROJECT_HELP = "watsonx project ID (watsonx only)."
+
+
+def _with_model_settings(model_name: str, *, region: str | None, account: str | None, project: str | None) -> str:
+    """The API reads provider settings from model_name after "#", e.g. "<model>#region=us-east-1"."""
+    settings = {key: value for key, value in (("region", region), ("account", account), ("project", project)) if value}
+    return f"{model_name}#{urlencode(settings)}" if settings else model_name
 
 
 @search_providers_app.command("list")
@@ -149,10 +165,13 @@ def llm_list_command(
 def llm_create_command(
     ctx: typer.Context,
     name: str = typer.Option(..., "--name", help="User-friendly name for the integration."),
-    provider: str = typer.Option(..., "--provider", help="LLM provider name: openai, anthropic, or custom."),
+    provider: str = typer.Option(..., "--provider", help=LLM_PROVIDER_HELP),
     api_key: str = typer.Option(..., "--api-key", help="API key for the provider."),
     model_name: str = typer.Option(..., "--model-name", help="Default model name for this integration."),
     base_url: str | None = typer.Option(None, "--base-url", help="Endpoint URL (required for the custom provider)."),
+    region: str | None = typer.Option(None, "--region", help=REGION_HELP),
+    account: str | None = typer.Option(None, "--account", help=ACCOUNT_HELP),
+    project: str | None = typer.Option(None, "--project", help=PROJECT_HELP),
 ) -> None:
     """Create an LLM provider integration."""
     from discolike_cli.main import get_client
@@ -160,7 +179,12 @@ def llm_create_command(
     request = build_request(
         LLMProviderCreateRequest,
         _merge_params(
-            None, integration_name=name, provider=provider, api_key=api_key, model_name=model_name, base_url=base_url
+            None,
+            integration_name=name,
+            provider=provider,
+            api_key=api_key,
+            model_name=_with_model_settings(model_name, region=region, account=account, project=project),
+            base_url=base_url,
         ),
     )
     emit(get_client(ctx).llm_providers.create(request))
@@ -185,10 +209,13 @@ def llm_update_command(
     ctx: typer.Context,
     integration_id: str = typer.Argument(..., help="ID of the LLM provider integration to update."),
     name: str = typer.Option(..., "--name", help="User-friendly name for the integration."),
-    provider: str = typer.Option(..., "--provider", help="LLM provider name: openai, anthropic, or custom."),
+    provider: str = typer.Option(..., "--provider", help=LLM_PROVIDER_HELP),
     model_name: str = typer.Option(..., "--model-name", help="Default model name for this integration."),
     api_key: str | None = typer.Option(None, "--api-key", help="New API key (omit to keep the stored key)."),
     base_url: str | None = typer.Option(None, "--base-url", help="Endpoint URL (required for the custom provider)."),
+    region: str | None = typer.Option(None, "--region", help=REGION_HELP),
+    account: str | None = typer.Option(None, "--account", help=ACCOUNT_HELP),
+    project: str | None = typer.Option(None, "--project", help=PROJECT_HELP),
 ) -> None:
     """Update an LLM provider integration."""
     from discolike_cli.main import get_client
@@ -196,7 +223,13 @@ def llm_update_command(
     request = build_request(
         LLMProviderUpdateRequest,
         {
-            **_merge_params(None, integration_name=name, provider=provider, model_name=model_name, base_url=base_url),
+            **_merge_params(
+                None,
+                integration_name=name,
+                provider=provider,
+                model_name=_with_model_settings(model_name, region=region, account=account, project=project),
+                base_url=base_url,
+            ),
             "api_key": api_key,
         },
     )
@@ -233,10 +266,13 @@ def llm_set_default_command(
 def llm_test_connection_command(
     ctx: typer.Context,
     name: str = typer.Option("cli-test", "--name", help="Name to label the test configuration."),
-    provider: str = typer.Option(..., "--provider", help="LLM provider name: openai, anthropic, or custom."),
+    provider: str = typer.Option(..., "--provider", help=LLM_PROVIDER_HELP),
     api_key: str = typer.Option(..., "--api-key", help="API key for the provider."),
     model_name: str = typer.Option(..., "--model-name", help="Model name to test against."),
     base_url: str | None = typer.Option(None, "--base-url", help="Endpoint URL (required for the custom provider)."),
+    region: str | None = typer.Option(None, "--region", help=REGION_HELP),
+    account: str | None = typer.Option(None, "--account", help=ACCOUNT_HELP),
+    project: str | None = typer.Option(None, "--project", help=PROJECT_HELP),
 ) -> None:
     """Test a provider configuration before saving it."""
     from discolike_cli.main import get_client
@@ -244,7 +280,12 @@ def llm_test_connection_command(
     request = build_request(
         LLMProviderCreateRequest,
         _merge_params(
-            None, integration_name=name, provider=provider, api_key=api_key, model_name=model_name, base_url=base_url
+            None,
+            integration_name=name,
+            provider=provider,
+            api_key=api_key,
+            model_name=_with_model_settings(model_name, region=region, account=account, project=project),
+            base_url=base_url,
         ),
     )
     emit(get_client(ctx).llm_providers.test_connection(request))
