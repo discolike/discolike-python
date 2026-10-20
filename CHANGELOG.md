@@ -1,11 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.6.1 (2026-10-19)
 
+- SDK/CLI: discover's server-side default for `min_digital_footprint` drops from 50 to 25 when the field is omitted, so lists include more real companies with a thin web presence. Pass `min_digital_footprint=50` (CLI `--min-digital-footprint 50`) to keep the old floor. No SDK change; older versions get the new default too.
 - SDK/CLI: the API now prices every billed request before it runs and refuses one the remaining balance cannot cover with a 403 whose `detail` is an object (`code: "INSUFFICIENT_BALANCE"`, `message`, `remaining_usd`, `max_affordable_records`, `requested_records`, `upgrade_url`). The SDK raises it as the new `InsufficientBalanceError`, a `PlanAccessError` subclass, so existing `except PlanAccessError` handlers still catch it; its message is the server's `message`, and `max_affordable_records`, `remaining_usd`, `requested_records` and `upgrade_url` are attributes, counted in the request's own size unit (records, or contacts, companies, domains, rows, queries or personas for requests sized by those; the message names it), so a caller can retry at `max_affordable_records`. Only a 403 carrying that code raises it. A request the API could not price answers 503 (`ServerError`), which the SDK retries automatically on GET calls. Any other object `detail` with a `message` now uses that message instead of the raw JSON. The CLI exits 3 with `"code": "insufficient_balance"` and adds `max_affordable_records` and `remaining_usd` to the error JSON. Older SDK versions raise a plain `PlanAccessError` whose message is the JSON body.
 - SDK/CLI: `DiscoverParams.relevance` (`MAX_RELEVANCE`, `BALANCED` or `MAX_COVERAGE`) picks where a discover list stops by estimated ICP fit: `MAX_RELEVANCE` returns the tightest list, `MAX_COVERAGE` the longest, stopping where fit drops too low. Left unset it is not sent and the list has no automatic stop. The CLI's `discover` and `bulk companies` gain `--relevance`. It needs an API release that knows the field; an older API ignores it.
 - SDK/CLI: `variance` on discover is deprecated; the API maps its old values onto `relevance`, which wins when both are sent. Use `relevance`. It is dropped from `DiscoverParams`, but passing it still sends it and raises a `DeprecationWarning`, and the SDK no longer checks its value. The CLI keeps `--variance` so existing scripts run, with help marking it deprecated.
-- SDK (note for maintainers): `relevance`, and the removal of `variance`, were written into `discolike/_generated/requests.py` by hand ahead of the platform deploy, so `scripts/gen_requests.py --check` and `scripts/check_contract.py` report them until it lands. Regenerate once the production spec serves them.
 
 ## 0.6.0 (2026-10-12)
 
