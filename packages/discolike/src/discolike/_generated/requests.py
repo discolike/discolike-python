@@ -1759,7 +1759,7 @@ class DiscoverParams(DiscolikeRequest):
     min_digital_footprint: Annotated[
         int | None,
         Field(
-            description="Minimum digital footprint score (0-800). Default 50.",
+            description="Minimum digital footprint score (0-800). Default 25.",
             ge=0,
             le=800,
             title="Min Digital Footprint",
@@ -2099,7 +2099,7 @@ class DiscoverParams(DiscolikeRequest):
     relevance: Annotated[
         Literal["MAX_RELEVANCE", "BALANCED", "MAX_COVERAGE"] | None,
         Field(
-            description="Where the list stops, by estimated ICP fit: MAX_RELEVANCE gives the tightest list, BALANCED the middle, MAX_COVERAGE the longest (stops where fit drops too low). Omit for no automatic stop.",
+            description="How far down the ranked list results go before the estimated ICP fit drops too low. Applies to lookalike searches (icp_text or domain). MAX_RELEVANCE stops earliest with the tightest fit, BALANCED goes further, MAX_COVERAGE serves the longest list. Omit for no automatic stop.",
             title="Relevance",
         ),
     ] = None
@@ -2385,7 +2385,7 @@ class CountParams(DiscolikeRequest):
     min_digital_footprint: Annotated[
         int | None,
         Field(
-            description="Minimum digital footprint score (0-800). Default 50.",
+            description="Minimum digital footprint score (0-800). Default 25.",
             ge=0,
             le=800,
             title="Min Digital Footprint",
