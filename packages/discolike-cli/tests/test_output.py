@@ -11,6 +11,7 @@ import typer
 from discolike import APIConnectionError
 from discolike import AuthenticationError
 from discolike import DiscolikeError
+from discolike import InsufficientBalanceError
 from discolike import JobFailedError
 from discolike import JobTimeoutError
 from discolike import NotFoundError
@@ -154,6 +155,7 @@ def test_emit_table_flag_falls_back_to_json_when_no_scalar_columns(capsys: pytes
         (ValidationError("bad input"), 2),
         (AuthenticationError("no key"), 3),
         (RateLimitError("slow down", retry_after=3), 4),
+        (InsufficientBalanceError("too costly", max_affordable_records=10), 3),
         (ServerError("boom"), 1),
     ],
 )
@@ -184,6 +186,18 @@ def test_fail_rate_limit_includes_retry_after(capsys: pytest.CaptureFixture[str]
     assert result.exit_code == 4
     payload = json.loads(capsys.readouterr().err)
     assert payload["retry_after"] == 3.5
+
+
+def test_fail_insufficient_balance_includes_max_affordable_records(capsys: pytest.CaptureFixture[str]) -> None:
+    exc = InsufficientBalanceError(
+        "too costly", status_code=403, max_affordable_records=60, remaining_usd=3.0, requested_records=250
+    )
+    result = fail(exc)
+    assert result.exit_code == 3
+    payload = json.loads(capsys.readouterr().err)
+    assert payload["code"] == "insufficient_balance"
+    assert payload["max_affordable_records"] == 60
+    assert payload["remaining_usd"] == 3.0
 
 
 def test_fail_rate_limit_without_retry_after_omits_key(capsys: pytest.CaptureFixture[str]) -> None:

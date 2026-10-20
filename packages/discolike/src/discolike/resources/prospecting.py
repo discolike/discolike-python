@@ -103,6 +103,14 @@ class ProspectingInFlight(DiscolikeModel):
     progress: int | None = None
 
 
+class ProspectingOpenQuestion(DiscolikeModel):
+    question_seq: int | None
+    reason: str
+    content: str
+    replies: list[str] = Field(default_factory=list)
+    estimate: dict[str, Any] | None = None
+
+
 class ProspectingRunSummary(DiscolikeModel):
     run_id: UUID
     status: ProspectingStatus
@@ -145,6 +153,9 @@ class ProspectingRun(DiscolikeModel):
     actions_used: int = 0
     max_actions: int
     error: str | None = None
+    question: ProspectingOpenQuestion | None = Field(
+        default=None, description="What a needs_input run waits on; replies are exact labels, empty for free text."
+    )
     title: str | None = None
     plan_version: int = 1
     approved_plan_version: int | None = None

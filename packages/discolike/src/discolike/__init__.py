@@ -5,6 +5,7 @@ from discolike._credentials import OAuthCredential
 from discolike._exceptions import APIConnectionError
 from discolike._exceptions import AuthenticationError
 from discolike._exceptions import DiscolikeError
+from discolike._exceptions import InsufficientBalanceError
 from discolike._exceptions import JobFailedError
 from discolike._exceptions import JobTimeoutError
 from discolike._exceptions import NotFoundError
@@ -51,6 +52,7 @@ __all__ = [
     "EmailJobResult",
     "EnumerationMatch",
     "EnumerationOutput",
+    "InsufficientBalanceError",
     "Job",
     "JobFailedError",
     "JobStatus",

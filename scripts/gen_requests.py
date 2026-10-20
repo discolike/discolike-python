@@ -100,19 +100,7 @@ _BRIEF_CHECKPOINTS_DESCRIPTION = (
 # Properties the SDK ships before the deployed spec has them. Merged in only while the spec
 # lacks them, so each entry clears itself once the platform release lands -- generation prints
 # the ones that have, to be deleted here.
-PENDING_PROPERTIES: dict[str, dict[str, dict[str, Any]]] = {
-    "ProspectingMessageRequest": {
-        "question_seq": {
-            "anyOf": [{"minimum": 1, "type": "integer"}, {"type": "null"}],
-            "default": None,
-            "description": (
-                "The seq of the question message whose suggested reply this is; the reply answers that question "
-                "only, never a newer one."
-            ),
-            "title": "Question Seq",
-        }
-    }
-}
+PENDING_PROPERTIES: dict[str, dict[str, dict[str, Any]]] = {}
 
 # Properties generated from this schema rather than the spec's, whatever the spec says. The
 # platform's sub-industry enum lists parent-qualified keys only; a bare label reaches it through

@@ -280,7 +280,7 @@ def test_bulk_companies_takes_params_file_and_drops_managed_keys(
     install_build_client: Callable[[Handler], None], tmp_path: Path
 ) -> None:
     form = tmp_path / "form.json"
-    form.write_text(json.dumps({"country": ["US"], "variance": "MID_HIGH", "max_records": 5, "offset": 99}))
+    form.write_text(json.dumps({"country": ["US"], "relevance": "MAX_COVERAGE", "max_records": 5, "offset": 99}))
     recorder = Recorder(discover=[[]], queries_exclusion_list=[{"query_id": "q"}])
     install_build_client(recorder)
     result = runner.invoke(
@@ -292,6 +292,8 @@ def test_bulk_companies_takes_params_file_and_drops_managed_keys(
             str(form),
             "--param",
             "consensus=3",
+            "--relevance",
+            "BALANCED",
             "--variance",
             "LOW",
             "--out",
@@ -302,6 +304,7 @@ def test_bulk_companies_takes_params_file_and_drops_managed_keys(
     assert result.exit_code == 0, result.output
     params = recorder.params("/v1/discover")[0]
     assert params.get_list("country") == ["US"]
+    assert params.get("relevance") == "BALANCED"
     assert params.get("variance") == "LOW"
     assert params.get("consensus") == "3"
     assert params.get("max_records") == "10000"
@@ -316,7 +319,7 @@ def test_bulk_companies_validates_before_first_call(
     recorder = Recorder(discover=[[]])
     install_build_client(recorder)
     result = runner.invoke(
-        app, ["bulk", "companies", "--variance", "BOGUS", "--out", str(tmp_path / "c.csv"), *NO_LIMIT]
+        app, ["bulk", "companies", "--relevance", "BOGUS", "--out", str(tmp_path / "c.csv"), *NO_LIMIT]
     )
     assert result.exit_code == 2
     assert "ValidationError" in result.output

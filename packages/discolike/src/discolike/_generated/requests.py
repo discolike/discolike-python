@@ -1759,7 +1759,7 @@ class DiscoverParams(DiscolikeRequest):
     min_digital_footprint: Annotated[
         int | None,
         Field(
-            description="Minimum digital footprint score (0-800). Default 50.",
+            description="Minimum digital footprint score (0-800). Default 25.",
             ge=0,
             le=800,
             title="Min Digital Footprint",
@@ -2071,13 +2071,6 @@ class DiscoverParams(DiscolikeRequest):
             title="Retrieval",
         ),
     ] = False
-    enhanced: Annotated[
-        bool | None,
-        Field(
-            description="Enable AI-powered result enhancement for improved relevance.",
-            title="Enhanced",
-        ),
-    ] = False
     include_search_domains: Annotated[
         bool | None,
         Field(
@@ -2094,15 +2087,6 @@ class DiscoverParams(DiscolikeRequest):
             title="Max Records",
         ),
     ] = 100
-    consensus: Annotated[
-        int | None,
-        Field(
-            description="Number of top results for consensus search vector (1-20). Higher values reduce specificity.",
-            ge=1,
-            le=20,
-            title="Consensus",
-        ),
-    ] = 1
     min_similarity: Annotated[
         int | None,
         Field(
@@ -2112,13 +2096,13 @@ class DiscoverParams(DiscolikeRequest):
             title="Min Similarity",
         ),
     ] = 0
-    variance: Annotated[
-        Literal["LOW", "MID_LOW", "MEDIUM", "MID_HIGH", "HIGH", "UNRESTRICTED"] | None,
+    relevance: Annotated[
+        Literal["MAX_RELEVANCE", "BALANCED", "MAX_COVERAGE"] | None,
         Field(
-            description="Result diversity control: LOW, MID_LOW, MEDIUM, MID_HIGH, HIGH, UNRESTRICTED.",
-            title="Variance",
+            description="How far down the ranked list results go before the estimated ICP fit drops too low. Applies to lookalike searches (icp_text or domain). MAX_RELEVANCE stops earliest with the tightest fit, BALANCED goes further, MAX_COVERAGE serves the longest list. Omit for no automatic stop.",
+            title="Relevance",
         ),
-    ] = "UNRESTRICTED"
+    ] = None
     offset: Annotated[
         int | None,
         Field(
@@ -2401,7 +2385,7 @@ class CountParams(DiscolikeRequest):
     min_digital_footprint: Annotated[
         int | None,
         Field(
-            description="Minimum digital footprint score (0-800). Default 50.",
+            description="Minimum digital footprint score (0-800). Default 25.",
             ge=0,
             le=800,
             title="Min Digital Footprint",

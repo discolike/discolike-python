@@ -53,6 +53,29 @@ def test_email_validated_is_deprecated_but_still_accepted(model: type[DiscolikeR
     assert request.to_wire() == {"email_validated": True}
 
 
+@pytest.mark.parametrize(("name", "value"), [("consensus", 2), ("enhanced", True), ("variance", "LOW")])
+def test_discover_deprecated_fields_warn_but_are_still_sent(name: str, value: object) -> None:
+    assert name not in DiscoverParams.model_fields
+    with pytest.warns(DeprecationWarning, match=f"{name} is deprecated"):
+        request = DiscoverParams.model_validate({name: value})
+    assert request.to_wire() == {name: value}
+
+
+def test_discover_relevance_is_omitted_unless_set() -> None:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert DiscoverParams().to_wire() == {}
+        assert DiscoverParams(relevance="MAX_COVERAGE").to_wire() == {"relevance": "MAX_COVERAGE"}
+    with pytest.raises(pydantic.ValidationError, match="relevance"):
+        DiscoverParams.model_validate({"relevance": "BOGUS"})
+
+
+def test_contacts_consensus_is_not_deprecated() -> None:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert ContactsSearchParams(consensus=2).to_wire() == {"consensus": 2}
+
+
 def test_unset_email_validated_does_not_warn() -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error")

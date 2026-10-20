@@ -30,6 +30,14 @@ DEPRECATED_REQUEST_FIELDS: dict[str, str] = {
         "contact search no longer filters on email verification; verify emails instead."
     ),
 }
+DEPRECATED_MODEL_FIELDS: dict[str, dict[str, str]] = {
+    "DiscoverParams": {
+        "consensus": "consensus is deprecated and ignored: discover applies consensus itself to single-domain lookalike searches.",
+        "enhanced": "enhanced is deprecated and ignored: discover no longer adds AI-suggested domains.",
+        "variance": "variance is deprecated: LOW, MID_LOW and MEDIUM map to relevance MAX_RELEVANCE, MID_HIGH and HIGH to BALANCED, "
+        "UNRESTRICTED to no stop; relevance wins when both are sent. Use relevance.",
+    },
+}
 
 
 class DiscolikeModel(pydantic.BaseModel):
@@ -78,8 +86,9 @@ class DiscolikeRequest(pydantic.BaseModel):
     @classmethod
     def _warn_deprecated_fields(cls, data: object) -> object:
         if isinstance(data, dict):
-            for name in sorted(DEPRECATED_REQUEST_FIELDS.keys() & data.keys()):
-                warnings.warn(DEPRECATED_REQUEST_FIELDS[name], DeprecationWarning, stacklevel=2)
+            deprecated = DEPRECATED_REQUEST_FIELDS | DEPRECATED_MODEL_FIELDS.get(cls.__name__, {})
+            for name in sorted(deprecated.keys() & data.keys()):
+                warnings.warn(deprecated[name], DeprecationWarning, stacklevel=2)
         return data
 
     # Mirrors the platform's text_or_intake rule on ProspectingMessageRequest, which the spec cannot express.
