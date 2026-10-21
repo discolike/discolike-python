@@ -68,7 +68,7 @@ def main() -> None:
             chunk = contacts[start : start + MAX_CONTACTS_PER_BATCH]
             print(f"Submitting batch of {len(chunk)} contacts ({start + len(chunk)}/{len(contacts)})...")
             batch = client.email.find_batch(FindEmailBatchRequest.model_validate({"requests": chunk}))
-            results = batch.results(timeout=args.timeout)
+            results = batch.results(max_wait=args.timeout)
             for item in results.results:
                 output = item.result
                 if not isinstance(output, EnumerationOutput):
