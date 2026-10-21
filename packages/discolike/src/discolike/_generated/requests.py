@@ -2905,7 +2905,6 @@ class LLMProviderCreateRequest(DiscolikeRequest):
             title="Provider",
         ),
     ]
-    api_key: Annotated[str, Field(description="API key for the provider", title="Api Key")]
     model_name: Annotated[
         str,
         Field(description="Default model name for this integration", title="Model Name"),
@@ -2917,6 +2916,7 @@ class LLMProviderCreateRequest(DiscolikeRequest):
             title="Base Url",
         ),
     ] = None
+    api_key: Annotated[str, Field(description="API key for the provider", title="Api Key")]
 
 
 class LLMProviderUpdateRequest(DiscolikeRequest):
@@ -2934,13 +2934,6 @@ class LLMProviderUpdateRequest(DiscolikeRequest):
             title="Provider",
         ),
     ]
-    api_key: Annotated[
-        str | None,
-        Field(
-            description="API key for the provider (null to keep existing)",
-            title="Api Key",
-        ),
-    ]
     model_name: Annotated[
         str,
         Field(description="Default model name for this integration", title="Model Name"),
@@ -2952,6 +2945,13 @@ class LLMProviderUpdateRequest(DiscolikeRequest):
             title="Base Url",
         ),
     ] = None
+    api_key: Annotated[
+        str | None,
+        Field(
+            description="API key for the provider (null to keep existing)",
+            title="Api Key",
+        ),
+    ]
 
 
 class SearchProviderRequest(DiscolikeRequest):
@@ -3084,7 +3084,7 @@ class BulkContactMatchQueryItem(DiscolikeRequest):
     name: Annotated[
         str | None,
         Field(
-            description="Person name to search for. Required unless email is provided.",
+            description="Person name to search for. Required unless email or linkedin is provided.",
             title="Name",
         ),
     ] = None
@@ -3093,6 +3093,13 @@ class BulkContactMatchQueryItem(DiscolikeRequest):
         Field(
             description="Email address for exact lookup. When found, name/company matching is skipped for this row.",
             title="Email",
+        ),
+    ] = None
+    linkedin: Annotated[
+        str | None,
+        Field(
+            description="LinkedIn profile URL or username for exact lookup, tried before email. When found, email and name/company matching are skipped for this row.",
+            title="Linkedin",
         ),
     ] = None
     company_name: Annotated[

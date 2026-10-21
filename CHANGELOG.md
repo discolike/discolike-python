@@ -4,6 +4,8 @@
 
 - SDK/CLI: Python 3.15 is supported and tested in CI.
 - SDK/CLI: an LLM integration's `model_name` can carry provider settings after `#`, as URL query parameters: `region` for `bedrock` and `bedrock_mantle` (any AWS region, optional), `account` for `snowflake` (account identifier, with a programmatic access token as `api_key`) and `region` plus `project` for `watsonx`, e.g. `us.anthropic.claude-sonnet-4-5-20250929-v1:0#region=us-east-1`. Snowflake and watsonx become usable as providers. An unknown setting or region is a 400 (`ValidationError`). `DiscogenModels.provider_regions` lists the accepted regions per provider. The CLI's `llm-providers create`, `update` and `test-connection` gain `--region`, `--account` and `--project`, which build the suffix for you, and `discogen models` output gains a `provider_regions` key. It needs an API release that knows the settings; older SDKs can already send the suffix in `model_name`.
+- SDK: `BulkContactMatchQueryItem` gains `linkedin`, a LinkedIn profile URL or username matched exactly before `email`, then name and company, so a list of profile URLs alone returns the matching contacts. It needs an API release that knows the field.
+- SDK (note for maintainers): `discolike/_generated/requests.py` is regenerated from the dev spec, which adds `linkedin` and moves `api_key` after `base_url` on the LLM provider request models (keyword arguments, so no caller change).
 
 ## 0.6.1 (2026-10-19)
 
