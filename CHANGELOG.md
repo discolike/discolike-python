@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.6.2 (2026-10-21)
 
+- SDK/CLI: Python 3.15 is supported and tested in CI.
 - SDK/CLI: an LLM integration's `model_name` can carry provider settings after `#`, as URL query parameters: `region` for `bedrock` and `bedrock_mantle` (any AWS region, optional), `account` for `snowflake` (account identifier, with a programmatic access token as `api_key`) and `region` plus `project` for `watsonx`, e.g. `us.anthropic.claude-sonnet-4-5-20250929-v1:0#region=us-east-1`. Snowflake and watsonx become usable as providers. An unknown setting or region is a 400 (`ValidationError`). `DiscogenModels.provider_regions` lists the accepted regions per provider. The CLI's `llm-providers create`, `update` and `test-connection` gain `--region`, `--account` and `--project`, which build the suffix for you, and `discogen models` output gains a `provider_regions` key. It needs an API release that knows the settings; older SDKs can already send the suffix in `model_name`.
 
 ## 0.6.1 (2026-10-19)
