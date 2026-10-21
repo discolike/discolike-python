@@ -208,7 +208,7 @@ def main() -> None:
                     job = client.contacts.bulk_match(
                         BulkContactMatchRequest.model_validate({"queries": queries, "limit": 1})
                     )
-                    status = job.wait(timeout=args.timeout)
+                    status = job.wait(max_wait=args.timeout)
                 except Exception as exc:  # leave the chunk un-checkpointed so a rerun retries it
                     failed_chunks += 1
                     print(f"  ! {label} failed ({exc}); rows left pending, rerun to retry")

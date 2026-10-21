@@ -54,7 +54,7 @@ def main() -> None:
 
     print(f"\nRunning DiscoGen over {len(domains)} domains: {args.query!r}")
     job = client.discogen.process(DiscoGenProcessRequest(query=args.query, domains=domains, web_search=True))
-    status = job.wait(timeout=args.timeout, on_poll=lambda s: print(f"  status={s.status} progress={s.progress}%"))
+    status = job.wait(max_wait=args.timeout, on_poll=lambda s: print(f"  status={s.status} progress={s.progress}%"))
 
     print("\nEnriched results:")
     for row in status.results or []:
