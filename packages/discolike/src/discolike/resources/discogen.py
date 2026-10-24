@@ -46,6 +46,10 @@ class DiscogenModelInfo(DiscolikeModel):
 
 class DiscogenModels(DiscolikeModel):
     models: dict[str, list[DiscogenModelInfo]] = pydantic.Field(default_factory=dict)
+    provider_regions: dict[str, list[str]] = pydantic.Field(
+        default_factory=dict,
+        description='Regions each regional provider accepts; pick one with "#region=<region>" in model_name.',
+    )
 
 
 class DiscogenResource(SyncAPIResource):

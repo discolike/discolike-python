@@ -138,6 +138,71 @@ def test_llm_providers_create_posts_json(install_build_client: Callable[[Handler
     }
 
 
+def test_llm_providers_create_appends_provider_settings_to_model_name(
+    install_build_client: Callable[[Handler], None],
+) -> None:
+    captured: dict[str, dict[str, str]] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"message": "created", "integration_id": "llm1"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "llm-providers",
+            "create",
+            "--name",
+            "watsonx",
+            "--provider",
+            "watsonx",
+            "--api-key",
+            "ibm-key",
+            "--model-name",
+            "watsonx/ibm/granite-3-8b-instruct",
+            "--region",
+            "eu-de",
+            "--project",
+            "11111111-2222-3333-4444-555555555555",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"]["model_name"] == (
+        "watsonx/ibm/granite-3-8b-instruct#region=eu-de&project=11111111-2222-3333-4444-555555555555"
+    )
+
+
+def test_llm_providers_update_flags_override_an_existing_settings_suffix(
+    install_build_client: Callable[[Handler], None],
+) -> None:
+    captured: dict[str, dict[str, str]] = {}
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx2.Response(200, json={"message": "updated"})
+
+    install_build_client(handler)
+    result = runner.invoke(
+        app,
+        [
+            "llm-providers",
+            "update",
+            "llm1",
+            "--name",
+            "watsonx",
+            "--provider",
+            "watsonx",
+            "--model-name",
+            "watsonx/ibm/granite-3-8b-instruct#region=us-south&project=p1",
+            "--region",
+            "eu-de",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert captured["body"]["model_name"] == "watsonx/ibm/granite-3-8b-instruct#region=eu-de&project=p1"
+
+
 def test_llm_providers_update_keeps_null_api_key(install_build_client: Callable[[Handler], None]) -> None:
     captured: dict[str, object] = {}
 

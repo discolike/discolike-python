@@ -24,7 +24,7 @@ uv run pytest packages/discolike/tests -q
 uv run pytest packages/discolike-cli/tests -q
 ```
 
-CI runs the same checks across Python 3.11–3.14.
+CI runs the same checks across Python 3.11–3.15.
 
 ## Branches
 
