@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from urllib.parse import parse_qsl
 from urllib.parse import urlencode
 
 import typer
@@ -28,8 +29,11 @@ PROJECT_HELP = "watsonx project ID (watsonx only)."
 
 def _with_model_settings(model_name: str, *, region: str | None, account: str | None, project: str | None) -> str:
     """The API reads provider settings from model_name after "#", e.g. "<model>#region=us-east-1"."""
-    settings = {key: value for key, value in (("region", region), ("account", account), ("project", project)) if value}
-    return f"{model_name}#{urlencode(settings)}" if settings else model_name
+    flags = {key: value for key, value in (("region", region), ("account", account), ("project", project)) if value}
+    if not flags:
+        return model_name
+    base, _, existing = model_name.partition("#")
+    return f"{base}#{urlencode(dict(parse_qsl(existing)) | flags)}"
 
 
 @search_providers_app.command("list")
