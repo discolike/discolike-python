@@ -297,6 +297,22 @@ class ContactsRunRequest(DiscolikeRequest):
         Annotated[int, Field(ge=1, le=50)] | Literal["all"] | None,
         Field(description="Maximum contacts per company, or 'all'.", title="Per Company"),
     ] = 10
+    max_contacts: Annotated[
+        Annotated[int, Field(ge=1, le=10000)] | None,
+        Field(
+            description="Maximum contacts to keep across all companies, best fit first. Omit to keep up to "
+            "per_company at every company.",
+            title="Max Contacts",
+        ),
+    ] = None
+    auto_stop: Annotated[
+        bool | None,
+        Field(
+            description="Drop contacts below the relevance level's fit floor. False keeps every contact up to "
+            "per_company, best fit first.",
+            title="Auto Stop",
+        ),
+    ] = True
     find_missing: FindMissingSpec | None = None
     email_cap_usd: Annotated[
         Annotated[Decimal, Field(ge=0)] | None,

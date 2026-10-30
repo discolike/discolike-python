@@ -5,6 +5,7 @@ from decimal import Decimal
 from typing import Any
 
 import httpx2
+import pydantic
 import pytest
 
 import discolike.resources.contacts_run as module
@@ -117,6 +118,23 @@ def test_create_posts_body_and_parses_run(make_client: ClientFactory) -> None:
     assert run.steps["find_contacts"].estimate_usd == Decimal("1.50")
     assert run.total_charged_usd == Decimal("0.75")
     assert run.model_extra == {"future_field": True}
+
+
+def test_max_contacts_and_auto_stop_sent_only_when_set() -> None:
+    assert request().to_wire().keys() == {"companies", "people"}
+    body = ContactsRunRequest.model_validate(request().to_wire() | {"max_contacts": 50, "auto_stop": False})
+    assert body.to_wire() == request().to_wire() | {"max_contacts": 50, "auto_stop": False}
+
+
+def test_max_contacts_out_of_range_rejected() -> None:
+    with pytest.raises(pydantic.ValidationError):
+        ContactsRunRequest.model_validate(
+            {
+                "companies": {"source": "domains", "domains": ["acme.com"]},
+                "people": {"titles": ["Owner"]},
+                "max_contacts": 0,
+            }
+        )
 
 
 def test_prompt_companies_default_to_500() -> None:

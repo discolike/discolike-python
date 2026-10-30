@@ -98,7 +98,7 @@ rows = client.contacts_run.rows(run.id)  # Every row, paged for you.
 run = client.contacts_run.continue_(run.id, ContinueRunRequest(generation=run.generation, email_cap_usd=20))
 ```
 
-`companies` takes `{"source": "prompt", "icp_text": ...}` (up to `max_companies`, default 500), `{"source": "domains", "domains": [...]}` or `{"source": "lookalike", "persona_ids": [...]}`. `wait(follow=True)` also stops at a failed step, which you continue with `redo=True`. Every continue carries the run's current `generation`; a stale one is a 409 (`ValidationError`), and a run idle for 30 days answers 410. `contacts.search`, `contacts.count` and `contacts.generate` are deprecated in favor of contacts runs; their endpoints sunset on 2026-12-31.
+`companies` takes `{"source": "prompt", "icp_text": ...}` (up to `max_companies`, default 500), `{"source": "domains", "domains": [...]}` or `{"source": "lookalike", "persona_ids": [...]}`. `max_contacts` keeps only the best-fit N contacts across all companies (`per_company` still caps each one), and `auto_stop=False` turns off the relevance cut, keeping every contact up to `per_company`, best fit first; both stay off the wire unless set. `wait(follow=True)` also stops at a failed step, which you continue with `redo=True`. Every continue carries the run's current `generation`; a stale one is a 409 (`ValidationError`), and a run idle for 30 days answers 410. `contacts.search`, `contacts.count` and `contacts.generate` are deprecated in favor of contacts runs; their endpoints sunset on 2026-12-31.
 
 ### Contact generation without an LLM key
 
