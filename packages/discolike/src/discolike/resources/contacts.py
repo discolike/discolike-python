@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import warnings
+
 import pydantic
 
 from discolike._jobs import FAMILY_CONTACTMATCH
@@ -21,6 +23,13 @@ from discolike.resources.companies import CompanyProfile
 from discolike.resources.discovery import Count
 
 NATIVE_ENGINE = "native"
+DEPRECATED_SEARCH_MESSAGE = (
+    "contacts.{method}() is deprecated and its endpoint sunsets on 2026-12-31; use client.contacts_run"
+)
+
+
+def _warn_deprecated(method: str) -> None:
+    warnings.warn(DEPRECATED_SEARCH_MESSAGE.format(method=method), DeprecationWarning, stacklevel=3)
 
 
 class Contact(DiscolikeModel):
@@ -68,11 +77,13 @@ class ContactsDiscoverResponse(DiscolikeModel):
 class ContactsResource(SyncAPIResource):
     @api_route("GET", "/contacts")
     def search(self, params: ContactsSearchParams) -> list[Contact]:
+        _warn_deprecated("search")
         response = self._transport.request("GET", "/contacts", params=params.to_wire())
         return [Contact.model_validate(item) for item in response.json()]
 
     @api_route("GET", "/contacts/count")
     def count(self, params: ContactsCountParams) -> Count:
+        _warn_deprecated("count")
         return Count.model_validate(self._transport.request("GET", "/contacts/count", params=params.to_wire()).json())
 
     @api_route("GET", "/contacts/lookup")
@@ -98,6 +109,7 @@ class ContactsResource(SyncAPIResource):
 
     @api_route("POST", "/contacts/discover/generate")
     def generate(self, request: ContactGenerateRequest) -> Job:
+        _warn_deprecated("generate")
         response = self._transport.request("POST", "/contacts/discover/generate", json_body=request.to_wire())
         return Job(self._transport, task_family=FAMILY_DISCOGEN, task_id=response.json()["task_id"])
 
@@ -105,11 +117,13 @@ class ContactsResource(SyncAPIResource):
 class AsyncContactsResource(AsyncAPIResource):
     @api_route("GET", "/contacts")
     async def search(self, params: ContactsSearchParams) -> list[Contact]:
+        _warn_deprecated("search")
         response = await self._transport.request("GET", "/contacts", params=params.to_wire())
         return [Contact.model_validate(item) for item in response.json()]
 
     @api_route("GET", "/contacts/count")
     async def count(self, params: ContactsCountParams) -> Count:
+        _warn_deprecated("count")
         response = await self._transport.request("GET", "/contacts/count", params=params.to_wire())
         return Count.model_validate(response.json())
 
@@ -135,5 +149,6 @@ class AsyncContactsResource(AsyncAPIResource):
 
     @api_route("POST", "/contacts/discover/generate")
     async def generate(self, request: ContactGenerateRequest) -> AsyncJob:
+        _warn_deprecated("generate")
         response = await self._transport.request("POST", "/contacts/discover/generate", json_body=request.to_wire())
         return AsyncJob(self._transport, task_family=FAMILY_DISCOGEN, task_id=response.json()["task_id"])

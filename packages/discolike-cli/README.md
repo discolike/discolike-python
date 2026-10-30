@@ -37,6 +37,10 @@ discolike extract https://stripe.com/enterprise
 
 Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `append`, `segment` — plus `auth`, `bulk`, `company`, `contacts`, `discogen`, `prospecting`, `queries`, `account`, `search-providers`, and `llm-providers` command groups.
 
+### Contacts runs
+
+`discolike contacts run create --params-file run.json` starts a contacts run from a JSON request (`companies`, `people`, `relevance`, `per_company`, `find_missing`, `email_cap_usd`, `mode`). `get`, `list`, `continue`, `cancel` and `title-preview` mirror the SDK. `wait RUN_ID` blocks until the run finishes or pauses after a step; `--follow` continues each step for you and stops before `find_emails` unless the run was created with a cap or you pass `--email-cap-usd`. `contacts search`, `count` and `generate` still work but print a deprecation line on stderr after their output: their endpoints sunset on 2026-12-31. `email find --suggested-email` verifies an address you already have before looking for the right one.
+
 ### Volume pulls
 
 `discolike bulk` walks past the 10,000-per-search ceiling and pulls contacts for a whole domain list into one CSV, with checkpoint and resume:

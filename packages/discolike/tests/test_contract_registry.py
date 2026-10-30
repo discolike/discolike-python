@@ -7,8 +7,8 @@ import typing
 from discolike._models import DiscolikeModel
 from discolike.resources._base import get_discolike_route
 
-# wait orchestrates repeated get() calls and is not a separate route.
-ALLOW_UNSTAMPED = {"job", "batch", "wait"}
+# wait and rows orchestrate repeated get() calls and are not separate routes.
+ALLOW_UNSTAMPED = {"job", "batch", "wait", "rows"}
 SCRIPT_PATH = pathlib.Path(__file__).parents[3] / "scripts" / "check_contract.py"
 
 

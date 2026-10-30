@@ -29,7 +29,10 @@ DELIBERATELY_OMITTED: dict[str, frozenset[str]] = {
 }
 # ``discolike bulk`` takes the full vocabulary through --params-file / --param and manages the paging
 # fields itself; its flags are the handful a volume run needs, not one per SDK field.
-PARAMS_FILE_SITES = frozenset({"bulk.companies_command", "bulk.estimate_command", "bulk.contacts_command"})
+# ``contacts run create`` takes its nested companies/people request the same way.
+PARAMS_FILE_SITES = frozenset(
+    {"bulk.companies_command", "bulk.estimate_command", "bulk.contacts_command", "contacts_run.create_command"}
+)
 DICT_ONLY_FIELDS: dict[str, frozenset[str]] = {
     "ContactGenerateRequest": frozenset({"initial_contact_counts"}),
     "DiscoGenProcessRequest": frozenset({"previous_discogen_data"}),
@@ -97,7 +100,7 @@ def test_cli_forwards_every_sdk_field(site: str, model_name: str, forwarded: set
 
 
 def test_every_request_model_has_a_cli_command() -> None:
-    used = {model_name for _, model_name, _ in SITES}
+    used = {model_name for _, model_name, _ in _build_request_sites()}
     declared = {
         name
         for name in dir(requests_module)

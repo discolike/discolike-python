@@ -21,6 +21,8 @@ from discolike.resources.contacts import NATIVE_ENGINE
 from discolike_testkit import AsyncClientFactory
 from discolike_testkit import ClientFactory
 
+pytestmark = pytest.mark.filterwarnings("ignore:contacts\\.\\w+\\(\\) is deprecated:DeprecationWarning")
+
 
 def test_search_builds_query_and_parses_list(make_client: ClientFactory) -> None:
     seen = {}
@@ -343,3 +345,41 @@ def test_route_metadata_stamped() -> None:
     assert get_discolike_route(ContactsResource.bulk_match) == ("POST", "/contacts/bulk-match", True)
     assert get_discolike_route(ContactsResource.discover) == ("POST", "/contacts/discover", True)
     assert get_discolike_route(ContactsResource.generate) == ("POST", "/contacts/discover/generate", True)
+
+
+@pytest.mark.parametrize(
+    ("method", "request_model"),
+    [
+        ("search", ContactsSearchParams(domain=["a.com"])),
+        ("count", ContactsCountParams(domain=["a.com"])),
+        ("generate", ContactGenerateRequest(icp_text="VPs", domains=["a.com"])),
+    ],
+)
+def test_old_search_methods_warn_and_still_work(make_client: ClientFactory, method: str, request_model: object) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json=[] if method == "search" else {"count": 1, "task_id": "t-1"})
+
+    with make_client(handler) as client, pytest.warns(DeprecationWarning, match="use client.contacts_run") as caught:
+        getattr(client.contacts, method)(request_model)
+    assert caught[0].filename == __file__
+
+
+async def test_old_search_methods_warn_async(make_async_client: AsyncClientFactory) -> None:
+    async with make_async_client(lambda request: httpx2.Response(200, json=[])) as client:
+        with pytest.warns(DeprecationWarning, match=r"contacts\.search\(\) is deprecated"):
+            await client.contacts.search(ContactsSearchParams(domain=["a.com"]))
+
+
+def test_discover_lookup_and_match_do_not_warn(make_client: ClientFactory, recwarn: pytest.WarningsRecorder) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path.endswith("/discover"):
+            return httpx2.Response(200, json={"results": {}})
+        if request.url.path.endswith("/match"):
+            return httpx2.Response(200, json={"matches": []})
+        return httpx2.Response(200, json={"persona_id": 1})
+
+    with make_client(handler) as client:
+        client.contacts.discover(ContactFilters(domain=["a.com"]))
+        client.contacts.lookup(ContactsLookupParams(persona_id=1))
+        client.contacts.match(ContactsMatchParams(name="Jane Doe"))
+    assert not [w for w in recwarn if issubclass(w.category, DeprecationWarning)]

@@ -100,7 +100,18 @@ _BRIEF_CHECKPOINTS_DESCRIPTION = (
 # Properties the SDK ships before the deployed spec has them. Merged in only while the spec
 # lacks them, so each entry clears itself once the platform release lands -- generation prints
 # the ones that have, to be deleted here.
-PENDING_PROPERTIES: dict[str, dict[str, dict[str, Any]]] = {}
+PENDING_PROPERTIES: dict[str, dict[str, dict[str, Any]]] = {
+    "FindEmailRequest": {
+        "suggested_email": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "title": "Suggested Email",
+            "description": (
+                "The address you think is right. It is verified first; if it is not proven, the right one is "
+                "recovered. Its domain must be `domain` or the company's mail domain."
+            ),
+        }
+    }
+}
 
 # Properties generated from this schema rather than the spec's, whatever the spec says. The
 # platform's sub-industry enum lists parent-qualified keys only; a bare label reaches it through

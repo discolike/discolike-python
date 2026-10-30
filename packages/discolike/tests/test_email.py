@@ -536,3 +536,39 @@ async def test_job_wait_honors_server_reported_kind_async(make_async_client: Asy
 
     assert isinstance(output, ValidationOutput)
     assert output.reason == "no_mailbox"
+
+
+def test_find_sends_suggested_email_and_status_reads_outcome(make_client: ClientFactory) -> None:
+    bodies: list[dict] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.method == "POST":
+            bodies.append(json.loads(request.content))
+            return httpx2.Response(202, json={"job_id": "j-se", "status": "queued"})
+        return httpx2.Response(
+            200,
+            json={
+                "job_id": "j-se",
+                "status": "completed",
+                "kind": "find",
+                "result": {"domain": "navy.mil", "status": "found", "method": "smtp"},
+                "outcome": "recovered",
+                "email": "ghopper@navy.mil",
+            },
+        )
+
+    with make_client(handler) as client:
+        job = client.email.find(
+            FindEmailRequest(
+                first_name="Grace", last_name="Hopper", domain="navy.mil", suggested_email="grace@navy.mil"
+            )
+        )
+        status = job.status()
+
+    assert bodies == [
+        {"first_name": "Grace", "last_name": "Hopper", "domain": "navy.mil", "suggested_email": "grace@navy.mil"}
+    ]
+    assert status.outcome == "recovered"
+    assert status.email == "ghopper@navy.mil"
+    assert isinstance(status.result, EnumerationOutput)
+    assert status.result.method == "smtp"

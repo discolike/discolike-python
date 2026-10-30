@@ -1875,6 +1875,7 @@ class DiscoverParams(DiscolikeRequest):
     language: Annotated[
         list[
             Literal[
+                "af",
                 "ar",
                 "az",
                 "bg",
@@ -1899,11 +1900,15 @@ class DiscoverParams(DiscolikeRequest):
                 "hi",
                 "hr",
                 "hu",
+                "hy",
                 "id",
+                "is",
                 "it",
                 "ja",
+                "ka",
                 "ko",
                 "ky",
+                "lb",
                 "lt",
                 "lv",
                 "mk",
@@ -1934,13 +1939,14 @@ class DiscoverParams(DiscolikeRequest):
         ]
         | None,
         Field(
-            description="Filter by site language. Valid values: ar (Arabic), az (Azerbaijani), bg (Bulgarian), bn (Bengali), bs (Bosnian), ca (Catalan), cs (Czech), da (Danish), de (German), el (Greek), en (English), eo (Esperanto), es (Spanish), et (Estonian), eu (Basque), fa (Persian), fi (Finnish), fr (French), ga (Irish), gl (Galician), he (Hebrew), hi (Hindi), hr (Croatian), hu (Hungarian), id (Indonesian), it (Italian), ja (Japanese), ko (Korean), ky (Kyrgyz), lt (Lithuanian), lv (Latvian), mk (Macedonian), ms (Malay), my (Burmese), nb (Norwegian Bokmål), nl (Dutch), pb (Portuguese (Brazilian)), pl (Polish), pt (Portuguese), ro (Romanian), ru (Russian), sk (Slovak), sl (Slovenian), sq (Albanian), sr (Serbian), sv (Swedish), sw (Swahili), th (Thai), tl (Tagalog), tr (Turkish), uk (Ukrainian), ur (Urdu), vi (Vietnamese), zh (Chinese (Simplified)), zt (Chinese (Traditional)).",
+            description="Filter by site language. Valid values: af (Afrikaans), ar (Arabic), az (Azerbaijani), bg (Bulgarian), bn (Bengali), bs (Bosnian), ca (Catalan), cs (Czech), da (Danish), de (German), el (Greek), en (English), eo (Esperanto), es (Spanish), et (Estonian), eu (Basque), fa (Persian), fi (Finnish), fr (French), ga (Irish), gl (Galician), he (Hebrew), hi (Hindi), hr (Croatian), hu (Hungarian), hy (Armenian), id (Indonesian), is (Icelandic), it (Italian), ja (Japanese), ka (Georgian), ko (Korean), ky (Kyrgyz), lb (Luxembourgish), lt (Lithuanian), lv (Latvian), mk (Macedonian), ms (Malay), my (Burmese), nb (Norwegian Bokmål), nl (Dutch), pb (Portuguese (Brazilian)), pl (Polish), pt (Portuguese), ro (Romanian), ru (Russian), sk (Slovak), sl (Slovenian), sq (Albanian), sr (Serbian), sv (Swedish), sw (Swahili), th (Thai), tl (Tagalog), tr (Turkish), uk (Ukrainian), ur (Urdu), vi (Vietnamese), zh (Chinese (Simplified)), zt (Chinese (Traditional)).",
             title="Language",
         ),
     ] = None
     negate_language: Annotated[
         list[
             Literal[
+                "af",
                 "ar",
                 "az",
                 "bg",
@@ -1965,11 +1971,15 @@ class DiscoverParams(DiscolikeRequest):
                 "hi",
                 "hr",
                 "hu",
+                "hy",
                 "id",
+                "is",
                 "it",
                 "ja",
+                "ka",
                 "ko",
                 "ky",
+                "lb",
                 "lt",
                 "lv",
                 "mk",
@@ -2000,7 +2010,7 @@ class DiscoverParams(DiscolikeRequest):
         ]
         | None,
         Field(
-            description="Exclude specified languages from results. Filter by site language. Valid values: ar (Arabic), az (Azerbaijani), bg (Bulgarian), bn (Bengali), bs (Bosnian), ca (Catalan), cs (Czech), da (Danish), de (German), el (Greek), en (English), eo (Esperanto), es (Spanish), et (Estonian), eu (Basque), fa (Persian), fi (Finnish), fr (French), ga (Irish), gl (Galician), he (Hebrew), hi (Hindi), hr (Croatian), hu (Hungarian), id (Indonesian), it (Italian), ja (Japanese), ko (Korean), ky (Kyrgyz), lt (Lithuanian), lv (Latvian), mk (Macedonian), ms (Malay), my (Burmese), nb (Norwegian Bokmål), nl (Dutch), pb (Portuguese (Brazilian)), pl (Polish), pt (Portuguese), ro (Romanian), ru (Russian), sk (Slovak), sl (Slovenian), sq (Albanian), sr (Serbian), sv (Swedish), sw (Swahili), th (Thai), tl (Tagalog), tr (Turkish), uk (Ukrainian), ur (Urdu), vi (Vietnamese), zh (Chinese (Simplified)), zt (Chinese (Traditional)).",
+            description="Exclude specified languages from results. Filter by site language. Valid values: af (Afrikaans), ar (Arabic), az (Azerbaijani), bg (Bulgarian), bn (Bengali), bs (Bosnian), ca (Catalan), cs (Czech), da (Danish), de (German), el (Greek), en (English), eo (Esperanto), es (Spanish), et (Estonian), eu (Basque), fa (Persian), fi (Finnish), fr (French), ga (Irish), gl (Galician), he (Hebrew), hi (Hindi), hr (Croatian), hu (Hungarian), hy (Armenian), id (Indonesian), is (Icelandic), it (Italian), ja (Japanese), ka (Georgian), ko (Korean), ky (Kyrgyz), lb (Luxembourgish), lt (Lithuanian), lv (Latvian), mk (Macedonian), ms (Malay), my (Burmese), nb (Norwegian Bokmål), nl (Dutch), pb (Portuguese (Brazilian)), pl (Polish), pt (Portuguese), ro (Romanian), ru (Russian), sk (Slovak), sl (Slovenian), sq (Albanian), sr (Serbian), sv (Swedish), sw (Swahili), th (Thai), tl (Tagalog), tr (Turkish), uk (Ukrainian), ur (Urdu), vi (Vietnamese), zh (Chinese (Simplified)), zt (Chinese (Traditional)).",
             title="Negate Language",
         ),
     ] = None
@@ -2501,6 +2511,7 @@ class CountParams(DiscolikeRequest):
     language: Annotated[
         list[
             Literal[
+                "af",
                 "ar",
                 "az",
                 "bg",
@@ -2525,11 +2536,15 @@ class CountParams(DiscolikeRequest):
                 "hi",
                 "hr",
                 "hu",
+                "hy",
                 "id",
+                "is",
                 "it",
                 "ja",
+                "ka",
                 "ko",
                 "ky",
+                "lb",
                 "lt",
                 "lv",
                 "mk",
@@ -2560,13 +2575,14 @@ class CountParams(DiscolikeRequest):
         ]
         | None,
         Field(
-            description="Filter by site language. Valid values: ar (Arabic), az (Azerbaijani), bg (Bulgarian), bn (Bengali), bs (Bosnian), ca (Catalan), cs (Czech), da (Danish), de (German), el (Greek), en (English), eo (Esperanto), es (Spanish), et (Estonian), eu (Basque), fa (Persian), fi (Finnish), fr (French), ga (Irish), gl (Galician), he (Hebrew), hi (Hindi), hr (Croatian), hu (Hungarian), id (Indonesian), it (Italian), ja (Japanese), ko (Korean), ky (Kyrgyz), lt (Lithuanian), lv (Latvian), mk (Macedonian), ms (Malay), my (Burmese), nb (Norwegian Bokmål), nl (Dutch), pb (Portuguese (Brazilian)), pl (Polish), pt (Portuguese), ro (Romanian), ru (Russian), sk (Slovak), sl (Slovenian), sq (Albanian), sr (Serbian), sv (Swedish), sw (Swahili), th (Thai), tl (Tagalog), tr (Turkish), uk (Ukrainian), ur (Urdu), vi (Vietnamese), zh (Chinese (Simplified)), zt (Chinese (Traditional)).",
+            description="Filter by site language. Valid values: af (Afrikaans), ar (Arabic), az (Azerbaijani), bg (Bulgarian), bn (Bengali), bs (Bosnian), ca (Catalan), cs (Czech), da (Danish), de (German), el (Greek), en (English), eo (Esperanto), es (Spanish), et (Estonian), eu (Basque), fa (Persian), fi (Finnish), fr (French), ga (Irish), gl (Galician), he (Hebrew), hi (Hindi), hr (Croatian), hu (Hungarian), hy (Armenian), id (Indonesian), is (Icelandic), it (Italian), ja (Japanese), ka (Georgian), ko (Korean), ky (Kyrgyz), lb (Luxembourgish), lt (Lithuanian), lv (Latvian), mk (Macedonian), ms (Malay), my (Burmese), nb (Norwegian Bokmål), nl (Dutch), pb (Portuguese (Brazilian)), pl (Polish), pt (Portuguese), ro (Romanian), ru (Russian), sk (Slovak), sl (Slovenian), sq (Albanian), sr (Serbian), sv (Swedish), sw (Swahili), th (Thai), tl (Tagalog), tr (Turkish), uk (Ukrainian), ur (Urdu), vi (Vietnamese), zh (Chinese (Simplified)), zt (Chinese (Traditional)).",
             title="Language",
         ),
     ] = None
     negate_language: Annotated[
         list[
             Literal[
+                "af",
                 "ar",
                 "az",
                 "bg",
@@ -2591,11 +2607,15 @@ class CountParams(DiscolikeRequest):
                 "hi",
                 "hr",
                 "hu",
+                "hy",
                 "id",
+                "is",
                 "it",
                 "ja",
+                "ka",
                 "ko",
                 "ky",
+                "lb",
                 "lt",
                 "lv",
                 "mk",
@@ -2626,7 +2646,7 @@ class CountParams(DiscolikeRequest):
         ]
         | None,
         Field(
-            description="Exclude specified languages from results. Filter by site language. Valid values: ar (Arabic), az (Azerbaijani), bg (Bulgarian), bn (Bengali), bs (Bosnian), ca (Catalan), cs (Czech), da (Danish), de (German), el (Greek), en (English), eo (Esperanto), es (Spanish), et (Estonian), eu (Basque), fa (Persian), fi (Finnish), fr (French), ga (Irish), gl (Galician), he (Hebrew), hi (Hindi), hr (Croatian), hu (Hungarian), id (Indonesian), it (Italian), ja (Japanese), ko (Korean), ky (Kyrgyz), lt (Lithuanian), lv (Latvian), mk (Macedonian), ms (Malay), my (Burmese), nb (Norwegian Bokmål), nl (Dutch), pb (Portuguese (Brazilian)), pl (Polish), pt (Portuguese), ro (Romanian), ru (Russian), sk (Slovak), sl (Slovenian), sq (Albanian), sr (Serbian), sv (Swedish), sw (Swahili), th (Thai), tl (Tagalog), tr (Turkish), uk (Ukrainian), ur (Urdu), vi (Vietnamese), zh (Chinese (Simplified)), zt (Chinese (Traditional)).",
+            description="Exclude specified languages from results. Filter by site language. Valid values: af (Afrikaans), ar (Arabic), az (Azerbaijani), bg (Bulgarian), bn (Bengali), bs (Bosnian), ca (Catalan), cs (Czech), da (Danish), de (German), el (Greek), en (English), eo (Esperanto), es (Spanish), et (Estonian), eu (Basque), fa (Persian), fi (Finnish), fr (French), ga (Irish), gl (Galician), he (Hebrew), hi (Hindi), hr (Croatian), hu (Hungarian), hy (Armenian), id (Indonesian), is (Icelandic), it (Italian), ja (Japanese), ka (Georgian), ko (Korean), ky (Kyrgyz), lb (Luxembourgish), lt (Lithuanian), lv (Latvian), mk (Macedonian), ms (Malay), my (Burmese), nb (Norwegian Bokmål), nl (Dutch), pb (Portuguese (Brazilian)), pl (Polish), pt (Portuguese), ro (Romanian), ru (Russian), sk (Slovak), sl (Slovenian), sq (Albanian), sr (Serbian), sv (Swedish), sw (Swahili), th (Thai), tl (Tagalog), tr (Turkish), uk (Ukrainian), ur (Urdu), vi (Vietnamese), zh (Chinese (Simplified)), zt (Chinese (Traditional)).",
             title="Negate Language",
         ),
     ] = None
@@ -2674,6 +2694,13 @@ class FindEmailRequest(DiscolikeRequest):
     known_pattern: Annotated[
         str | None,
         Field(description="Known email pattern for this domain", title="Known Pattern"),
+    ] = None
+    suggested_email: Annotated[
+        str | None,
+        Field(
+            description="The address you think is right. It is verified first; if it is not proven, the right one is recovered. Its domain must be `domain` or the company's mail domain.",
+            title="Suggested Email",
+        ),
     ] = None
 
 
