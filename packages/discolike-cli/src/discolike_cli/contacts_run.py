@@ -22,7 +22,9 @@ PARAMS_FILE_HELP = (
     "per_company, find_missing, email_cap_usd, mode. --param and flags override its values."
 )
 PARAM_HELP = "Extra key=value body field (repeatable)."
-EMAIL_CAP_HELP = "Maximum USD to spend finding emails; find_emails never starts without one."
+EMAIL_CAP_HELP = (
+    "Maximum USD to spend finding emails; omit for no cap. wait --follow stops before find_emails without one."
+)
 GENERATION_HELP = "Generation of the run you are continuing; fetched from the run when omitted."
 
 app = typer.Typer(

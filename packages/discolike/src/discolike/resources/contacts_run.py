@@ -126,8 +126,9 @@ class ContactsRunResource(SyncAPIResource):
         """Start a contacts run; it runs find_contacts -> find_missing -> review -> find_emails.
 
         With mode="step_by_step" (the default) the run pauses with status "waiting" after each step;
-        call continue_() to move on, or wait(follow=True). find_emails never starts without an
-        email_cap_usd, given here or on the continue that enters it.
+        call continue_() to move on, or wait(follow=True). An optional email_cap_usd, given here or on
+        the continue that enters find_emails, caps what find_emails spends; without one it runs until
+        the account balance runs out.
         """
         response = self._transport.request("POST", RUN_PATH, json_body=request.to_wire())
         return ContactsRun.model_validate(response.json())
@@ -157,7 +158,7 @@ class ContactsRunResource(SyncAPIResource):
         """Start the next step, or redo the current one with redo=True.
 
         Pass the run's current generation. ValidationError with status_code 409 means the run changed
-        since, its current step failed and needs redo=True, or find_emails lacks email_cap_usd; a 410
+        since or its current step failed and needs redo=True; a 410
         (DiscolikeError) means the run sat idle past its expires_at.
         """
         response = self._transport.request("POST", _path(run_id) + "/continue", json_body=request.to_wire())

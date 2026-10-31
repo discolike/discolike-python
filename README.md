@@ -313,7 +313,7 @@ result = job.wait()
 
 ### Contacts runs
 
-`client.contacts_run` finds people at companies in four steps: `find_contacts`, `find_missing` (web search at companies with no indexed contact), `review` and `find_emails`. A `step_by_step` run (the default) pauses with `status="waiting"` after each step; `continue_()` starts the next one. `find_emails` spends money, so it never starts without an `email_cap_usd`, given at create or on the continue that enters it.
+`client.contacts_run` finds people at companies in four steps: `find_contacts`, `find_missing` (web search at companies with no indexed contact), `review` and `find_emails`. A `step_by_step` run (the default) pauses with `status="waiting"` after each step; `continue_()` starts the next one. `find_emails` bills per result; an optional `email_cap_usd`, given at create or on the continue that enters it, caps that spend, and without one it runs until the account balance runs out.
 
 ```python
 from discolike.requests import ContactsRunRequest, ContinueRunRequest
