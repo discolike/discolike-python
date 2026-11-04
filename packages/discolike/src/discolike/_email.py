@@ -16,6 +16,7 @@ from discolike._jobs import DEFAULT_WAIT_TIMEOUT_SECONDS
 from discolike._models import DiscolikeModel
 from discolike._transport import AsyncTransport
 from discolike._transport import Transport
+from discolike.resources._base import api_route
 
 EmailKind = Literal["find", "verify"]
 EMAIL_TERMINAL_STATUSES = frozenset({"completed", "failed"})
@@ -138,6 +139,7 @@ class EmailJob:
         self.job_id = job_id
         self.kind = kind
 
+    @api_route("GET", "/email/jobs/{job_id}")
     def status(self) -> EmailJobResult:
         response = self._transport.request("GET", f"/email/jobs/{self.job_id}")
         return _decode_job_result(self.kind, response.json())
@@ -173,6 +175,7 @@ class AsyncEmailJob:
         self.job_id = job_id
         self.kind = kind
 
+    @api_route("GET", "/email/jobs/{job_id}")
     async def status(self) -> EmailJobResult:
         response = await self._transport.request("GET", f"/email/jobs/{self.job_id}")
         return _decode_job_result(self.kind, response.json())
@@ -208,6 +211,7 @@ class EmailBatch:
         self.batch_id = batch_id
         self.kind = kind
 
+    @api_route("GET", "/email/batch/{batch_id}/results")
     def results(
         self,
         *,
@@ -236,6 +240,7 @@ class AsyncEmailBatch:
         self.batch_id = batch_id
         self.kind = kind
 
+    @api_route("GET", "/email/batch/{batch_id}/results")
     async def results(
         self,
         *,
