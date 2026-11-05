@@ -1,3 +1,6 @@
+import warnings
+from concurrent.futures import ThreadPoolExecutor
+
 import httpx2
 import pytest
 
@@ -273,3 +276,112 @@ def test_with_timeout_overrides_request_timeout_and_leaves_base_alone() -> None:
 
     assert seen[0]["read"] == 120.0
     assert seen[1]["read"] == 5.0
+
+
+@pytest.mark.parametrize("use_async", [False, True])
+async def test_deprecation_warns_on_every_call_across_clients(use_async) -> None:
+    headers = {
+        "Deprecation": "@1793664000",
+        "Sunset": "Wed, 03 Nov 2027 00:00:00 GMT",
+        "Link": '<https://api.test/migration>; rel="deprecation"',
+    }
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"ok": True}, headers=headers)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", DeprecationWarning)
+        for path in ("/email/jobs/123", "/email/jobs/456", "/email/jobs/opaque-job"):
+            if use_async:
+                http = httpx2.AsyncClient(transport=httpx2.MockTransport(handler), base_url="https://api.test/v1")
+                transport = AsyncTransport(
+                    api_key_auth("test-key"),
+                    base_url="https://api.test/v1",
+                    timeout=5.0,
+                    max_retries=0,
+                    http_client=http,
+                )
+                await transport.request("GET", path)
+                await transport.aclose()
+            else:
+                transport = make_transport(handler)
+                transport.with_timeout(1.0).request("GET", path)
+                transport.close()
+        assert len(caught) == 3
+        transport = make_transport(handler)
+        transport.request("GET", "/email/jobs/789")
+        transport.request("POST", "/email/jobs/123")
+        transport.request("GET", "/usage")
+        transport.close()
+        assert len(caught) == 6
+    message = str(caught[0].message)
+    assert "GET /email/jobs/{job_id}" in message
+    for name, value in headers.items():
+        assert f"{name}: {value}" in message
+
+
+@pytest.mark.parametrize("use_async", [False, True])
+@pytest.mark.parametrize("deprecation", [None, "", "not-a-date; ???", "@999999999999999999999999999999"])
+async def test_deprecation_missing_or_malformed_headers(use_async, deprecation) -> None:
+    headers = {"Sunset": "not a date", "Link": "<broken"}
+    if deprecation is not None:
+        headers["Deprecation"] = deprecation
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={"ok": True}, headers=headers)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", DeprecationWarning)
+        if use_async:
+            http = httpx2.AsyncClient(transport=httpx2.MockTransport(handler), base_url="https://api.test/v1")
+            transport = AsyncTransport(
+                api_key_auth("test-key"), base_url="https://api.test/v1", timeout=5.0, max_retries=0, http_client=http
+            )
+            response = await transport.request("GET", "/usage")
+            await transport.aclose()
+        else:
+            transport = make_transport(handler)
+            response = transport.request("GET", "/usage")
+            transport.close()
+    assert response.json() == {"ok": True}
+    assert len(caught) == (0 if deprecation is None else 1)
+    if caught:
+        assert "Sunset: not a date" in str(caught[0].message)
+        assert "Link: <broken" in str(caught[0].message)
+
+
+def test_deprecation_thread_safe() -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json={}, headers={"Deprecation": "true"})
+
+    def request(job_id: int) -> None:
+        transport = make_transport(handler)
+        try:
+            transport.request("GET", f"/email/jobs/{job_id}")
+        finally:
+            transport.close()
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", DeprecationWarning)
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(request, range(32)))
+    assert len(caught) == 32
+
+
+@pytest.mark.parametrize(
+    "paths",
+    [
+        ("/future/123", "/future/456"),
+        ("/future/123e4567-e89b-12d3-a456-426614174000", "/future/123e4567-e89b-12d3-a456-426614174001"),
+        ("/email/batch/first/results?offset=0", "/email/batch/second/results?offset=1"),
+    ],
+)
+def test_deprecation_normalizes_identifiers_and_query_strings(paths) -> None:
+    transport = make_transport(lambda request: httpx2.Response(200, json={}, headers={"Deprecation": "true"}))
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", DeprecationWarning)
+        for path in paths:
+            transport.request("GET", path)
+    transport.close()
+    assert len(caught) == 2
+    assert len({str(warning.message) for warning in caught}) == 1

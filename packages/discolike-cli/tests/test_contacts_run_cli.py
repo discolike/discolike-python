@@ -50,7 +50,7 @@ def test_run_create_posts_params_file(install_build_client: Callable[[Handler], 
     install_build_client(handler)
     params_file = tmp_path / "run.json"
     params_file.write_text(
-        json.dumps({"companies": {"source": "prompt", "icp_text": "dental clinics"}, "people": {"titles": ["Owner"]}})
+        json.dumps({"companies": {"source": "prompt", "icp_text": "dental clinics"}, "people": {"fit": "Owners"}})
     )
     result = runner.invoke(
         app, ["contacts", "run", "create", "--params-file", str(params_file), "--email-cap-usd", "20"]
@@ -60,7 +60,7 @@ def test_run_create_posts_params_file(install_build_client: Callable[[Handler], 
     assert bodies == [
         {
             "companies": {"source": "prompt", "icp_text": "dental clinics"},
-            "people": {"titles": ["Owner"]},
+            "people": {"fit": "Owners"},
             "email_cap_usd": "20.0",
         }
     ]
@@ -76,40 +76,43 @@ def test_run_continue_fetches_generation_when_omitted(install_build_client: Call
         return httpx2.Response(200, json=run_payload(generation=4))
 
     install_build_client(handler)
-    result = runner.invoke(
-        app, ["contacts", "run", "continue", RUN_ID, "--not-fit-id", "r1", "--relevance", "balanced"]
-    )
+    result = runner.invoke(app, ["contacts", "run", "continue", RUN_ID, "--redo"])
 
     assert result.exit_code == 0, result.output
     assert seen == [
         ("GET", RUN_PATH, None),
-        ("POST", f"{RUN_PATH}/continue", {"generation": 4, "relevance": "balanced", "not_fit_ids": ["r1"]}),
+        ("POST", f"{RUN_PATH}/continue", {"generation": 4, "redo": True}),
     ]
 
 
-def test_run_wait_follow_needs_cap_for_emails(install_build_client: Callable[[Handler], None]) -> None:
-    state = {"step": 0}
-    continues: list[dict[str, Any]] = []
+def test_run_wait_polls_automatically(install_build_client: Callable[[Handler], None]) -> None:
+    statuses = iter(["ready", "running", "done"])
 
     def handler(request: httpx2.Request) -> httpx2.Response:
-        if request.method == "POST":
-            continues.append(json.loads(request.content))
-            state["step"] += 1
-        step = state["step"]
-        return httpx2.Response(
-            200,
-            json=run_payload(status="done" if step == len(STEPS) - 1 else "waiting", step=step, generation=step + 1),
-        )
+        assert request.method == "GET"
+        return httpx2.Response(200, json=run_payload(status=next(statuses)))
 
     install_build_client(handler)
-    paused = runner.invoke(app, ["contacts", "run", "wait", RUN_ID, "--follow"])
-    assert paused.exit_code == 0, paused.output
-    assert json.loads(paused.stdout)["current_step"] == "review"
+    result = runner.invoke(app, ["contacts", "run", "wait", RUN_ID])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["status"] == "done"
 
-    finished = runner.invoke(app, ["contacts", "run", "wait", RUN_ID, "--follow", "--email-cap-usd", "15"])
-    assert finished.exit_code == 0, finished.output
-    assert json.loads(finished.stdout)["status"] == "done"
-    assert continues == [{"generation": 1}, {"generation": 2}, {"generation": 3, "email_cap_usd": "15.0"}]
+
+def test_run_events(install_build_client: Callable[[Handler], None]) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        assert request.url.path == RUN_PATH + "/events"
+        assert dict(request.url.params) == {"after": "4", "limit": "10"}
+        return httpx2.Response(200, json={"events": [], "next_cursor": 5})
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["contacts", "run", "events", RUN_ID, "--after", "4", "--limit", "10"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["next_cursor"] == 5
+
+
+@pytest.mark.parametrize("flag", ["--follow", "--email-cap-usd"])
+def test_removed_wait_flags(flag: str) -> None:
+    assert runner.invoke(app, ["contacts", "run", "wait", RUN_ID, flag]).exit_code == 2
 
 
 def test_run_cancel_and_get(install_build_client: Callable[[Handler], None]) -> None:
@@ -153,12 +156,11 @@ def test_run_title_preview(install_build_client: Callable[[Handler], None]) -> N
     assert json.loads(result.stdout) == [{"title": "Owner", "role": 1.0, "count": 3}]
 
 
-@pytest.mark.parametrize("command", ["search", "count"])
-def test_old_contacts_commands_print_deprecation(install_build_client: Callable[[Handler], None], command: str) -> None:
-    install_build_client(lambda request: httpx2.Response(200, json=[] if command == "search" else {"count": 0}))
-    result = runner.invoke(app, ["contacts", command, "--name", "Jane"])
+def test_old_contacts_commands_print_deprecation(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(lambda request: httpx2.Response(200, json=[]))
+    result = runner.invoke(app, ["contacts", "search", "--name", "Jane"])
     assert result.exit_code == 0, result.output
-    assert f"`discolike contacts {command}` is deprecated" in result.stderr
+    assert "`discolike contacts search` is deprecated" in result.stderr
     assert "use `discolike contacts run`" in result.stderr
 
 
@@ -182,3 +184,26 @@ def test_email_find_sends_suggested_email(install_build_client: Callable[[Handle
     assert bodies == [
         {"first_name": "Grace", "last_name": "Hopper", "domain": "navy.mil", "suggested_email": "grace@navy.mil"}
     ]
+
+
+def test_run_insufficient_balance(install_build_client: Callable[[Handler], None], tmp_path: pathlib.Path) -> None:
+    install_build_client(
+        lambda _: httpx2.Response(
+            403,
+            json={
+                "detail": {
+                    "code": "INSUFFICIENT_BALANCE",
+                    "message": "Top up to continue",
+                    "remaining_usd": 1,
+                    "max_affordable_records": 2,
+                }
+            },
+        )
+    )
+    params = tmp_path / "run.json"
+    params.write_text(json.dumps({"companies": {"source": "domains", "domains": ["acme.com"]}}))
+    result = runner.invoke(app, ["contacts", "run", "create", "--params-file", str(params)])
+    assert result.exit_code == 3
+    error = json.loads(result.stderr)
+    assert error["code"] == "insufficient_balance"
+    assert error["max_affordable_records"] == 2

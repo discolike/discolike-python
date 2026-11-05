@@ -1,13 +1,13 @@
 """Request models generated from the platform OpenAPI spec by scripts/gen_requests.py."""
 
+from discolike._contacts_run_requests import ContactsPeopleFit
+from discolike._contacts_run_requests import ContactsRunEventsParams
 from discolike._contacts_run_requests import ContactsRunGetParams
 from discolike._contacts_run_requests import ContactsRunListParams
 from discolike._contacts_run_requests import ContactsRunRequest
 from discolike._contacts_run_requests import ContinueRunRequest
 from discolike._contacts_run_requests import DomainCompanies
-from discolike._contacts_run_requests import FindMissingSpec
 from discolike._contacts_run_requests import LookalikeCompanies
-from discolike._contacts_run_requests import PeopleSpec
 from discolike._contacts_run_requests import PromptCompanies
 from discolike._contacts_run_requests import PromptCompanyFilters
 from discolike._contacts_run_requests import TitlePreviewRequest
@@ -72,6 +72,8 @@ __all__ = [
     "ContactsCountParams",
     "ContactsLookupParams",
     "ContactsMatchParams",
+    "ContactsPeopleFit",
+    "ContactsRunEventsParams",
     "ContactsRunGetParams",
     "ContactsRunListParams",
     "ContactsRunRequest",
@@ -85,14 +87,12 @@ __all__ = [
     "DomainCompanies",
     "FindEmailBatchRequest",
     "FindEmailRequest",
-    "FindMissingSpec",
     "IntakeAnswer",
     "LLMProviderCreateRequest",
     "LLMProviderUpdateRequest",
     "LookalikeCompanies",
     "MatchBulkParams",
     "MatchCompanyParams",
-    "PeopleSpec",
     "PromptCompanies",
     "PromptCompanyFilters",
     "ProspectingApproveRequest",

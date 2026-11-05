@@ -13,6 +13,7 @@ from pydantic import Field
 
 from discolike._exceptions import JobTimeoutError
 from discolike._models import DiscolikeModel
+from discolike.requests import ContactsRunEventsParams
 from discolike.requests import ContactsRunGetParams
 from discolike.requests import ContactsRunListParams
 from discolike.requests import ContactsRunRequest
@@ -24,13 +25,7 @@ from discolike.resources._base import api_route
 from discolike.resources.prospecting import _deadline
 
 RUN_PATH = "/contacts/run"
-CONTACTS_KIND = "contacts"
-CONTACTS_STEP_ORDER = ("find_contacts", "find_missing", "review", "find_emails")
-FIND_EMAILS_STEP = "find_emails"
-EMAIL_CAP_INPUT_KEY = "email_cap_usd"
-FAILED_STEP_STATUS = "failed"
 TERMINAL_STATUSES = frozenset({"done", "failed", "cancelled"})
-PAUSED_STATUSES = frozenset({"ready", "waiting"})
 ROWS_PAGE_SIZE = 1000
 DEFAULT_MAX_WAIT_SECONDS = 3600.0
 DEFAULT_POLL_INTERVAL_SECONDS = 5.0
@@ -42,6 +37,7 @@ ContactsRunStepStatus = Literal["pending", "running", "done", "failed", "skipped
 
 class ContactsRunStep(DiscolikeModel):
     status: ContactsRunStepStatus
+    error: str | None = None
     counts: dict[str, int] = Field(default_factory=dict)
     estimate_usd: Decimal | None = None
     charged_usd: Decimal = Decimal(0)
@@ -58,23 +54,66 @@ class ContactsRunRow(DiscolikeModel):
     linkedin_url: str | None = None
     seniority: str | None = None
     department: str | None = None
-    source: Literal["database", "web_search"] | str
+    source: Literal["database", "web_search"] | str | None = None
+    debug_only: bool | None = None
+    reason: str | None = None
     company_score: float | None = None
     p_fit: float | None = None
     fit_label: str | None = None
     floor: bool = False
     not_fit: bool = False
     email: str | None = None
-    email_status: str | None = None
+    email_status: Literal["Validated", "Validated (catch-all resolved)"] | str | None = None
     company: dict[str, Any] = Field(default_factory=dict)
 
 
+class RunCompanyResponse(DiscolikeModel):
+    domain: str
+    status: Literal["pending", "finding_people", "finding_emails", "validated", "skipped", "cancelled", "failed"] | str
+    people_reviewed: int = 0
+    mailboxes_checked: int = 0
+    validated_contacts: int = 0
+    contacts: list[ContactsRunRow] = Field(default_factory=list)
+
+
+class ContactsRunSummary(DiscolikeModel):
+    companies_delivered: int = 0
+    validated_contacts: int = 0
+    spent_usd: Decimal = Decimal(0)
+
+
+class ValidatedRunTitle(DiscolikeModel):
+    title: str | None = None
+    status: Literal["Validated", "Validated (catch-all resolved)"] | str
+
+
+class ContactsRunEvent(DiscolikeModel):
+    seq: int
+    domain: str
+    created_at: datetime
+    kind: Literal["progress", "company_skipped"] | str
+    status: str
+    people_reviewed: int = 0
+    titles_considered: list[str] = Field(default_factory=list)
+    mailboxes_checked: int = 0
+    validated_titles: list[ValidatedRunTitle] = Field(default_factory=list)
+
+
+class ContactsRunEventsResponse(DiscolikeModel):
+    events: list[ContactsRunEvent] = Field(default_factory=list)
+    next_cursor: int = 0
+
+
 class ContactsRun(DiscolikeModel):
+    error: str | None = None
+    companies: list[RunCompanyResponse] = Field(default_factory=list)
+    companies_total: int = 0
+    summary: ContactsRunSummary | None = None
     input: dict[str, Any] = Field(default_factory=dict)
     id: str
     kind: Literal["contacts", "companies"] | str
     status: ContactsRunStatus
-    current_step: ContactsRunStepName
+    current_step: ContactsRunStepName | None = None
     generation: int
     steps: dict[str, ContactsRunStep] = Field(default_factory=dict)
     total_estimate_usd: Decimal | None = None
@@ -93,6 +132,7 @@ class TitlePreviewTitle(DiscolikeModel):
 
 
 class TitlePreview(DiscolikeModel):
+    searched: list[str] = Field(default_factory=list)
     titles: list[TitlePreviewTitle] = Field(default_factory=list)
 
 
@@ -100,36 +140,10 @@ def _path(run_id: str | UUID) -> str:
     return f"{RUN_PATH}/{UUID(str(run_id))}"
 
 
-def _follow_request(run: ContactsRun, *, email_cap_usd: Decimal | float | None) -> ContinueRunRequest | None:
-    if run.kind != CONTACTS_KIND or run.current_step not in CONTACTS_STEP_ORDER:
-        return None
-    if run.status == "ready":
-        return ContinueRunRequest(generation=run.generation)
-    current = run.steps.get(run.current_step)
-    if current is not None and current.status == FAILED_STEP_STATUS:
-        return None
-    index = CONTACTS_STEP_ORDER.index(run.current_step) + 1
-    if index >= len(CONTACTS_STEP_ORDER):
-        return None
-    if CONTACTS_STEP_ORDER[index] != FIND_EMAILS_STEP or (
-        email_cap_usd is None and run.input.get(EMAIL_CAP_INPUT_KEY) is not None
-    ):
-        return ContinueRunRequest(generation=run.generation)
-    if email_cap_usd is None:
-        return None
-    return ContinueRunRequest(generation=run.generation, email_cap_usd=Decimal(str(email_cap_usd)))
-
-
 class ContactsRunResource(SyncAPIResource):
     @api_route("POST", RUN_PATH, openapi=False)
     def create(self, request: ContactsRunRequest) -> ContactsRun:
-        """Start a contacts run; it runs find_contacts -> find_missing -> review -> find_emails.
-
-        With mode="step_by_step" (the default) the run pauses with status "waiting" after each step;
-        call continue_() to move on, or wait(follow=True). An optional email_cap_usd, given here or on
-        the continue that enters find_emails, caps what find_emails spends; without one it runs until
-        the account balance runs out.
-        """
+        """Start automatic contact discovery and validated delivery, optionally capped by email_cap_usd."""
         response = self._transport.request("POST", RUN_PATH, json_body=request.to_wire())
         return ContactsRun.model_validate(response.json())
 
@@ -147,22 +161,32 @@ class ContactsRunResource(SyncAPIResource):
     def rows(self, run_id: str | UUID, *, page_size: int = ROWS_PAGE_SIZE) -> builtins.list[ContactsRunRow]:
         """Every row of the run, fetched page by page."""
         rows: builtins.list[ContactsRunRow] = []
+        offset = 0
         while True:
-            run = self.get(run_id, ContactsRunGetParams(rows_offset=len(rows), rows_limit=page_size))
-            rows.extend(run.rows)
-            if not run.rows or len(rows) >= run.rows_total:
-                return rows
+            run = self.get(run_id, ContactsRunGetParams(rows_offset=offset, rows_limit=page_size))
+            if run.kind == "contacts":
+                rows.extend(contact for company in run.companies for contact in company.contacts)
+                offset += len(run.companies)
+                if not run.companies or offset >= run.companies_total:
+                    return rows
+            else:
+                rows.extend(run.rows)
+                offset += len(run.rows)
+                if not run.rows or offset >= run.rows_total:
+                    return rows
 
     @api_route("POST", RUN_PATH + "/{run_id}/continue", openapi=False)
     def continue_(self, run_id: str | UUID, request: ContinueRunRequest) -> ContactsRun:
-        """Start the next step, or redo the current one with redo=True.
-
-        Pass the run's current generation. ValidationError with status_code 409 means the run changed
-        since or its current step failed and needs redo=True; a 410
-        (DiscolikeError) means the run sat idle past its expires_at.
-        """
+        """Advance a companies run; contacts runs proceed automatically and return 409 here."""
         response = self._transport.request("POST", _path(run_id) + "/continue", json_body=request.to_wire())
         return ContactsRun.model_validate(response.json())
+
+    @api_route("GET", RUN_PATH + "/{run_id}/events", openapi=False)
+    def events(self, run_id: str | UUID, params: ContactsRunEventsParams | None = None) -> ContactsRunEventsResponse:
+        response = self._transport.request(
+            "GET", _path(run_id) + "/events", params=params.to_wire() if params else None
+        )
+        return ContactsRunEventsResponse.model_validate(response.json())
 
     @api_route("POST", RUN_PATH + "/{run_id}/cancel", openapi=False)
     def cancel(self, run_id: str | UUID) -> ContactsRun:
@@ -179,28 +203,15 @@ class ContactsRunResource(SyncAPIResource):
         self,
         run_id: str | UUID,
         *,
-        follow: bool = False,
-        email_cap_usd: Decimal | float | None = None,
         max_wait: float = DEFAULT_MAX_WAIT_SECONDS,
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
     ) -> ContactsRun:
-        """Poll until the run finishes or pauses (status "ready" or "waiting").
-
-        With follow=True a paused run is continued step by step instead, stopping at a failed step
-        (continue it with redo=True) and before find_emails unless the run was created with an
-        email_cap_usd or one is given here, which is sent on the continue that enters find_emails.
-        Timeout stops local polling only.
-        """
+        """Poll until done, failed or cancelled. Timeout stops local polling only."""
         deadline = _deadline(max_wait, poll_interval)
         while True:
             run = self.get(run_id)
             if run.status in TERMINAL_STATUSES:
                 return run
-            if run.status in PAUSED_STATUSES:
-                request = _follow_request(run, email_cap_usd=email_cap_usd) if follow else None
-                if request is None:
-                    return run
-                self.continue_(run_id, request)
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise JobTimeoutError("Timed out waiting for the contacts run; it continues on the server")
@@ -225,16 +236,33 @@ class AsyncContactsRunResource(AsyncAPIResource):
 
     async def rows(self, run_id: str | UUID, *, page_size: int = ROWS_PAGE_SIZE) -> builtins.list[ContactsRunRow]:
         rows: builtins.list[ContactsRunRow] = []
+        offset = 0
         while True:
-            run = await self.get(run_id, ContactsRunGetParams(rows_offset=len(rows), rows_limit=page_size))
-            rows.extend(run.rows)
-            if not run.rows or len(rows) >= run.rows_total:
-                return rows
+            run = await self.get(run_id, ContactsRunGetParams(rows_offset=offset, rows_limit=page_size))
+            if run.kind == "contacts":
+                rows.extend(contact for company in run.companies for contact in company.contacts)
+                offset += len(run.companies)
+                if not run.companies or offset >= run.companies_total:
+                    return rows
+            else:
+                rows.extend(run.rows)
+                offset += len(run.rows)
+                if not run.rows or offset >= run.rows_total:
+                    return rows
 
     @api_route("POST", RUN_PATH + "/{run_id}/continue", openapi=False)
     async def continue_(self, run_id: str | UUID, request: ContinueRunRequest) -> ContactsRun:
         response = await self._transport.request("POST", _path(run_id) + "/continue", json_body=request.to_wire())
         return ContactsRun.model_validate(response.json())
+
+    @api_route("GET", RUN_PATH + "/{run_id}/events", openapi=False)
+    async def events(
+        self, run_id: str | UUID, params: ContactsRunEventsParams | None = None
+    ) -> ContactsRunEventsResponse:
+        response = await self._transport.request(
+            "GET", _path(run_id) + "/events", params=params.to_wire() if params else None
+        )
+        return ContactsRunEventsResponse.model_validate(response.json())
 
     @api_route("POST", RUN_PATH + "/{run_id}/cancel", openapi=False)
     async def cancel(self, run_id: str | UUID) -> ContactsRun:
@@ -250,8 +278,6 @@ class AsyncContactsRunResource(AsyncAPIResource):
         self,
         run_id: str | UUID,
         *,
-        follow: bool = False,
-        email_cap_usd: Decimal | float | None = None,
         max_wait: float = DEFAULT_MAX_WAIT_SECONDS,
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
     ) -> ContactsRun:
@@ -260,11 +286,6 @@ class AsyncContactsRunResource(AsyncAPIResource):
             run = await self.get(run_id)
             if run.status in TERMINAL_STATUSES:
                 return run
-            if run.status in PAUSED_STATUSES:
-                request = _follow_request(run, email_cap_usd=email_cap_usd) if follow else None
-                if request is None:
-                    return run
-                await self.continue_(run_id, request)
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise JobTimeoutError("Timed out waiting for the contacts run; it continues on the server")

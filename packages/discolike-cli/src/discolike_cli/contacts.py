@@ -280,7 +280,6 @@ def count_command(
         consensus=consensus,
     )
     emit(get_client(ctx).contacts.count(build_request(ContactsCountParams, kwargs)), fmt=fmt)
-    typer.echo(DEPRECATED_COMMAND_WARNING.format(command="count"), err=True)
 
 
 @app.command("lookup")

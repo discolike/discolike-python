@@ -283,7 +283,7 @@ Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `ap
 | `client.discover()` / `client.count()` | Find lookalike companies by ICP text, phrases, tech stack, geo, and 40+ other filters |
 | `client.companies` | Company profiles: firmographics, scores, growth, redirects, vendors, subsidiaries |
 | `client.contacts` | Search, look up, match, and discover contacts at target companies |
-| `client.contacts_run` | Find contacts in reviewable steps, then their emails under a spending cap |
+| `client.contacts_run` | Automatically find and deliver validated contacts under a spending cap |
 | `client.match` | Match company names (plus phone/city/state) to domains — single or bulk CSV |
 | `client.append()` | Enrich a CSV of domains with DiscoLike datasets |
 | `client.segment()` / `client.segment_file()` | Auto-segment a list of domains (comma-separated string or CSV upload) |
@@ -313,25 +313,33 @@ result = job.wait()
 
 ### Contacts runs
 
-`client.contacts_run` finds people at companies in four steps: `find_contacts`, `find_missing` (web search at companies with no indexed contact), `review` and `find_emails`. A `step_by_step` run (the default) pauses with `status="waiting"` after each step; `continue_()` starts the next one. `find_emails` bills per result; an optional `email_cap_usd`, given at create or on the continue that enters it, caps that spend, and without one it runs until the account balance runs out.
+`client.contacts_run` automatically finds and validates contacts, using database candidates before web fallback. `max_companies` counts companies delivering at least one validated contact; `per_company` caps validated contacts at each company. Set `people.fit` to describe the people you want and optionally `email_cap_usd` to cap delivery spend.
 
 ```python
-from discolike.requests import ContactsRunRequest, ContinueRunRequest
+from discolike.requests import ContactsRunRequest, ContactsRunEventsParams
 
 run = client.contacts_run.create(
-    ContactsRunRequest.model_validate(
-        {
-            "companies": {"source": "prompt", "icp_text": "Independent dental clinics in Ohio"},
-            "people": {"titles": ["Practice Owner", "Office Manager"]},
-        }
-    )
+    ContactsRunRequest.model_validate({
+        "companies": {"source": "prompt", "icp_text": "Independent dental clinics in Ohio"},
+        "people": {"fit": "Practice owners and office managers"},
+        "max_companies": 50,
+        "per_company": 3,
+        "email_cap_usd": 20,
+    })
 )
-run = client.contacts_run.wait(run.id, follow=True)  # Stops before find_emails: no cap given.
-rows = client.contacts_run.rows(run.id)  # Every row, paged for you.
-run = client.contacts_run.continue_(run.id, ContinueRunRequest(generation=run.generation, email_cap_usd=20))
+page = client.contacts_run.events(run.id, ContactsRunEventsParams(after=0))
+run = client.contacts_run.wait(run.id)  # Returns on done, failed or cancelled.
+rows = client.contacts_run.rows(run.id)  # Pages company domains, keeping their contacts together.
+print(run.summary)
 ```
 
-`companies` takes `{"source": "prompt", "icp_text": ...}` (up to `max_companies`, default 500), `{"source": "domains", "domains": [...]}` or `{"source": "lookalike", "persona_ids": [...]}`. `max_contacts` keeps only the best-fit N contacts across all companies (`per_company` still caps each one), and `auto_stop=False` turns off the relevance cut, keeping every contact up to `per_company`, best fit first; both stay off the wire unless set. `wait(follow=True)` also stops at a failed step, which you continue with `redo=True`. Every continue carries the run's current `generation`; a stale one is a 409 (`ValidationError`), and a run idle for 30 days answers 410. `contacts.search`, `contacts.count` and `contacts.generate` are deprecated in favor of contacts runs; their endpoints sunset on 2026-12-31.
+`companies` accepts a prompt (`icp_text` and/or `filters`), domains (`source="domains", domains=[...]`) or lookalike seeds (`source="lookalike", persona_ids=[...]`). `max_companies` is a top-level field, default 500. Responses include `companies`, `companies_total`, `rows_total` and summary totals (`companies_delivered`, `validated_contacts`, `spent_usd`). Domains may be masked as `Company N`; treat them as display labels. Delivered email labels are `Validated` and `Validated (catch-all resolved)`. Events include `next_cursor` for the next call's `after`.
+
+Runs start automatically. `cancel()` stops unfinished work; `wait()` only polls and a timeout stops local polling. `continue_()` remains available for companies runs and returns 409 for contacts runs. The separate `title_preview()` route remains live, but contacts runs take free-text people fit rather than title chips. A run idle for 30 days answers 410. A creation request exceeding the remaining balance raises `InsufficientBalanceError` (a `PlanAccessError` subclass).
+
+CLI: `discolike contacts run create|list|get|events|cancel|wait|continue|title-preview`. Create reads `--params-file` plus optional `--email-cap-usd`; `wait` takes `--timeout`; `get --all-rows` fetches all contacts. `get --rows-offset` and `--rows-limit` count company domains for contacts runs. `continue` only advances companies runs and accepts `--generation` and `--redo`.
+
+`contacts.search` and `contacts.generate` are deprecated in favor of contacts runs; their endpoints sunset on 2026-12-31.
 
 ### Contact generation without an LLM key
 
