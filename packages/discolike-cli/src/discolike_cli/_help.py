@@ -185,7 +185,7 @@ Output (success, exit 0):
 """,
     "extract": """\
 Output (success, exit 0):
-  {"text": <string>, "language": <ISO 639-1>}
+  {"text": <string>}
   Fetches the page live; use it to confirm a seed domain is the right company.
 
 Common errors:

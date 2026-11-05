@@ -87,7 +87,6 @@ class Growth(DiscolikeModel):
 
 class ExtractResult(DiscolikeModel):
     text: str | None = None
-    language: str | None = None
 
 
 class Redirect(DiscolikeModel):
