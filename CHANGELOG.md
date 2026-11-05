@@ -9,6 +9,7 @@
 - SDK/CLI: `contacts.search` and `contacts.generate` are deprecated in favor of `client.contacts_run`; the API marks their endpoints deprecated with a 2026-12-31 sunset. They keep working and raise a `DeprecationWarning`; the CLI's `contacts search` and `generate` print a deprecation line on stderr after their output. `contacts.discover`, `lookup`, `match` and `bulk_match` are unchanged.
 - SDK (note for maintainers): Contacts run request models live in `discolike/_contacts_run_requests.py`, kept in sync with platform source; the routes retain `openapi=False` for older specs, and `scripts/check_contract.py` checks the run response models only when the spec carries them. Regenerate `_generated/requests.py` with `scripts/gen_requests.py --spec .dev-openapi.json` from the dev spec; `suggested_email` is now in that spec and removed from `PENDING_PROPERTIES`.
 - SDK: sync and async transports emit a visible `DiscolikeDeprecationWarning`, a `DeprecationWarning` subclass, on every call whose response carries `Deprecation`. Warnings include `Sunset` and `Link` when present; header values are kept as text, including malformed values. Email submission, reattachment and polling no longer emit hardcoded deprecation warnings.
+- SDK/CLI: `ExtractResult` drops `language`; the API no longer returns it from `/extract`.
 
 ## 0.6.2 (2026-10-21)
 
