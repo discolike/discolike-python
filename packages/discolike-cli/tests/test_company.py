@@ -135,7 +135,7 @@ def test_extract_hits_extract_endpoint_with_url(install_build_client: Callable[[
 
     def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx2.Response(200, json={"text": "hello", "language": "en"})
+        return httpx2.Response(200, json={"text": "hello"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["extract", "https://acme.com/about"])
@@ -143,7 +143,7 @@ def test_extract_hits_extract_endpoint_with_url(install_build_client: Callable[[
     request = captured["request"]
     assert request.url.path == "/v1/extract"
     assert request.url.params.get("url") == "https://acme.com/about"
-    assert json.loads(result.stdout) == {"text": "hello", "language": "en"}
+    assert json.loads(result.stdout) == {"text": "hello"}
 
 
 def test_extract_domain_option_replaces_url(install_build_client: Callable[[Handler], None]) -> None:
@@ -151,7 +151,7 @@ def test_extract_domain_option_replaces_url(install_build_client: Callable[[Hand
 
     def handler(request: httpx2.Request) -> httpx2.Response:
         captured["request"] = request
-        return httpx2.Response(200, json={"text": "hello", "language": "en"})
+        return httpx2.Response(200, json={"text": "hello"})
 
     install_build_client(handler)
     result = runner.invoke(app, ["extract", "--domain", "acme.com"])

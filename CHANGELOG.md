@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- SDK/CLI: `ExtractResult` drops `language`; the API no longer returns it from `/extract`.
+
 ## 0.6.2 (2026-10-21)
 
 - SDK/CLI: Python 3.15 is supported and tested in CI.
