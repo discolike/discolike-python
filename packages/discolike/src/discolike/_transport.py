@@ -21,9 +21,15 @@ NON_IDEMPOTENT_RETRYABLE_EXCEPTIONS: tuple[type[Exception], ...] = (httpx2.Conne
 BACKOFF_BASE_SECONDS = 0.5
 
 
+class DiscolikeDeprecationWarning(DeprecationWarning):
+    pass
+
+
+# Python hides DeprecationWarning outside __main__ and repeats none by default.
+warnings.filterwarnings("always", category=DiscolikeDeprecationWarning)
+
 # Shared by all transport instances, including sync/async clients and timeout views.
 _deprecation_lock = threading.Lock()
-_warned_endpoints: set[tuple[str, str]] = set()
 _route_templates: set[tuple[str, str]] = set()
 
 
@@ -43,7 +49,7 @@ def _path_template(method: str, path: str) -> str:
                 matches.append(template)
     if matches:
         return min(matches, key=lambda template: (template.count("{"), template))
-    # Undeclared/new routes still deduplicate numeric and UUID identifiers.
+    # Undeclared/new routes still normalize numeric and UUID identifiers.
     return re.sub(
         r"(?<=/)(?:[0-9]+|[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12})(?=/|$)",
         "{id}",
@@ -57,16 +63,12 @@ def _warn_deprecated(response: httpx2.Response, method: str, path: str) -> None:
     method = method.upper()
     with _deprecation_lock:
         template = _path_template(method, path)
-        endpoint = (method, template)
-        if endpoint in _warned_endpoints:
-            return
-        _warned_endpoints.add(endpoint)
     # Header presence is the signal. Keep values opaque, so malformed dates,
     # structured fields or links cannot break an otherwise valid response.
     details = "; ".join(
         f"{name}: {response.headers[name]}" for name in ("Deprecation", "Sunset", "Link") if name in response.headers
     )
-    warnings.warn(f"{method} {template} is deprecated ({details})", DeprecationWarning, stacklevel=3)
+    warnings.warn(f"{method} {template} is deprecated ({details})", DiscolikeDeprecationWarning, stacklevel=3)
 
 
 def drop_none(params: Mapping[str, Any] | None) -> dict[str, Any]:

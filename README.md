@@ -339,7 +339,7 @@ Runs start automatically. `cancel()` stops unfinished work; `wait()` only polls 
 
 CLI: `discolike contacts run create|list|get|events|cancel|wait|continue|title-preview`. Create reads `--params-file` plus optional `--email-cap-usd`; `wait` takes `--timeout`; `get --all-rows` fetches all contacts. `get --rows-offset` and `--rows-limit` count company domains for contacts runs. `continue` only advances companies runs and accepts `--generation` and `--redo`.
 
-`contacts.search`, `contacts.count` and `contacts.generate` are deprecated in favor of contacts runs; their endpoints sunset on 2026-12-31.
+`contacts.search` and `contacts.generate` are deprecated in favor of contacts runs; their endpoints sunset on 2026-12-31.
 
 ### Contact generation without an LLM key
 

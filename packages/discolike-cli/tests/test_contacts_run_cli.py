@@ -156,12 +156,11 @@ def test_run_title_preview(install_build_client: Callable[[Handler], None]) -> N
     assert json.loads(result.stdout) == [{"title": "Owner", "role": 1.0, "count": 3}]
 
 
-@pytest.mark.parametrize("command", ["search", "count"])
-def test_old_contacts_commands_print_deprecation(install_build_client: Callable[[Handler], None], command: str) -> None:
-    install_build_client(lambda request: httpx2.Response(200, json=[] if command == "search" else {"count": 0}))
-    result = runner.invoke(app, ["contacts", command, "--name", "Jane"])
+def test_old_contacts_commands_print_deprecation(install_build_client: Callable[[Handler], None]) -> None:
+    install_build_client(lambda request: httpx2.Response(200, json=[]))
+    result = runner.invoke(app, ["contacts", "search", "--name", "Jane"])
     assert result.exit_code == 0, result.output
-    assert f"`discolike contacts {command}` is deprecated" in result.stderr
+    assert "`discolike contacts search` is deprecated" in result.stderr
     assert "use `discolike contacts run`" in result.stderr
 
 

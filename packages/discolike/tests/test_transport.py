@@ -15,7 +15,6 @@ from discolike_testkit import api_key_auth
 
 @pytest.fixture(autouse=True)
 def no_sleep(monkeypatch):
-    monkeypatch.setattr(transport_module, "_warned_endpoints", set())
     sleeps: list[float] = []
     monkeypatch.setattr(transport_module.time, "sleep", sleeps.append)
 
@@ -280,7 +279,7 @@ def test_with_timeout_overrides_request_timeout_and_leaves_base_alone() -> None:
 
 
 @pytest.mark.parametrize("use_async", [False, True])
-async def test_deprecation_once_per_method_and_template_across_clients(use_async) -> None:
+async def test_deprecation_warns_on_every_call_across_clients(use_async) -> None:
     headers = {
         "Deprecation": "@1793664000",
         "Sunset": "Wed, 03 Nov 2027 00:00:00 GMT",
@@ -308,13 +307,13 @@ async def test_deprecation_once_per_method_and_template_across_clients(use_async
                 transport = make_transport(handler)
                 transport.with_timeout(1.0).request("GET", path)
                 transport.close()
-        assert len(caught) == 1
+        assert len(caught) == 3
         transport = make_transport(handler)
         transport.request("GET", "/email/jobs/789")
         transport.request("POST", "/email/jobs/123")
         transport.request("GET", "/usage")
         transport.close()
-        assert len(caught) == 3
+        assert len(caught) == 6
     message = str(caught[0].message)
     assert "GET /email/jobs/{job_id}" in message
     for name, value in headers.items():
@@ -366,7 +365,7 @@ def test_deprecation_thread_safe() -> None:
         warnings.simplefilter("always", DeprecationWarning)
         with ThreadPoolExecutor(max_workers=8) as pool:
             list(pool.map(request, range(32)))
-    assert len(caught) == 1
+    assert len(caught) == 32
 
 
 @pytest.mark.parametrize(
@@ -384,4 +383,5 @@ def test_deprecation_normalizes_identifiers_and_query_strings(paths) -> None:
         for path in paths:
             transport.request("GET", path)
     transport.close()
-    assert len(caught) == 1
+    assert len(caught) == 2
+    assert len({str(warning.message) for warning in caught}) == 1
