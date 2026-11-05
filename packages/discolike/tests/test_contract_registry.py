@@ -66,7 +66,7 @@ def test_check_models_passes_when_spec_matches_model():
     check_contract = _load_check_contract()
     from discolike.resources.companies import ExtractResult
 
-    spec = {"components": {"schemas": {"ExtractResponse": {"properties": {"text": {}, "language": {}}}}}}
+    spec = {"components": {"schemas": {"ExtractResponse": {"properties": {"text": {}}}}}}
     assert check_contract.check_models(spec, {"ExtractResponse": ExtractResult}) == []
 
 
@@ -74,16 +74,16 @@ def test_check_models_reports_field_the_spec_does_not_have():
     check_contract = _load_check_contract()
     from discolike.resources.companies import ExtractResult
 
-    spec = {"components": {"schemas": {"ExtractResponse": {"properties": {"text": {}}}}}}
+    spec = {"components": {"schemas": {"ExtractResponse": {"properties": {}}}}}
     mismatches = check_contract.check_models(spec, {"ExtractResponse": ExtractResult})
-    assert mismatches == ["ExtractResult: field 'language' not in spec schema 'ExtractResponse'"]
+    assert mismatches == ["ExtractResult: field 'text' not in spec schema 'ExtractResponse'"]
 
 
 def test_check_models_reports_field_the_sdk_does_not_declare():
     check_contract = _load_check_contract()
     from discolike.resources.companies import ExtractResult
 
-    spec = {"components": {"schemas": {"ExtractResponse": {"properties": {"text": {}, "language": {}, "summary": {}}}}}}
+    spec = {"components": {"schemas": {"ExtractResponse": {"properties": {"text": {}, "summary": {}}}}}}
     mismatches = check_contract.check_models(spec, {"ExtractResponse": ExtractResult})
     assert mismatches == ["ExtractResult: spec schema 'ExtractResponse' has field 'summary' the SDK does not declare"]
 
@@ -92,7 +92,7 @@ def test_check_models_ignores_type_and_requiredness_when_spec_gives_no_type_info
     check_contract = _load_check_contract()
     from discolike.resources.companies import ExtractResult
 
-    spec = {"components": {"schemas": {"ExtractResponse": {"properties": {"text": {}, "language": {}}}}}}
+    spec = {"components": {"schemas": {"ExtractResponse": {"properties": {"text": {}}}}}}
     assert check_contract.check_models(spec, {"ExtractResponse": ExtractResult}) == []
 
 
@@ -143,7 +143,6 @@ def test_check_models_passes_a_nullable_field_expressed_via_anyof():
                 "ExtractResponse": {
                     "properties": {
                         "text": {"anyOf": [{"type": "string"}, {"type": "null"}]},
-                        "language": {"anyOf": [{"type": "string"}, {"type": "null"}]},
                     },
                 }
             }
@@ -162,7 +161,6 @@ def test_check_models_passes_a_nullable_field_expressed_via_openapi_nullable_fla
                 "ExtractResponse": {
                     "properties": {
                         "text": {"type": "string", "nullable": True},
-                        "language": {"type": "string", "nullable": True},
                     },
                 }
             }
@@ -185,11 +183,7 @@ def test_check_models_accepts_an_sdk_field_nullable_where_the_spec_is_not():
     check_contract = _load_check_contract()
     from discolike.resources.companies import ExtractResult
 
-    spec = {
-        "components": {
-            "schemas": {"ExtractResponse": {"properties": {"text": {"type": "string"}, "language": {"type": "string"}}}}
-        }
-    }
+    spec = {"components": {"schemas": {"ExtractResponse": {"properties": {"text": {"type": "string"}}}}}}
     assert check_contract.check_models(spec, {"ExtractResponse": ExtractResult}) == []
 
 
