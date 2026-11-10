@@ -41,8 +41,6 @@ class ContactsRunStep(DiscolikeModel):
     counts: dict[str, int] = Field(default_factory=dict)
     estimate_usd: Decimal | None = None
     charged_usd: Decimal = Decimal(0)
-    child_task_id: str | None = None
-    state: dict[str, Any] = Field(default_factory=dict)
 
 
 class ContactsRunRow(DiscolikeModel):
@@ -54,7 +52,6 @@ class ContactsRunRow(DiscolikeModel):
     linkedin_url: str | None = None
     seniority: str | None = None
     department: str | None = None
-    source: Literal["database", "web_search"] | str | None = None
     debug_only: bool | None = None
     reason: str | None = None
     company_score: float | None = None
@@ -64,10 +61,11 @@ class ContactsRunRow(DiscolikeModel):
     not_fit: bool = False
     email: str | None = None
     email_status: Literal["Validated", "Validated (catch-all resolved)"] | str | None = None
-    company: dict[str, Any] = Field(default_factory=dict)
+    email_state: Literal["checking", "queued", "skipped"] | str | None = None
 
 
 class RunCompanyResponse(DiscolikeModel):
+    company: dict[str, Any] = Field(default_factory=dict)
     domain: str
     status: Literal["pending", "finding_people", "finding_emails", "validated", "skipped", "cancelled", "failed"] | str
     people_reviewed: int = 0
@@ -77,6 +75,8 @@ class RunCompanyResponse(DiscolikeModel):
 
 
 class ContactsRunSummary(DiscolikeModel):
+    skipped_no_mx: int | None = None
+    stop_reason: Literal["low_delivery_yield", "source_exhausted"] | str | None = None
     companies_delivered: int = 0
     validated_contacts: int = 0
     spent_usd: Decimal = Decimal(0)
@@ -88,6 +88,7 @@ class ValidatedRunTitle(DiscolikeModel):
 
 
 class ContactsRunEvent(DiscolikeModel):
+    company_name: str | None = None
     seq: int
     domain: str
     created_at: datetime
@@ -104,7 +105,24 @@ class ContactsRunEventsResponse(DiscolikeModel):
     next_cursor: int = 0
 
 
+class AppliedCompanyFilters(DiscolikeModel):
+    """Effective company filters returned by the server, without request validation limits."""
+
+    filter_industry: list[str] | None = None
+    negate_filter_industry: list[str] | None = None
+    filter_country: list[str] | None = None
+    negate_filter_country: list[str] | None = None
+    filter_state: list[str] | None = None
+    negate_filter_state: list[str] | None = None
+    employee_range: str | None = None
+    revenue_range: str | None = None
+    sub_industry: list[str] | None = None
+
+
 class ContactsRun(DiscolikeModel):
+    applied_company_filters: AppliedCompanyFilters | None = None
+    contacts_total: int = 0
+    progress: dict[str, int] = Field(default_factory=dict)
     error: str | None = None
     companies: list[RunCompanyResponse] = Field(default_factory=list)
     companies_total: int = 0
@@ -121,8 +139,6 @@ class ContactsRun(DiscolikeModel):
     created_at: datetime
     updated_at: datetime
     expires_at: datetime
-    rows: list[ContactsRunRow] = Field(default_factory=list)
-    rows_total: int = 0
 
 
 class TitlePreviewTitle(DiscolikeModel):
@@ -164,16 +180,10 @@ class ContactsRunResource(SyncAPIResource):
         offset = 0
         while True:
             run = self.get(run_id, ContactsRunGetParams(rows_offset=offset, rows_limit=page_size))
-            if run.kind == "contacts":
-                rows.extend(contact for company in run.companies for contact in company.contacts)
-                offset += len(run.companies)
-                if not run.companies or offset >= run.companies_total:
-                    return rows
-            else:
-                rows.extend(run.rows)
-                offset += len(run.rows)
-                if not run.rows or offset >= run.rows_total:
-                    return rows
+            rows.extend(contact for company in run.companies for contact in company.contacts)
+            offset += len(run.companies)
+            if not run.companies or offset >= run.companies_total:
+                return rows
 
     @api_route("POST", RUN_PATH + "/{run_id}/continue", openapi=False)
     def continue_(self, run_id: str | UUID, request: ContinueRunRequest) -> ContactsRun:
@@ -239,16 +249,10 @@ class AsyncContactsRunResource(AsyncAPIResource):
         offset = 0
         while True:
             run = await self.get(run_id, ContactsRunGetParams(rows_offset=offset, rows_limit=page_size))
-            if run.kind == "contacts":
-                rows.extend(contact for company in run.companies for contact in company.contacts)
-                offset += len(run.companies)
-                if not run.companies or offset >= run.companies_total:
-                    return rows
-            else:
-                rows.extend(run.rows)
-                offset += len(run.rows)
-                if not run.rows or offset >= run.rows_total:
-                    return rows
+            rows.extend(contact for company in run.companies for contact in company.contacts)
+            offset += len(run.companies)
+            if not run.companies or offset >= run.companies_total:
+                return rows
 
     @api_route("POST", RUN_PATH + "/{run_id}/continue", openapi=False)
     async def continue_(self, run_id: str | UUID, request: ContinueRunRequest) -> ContactsRun:

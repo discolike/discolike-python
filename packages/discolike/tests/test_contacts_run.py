@@ -78,7 +78,7 @@ def test_create_wire_and_open_response(make_client: ClientFactory) -> None:
     assert seen[0].url.path == "/v1/contacts/run"
     assert json.loads(seen[0].content) == request().to_wire()
     assert run.current_step is None
-    assert run.companies[0].contacts[0].source is None
+    assert run.companies[0].contacts[0].email_state is None
     assert run.companies[0].contacts[0].email_status == "Validated (catch-all resolved)"
     assert run.summary is not None
     assert run.summary.spent_usd == Decimal("0.10")
@@ -170,7 +170,12 @@ def test_open_events() -> None:
             ],
         }
     )
+    assert page.events[0].company_name is None
     assert page.events[0].validated_titles[0].status == "future"
+    assert (
+        module.ContactsRunEvent.model_validate(page.events[0].model_dump() | {"company_name": "Acme"}).company_name
+        == "Acme"
+    )
     assert ContactsRun.model_validate(
         run_payload("future", current_step="future", steps={"future": {"status": "future"}})
     )
@@ -196,7 +201,7 @@ def test_wait_timeout(make_client: ClientFactory, monkeypatch: pytest.MonkeyPatc
             client.contacts_run.wait(RUN_ID)
 
 
-def company_page(req: httpx2.Request) -> httpx2.Response:
+def company_page(req: httpx2.Request, *, kind: str = "contacts") -> httpx2.Response:
     offset = int(req.url.params["rows_offset"])
     pages = [
         {"domain": "Company 1", "status": "skipped", "contacts": []},
@@ -211,16 +216,20 @@ def company_page(req: httpx2.Request) -> httpx2.Response:
         {"domain": "Company 3", "status": "validated", "contacts": [{"row_key": "c", "domain": "Company 3"}]},
     ]
     assert req.url.params["rows_limit"] == "1"
-    return httpx2.Response(200, json=run_payload(companies=pages[offset : offset + 1], companies_total=3, rows_total=3))
+    return httpx2.Response(
+        200, json=run_payload(kind=kind, companies=pages[offset : offset + 1], companies_total=3, contacts_total=3)
+    )
 
 
-def test_rows_pages_domains_including_empty_companies(make_client: ClientFactory) -> None:
-    with make_client(company_page) as client:
+@pytest.mark.parametrize("kind", ["contacts", "companies"])
+def test_rows_pages_domains_including_empty_companies(make_client: ClientFactory, kind: str) -> None:
+    with make_client(lambda req: company_page(req, kind=kind)) as client:
         assert [r.row_key for r in client.contacts_run.rows(RUN_ID, page_size=1)] == ["a", "b", "c"]
 
 
-async def test_async_rows(make_async_client: AsyncClientFactory) -> None:
-    async with make_async_client(company_page) as client:
+@pytest.mark.parametrize("kind", ["contacts", "companies"])
+async def test_async_rows(make_async_client: AsyncClientFactory, kind: str) -> None:
+    async with make_async_client(lambda req: company_page(req, kind=kind)) as client:
         assert [r.row_key for r in await client.contacts_run.rows(RUN_ID, page_size=1)] == ["a", "b", "c"]
 
 
@@ -268,3 +277,53 @@ def test_insufficient_balance(make_client: ClientFactory) -> None:
         with pytest.raises(InsufficientBalanceError) as exc:
             client.contacts_run.create(request())
     assert exc.value.max_affordable_records == 2
+
+
+def test_response_fields_accept_new_server_values() -> None:
+    run = ContactsRun.model_validate(
+        run_payload(
+            applied_company_filters={
+                "filter_industry": ["+FUTURE"],
+                "negate_filter_industry": ["FUTURE"],
+                "sub_industry": ["FUTURE"] * 100,
+                "future": True,
+            },
+            contacts_total=2,
+            progress={"future": 3},
+            summary={"skipped_no_mx": -1, "stop_reason": "future"},
+            companies=[
+                {
+                    "domain": "acme.com",
+                    "status": "future",
+                    "company": {"name": "Acme", "future": True},
+                    "contacts": [{"domain": "acme.com", "row_key": "a", "email_state": "future", "future": True}],
+                }
+            ],
+        )
+    )
+    assert run.contacts_total == 2
+    assert run.progress == {"future": 3}
+    assert run.applied_company_filters is not None
+    assert run.applied_company_filters.negate_filter_industry == ["FUTURE"]
+    assert run.applied_company_filters.model_extra == {"future": True}
+    assert run.summary is not None
+    assert run.summary.skipped_no_mx == -1
+    assert run.summary.stop_reason == "future"
+    assert run.companies[0].company == {"name": "Acme", "future": True}
+    assert run.companies[0].contacts[0].email_state == "future"
+    assert run.companies[0].contacts[0].model_extra == {"future": True}
+
+
+def test_response_fields_default_for_older_servers() -> None:
+    run = ContactsRun.model_validate(run_payload())
+    assert run.applied_company_filters is None
+    assert run.contacts_total == 0
+    assert run.progress == {}
+    summary = module.ContactsRunSummary()
+    assert summary.skipped_no_mx is None
+    assert summary.stop_reason is None
+    company = module.RunCompanyResponse(domain="acme.com", status="pending")
+    assert company.company == {}
+    assert not {"rows", "rows_total"} & ContactsRun.model_fields.keys()
+    assert not {"child_task_id", "state"} & module.ContactsRunStep.model_fields.keys()
+    assert not {"company", "source"} & module.ContactsRunRow.model_fields.keys()

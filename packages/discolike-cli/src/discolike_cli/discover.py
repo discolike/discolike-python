@@ -42,6 +42,7 @@ NEGATE_SOCIAL_HELP = "Exclude companies with this social profile (repeatable); s
 LANGUAGE_HELP = "Filter by site language as an ISO 639-1 code, e.g. en, de, pb, zt (repeatable)."
 NEGATE_LANGUAGE_HELP = "Exclude this site language (repeatable); same values as --language."
 EXCLUDE_LEADGEN_HELP = "Exclude suspected lead generation sites (on by default)."
+VALID_MX_HELP = "Exclude companies with no mail server (off by default)."
 COUNT_EXCLUDE_LEADGEN_HELP = "Exclude suspected lead generation sites (off by default for count)."
 RELEVANCE_HELP = (
     "Where the list stops, by estimated ICP fit: MAX_RELEVANCE (tightest), BALANCED, MAX_COVERAGE (longest). "
@@ -114,6 +115,7 @@ def discover_command(
     consensus: int | None = typer.Option(
         None, help="Deprecated, no-op. Discover applies consensus itself to single-domain lookalike searches."
     ),
+    valid_mx: bool | None = typer.Option(None, "--valid-mx/--no-valid-mx", help=VALID_MX_HELP),
     redirect: bool | None = typer.Option(None, "--redirect/--no-redirect", help=REDIRECT_HELP),
     exclude_leadgen: bool | None = typer.Option(
         None, "--exclude-leadgen/--no-exclude-leadgen", help=EXCLUDE_LEADGEN_HELP
@@ -193,6 +195,7 @@ def discover_command(
             relevance=relevance,
             variance=variance,
             consensus=consensus,
+            valid_mx=valid_mx,
             redirect=redirect,
             exclude_leadgen=exclude_leadgen,
             retrieval=retrieval,
@@ -245,6 +248,7 @@ def count_command(
     negate_tech_stack: list[str] | None = typer.Option(None, help="Negate the --tech-stack filter (repeatable)."),
     min_digital_footprint: int | None = typer.Option(None, help="Minimum digital footprint score."),
     max_digital_footprint: int | None = typer.Option(None, help="Maximum digital footprint score."),
+    valid_mx: bool | None = typer.Option(None, "--valid-mx/--no-valid-mx", help=VALID_MX_HELP),
     redirect: bool | None = typer.Option(None, "--redirect/--no-redirect", help=REDIRECT_HELP),
     exclude_leadgen: bool | None = typer.Option(
         None, "--exclude-leadgen/--no-exclude-leadgen", help=COUNT_EXCLUDE_LEADGEN_HELP
@@ -291,6 +295,7 @@ def count_command(
             negate_tech_stack=negate_tech_stack,
             min_digital_footprint=min_digital_footprint,
             max_digital_footprint=max_digital_footprint,
+            valid_mx=valid_mx,
             redirect=redirect,
             exclude_leadgen=exclude_leadgen,
         ),

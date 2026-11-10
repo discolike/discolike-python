@@ -63,66 +63,9 @@ class CompaniesPublicLinksParams(DiscolikeRequest):
 
 class ContactsSearchParams(DiscolikeRequest):
     filter_industry: Annotated[
-        list[
-            Literal[
-                "ACCOUNTING",
-                "ADVERTISING_AND_MARKETING",
-                "AGRICULTURE_AND_NATURAL_RESOURCES",
-                "ALCOHOL_AND_TOBACCO",
-                "AUTOMOTIVE",
-                "BIG_DATA_AND_ANALYTICS",
-                "BIOTECHNOLOGY",
-                "BLOCKCHAIN_AND_CRYPTOCURRENCY",
-                "BUSINESS_PRODUCTS_AND_SERVICES",
-                "CLOUD_COMPUTING",
-                "COMPUTER_HARDWARE_AND_SEMICONDUCTORS",
-                "CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES",
-                "CONSTRUCTION",
-                "CONSUMER_PRODUCTS",
-                "CONSUMER_SERVICES",
-                "CYBERSECURITY",
-                "DEFENSE_AND_AEROSPACE",
-                "E-COMMERCE",
-                "EDUCATION",
-                "ENERGY",
-                "ENGINEERING",
-                "ENTERTAINMENT",
-                "ENVIRONMENTAL_SERVICES",
-                "FASHION_TEXTILE_AND_APPAREL",
-                "FINANCIAL_SERVICES",
-                "FOOD_AND_BEVERAGE",
-                "GAMING_AND_ESPORTS",
-                "GOVERNMENT_SERVICES",
-                "HEALTHCARE",
-                "HOSPITALITY",
-                "HUMAN_RESOURCES",
-                "INSURANCE",
-                "IT_SERVICES",
-                "LEGAL",
-                "MANUFACTURING",
-                "MEDIA",
-                "MINING_AND_METALS",
-                "NONPROFIT_AND_PHILANTHROPY",
-                "OIL_AND_GAS",
-                "PHARMACEUTICALS",
-                "PRIVATE_EQUITY_AND_VENTURE_CAPITAL",
-                "REAL_ESTATE",
-                "RENEWABLE_ENERGY",
-                "RESTAURANTS",
-                "RETAIL",
-                "SAAS",
-                "SECURITY",
-                "SOFTWARE",
-                "SPORTS_AND_RECREATION",
-                "SUPPLY_CHAIN_AND_PROCUREMENT",
-                "TELECOMMUNICATIONS",
-                "TRAVEL",
-                "WELLNESS_AND_LIFESTYLE",
-            ]
-        ]
-        | None,
+        list[str] | None,
         Field(
-            description="Filter by industry category. Valid values: ACCOUNTING, ADVERTISING_AND_MARKETING, AGRICULTURE_AND_NATURAL_RESOURCES, ALCOHOL_AND_TOBACCO, AUTOMOTIVE, BIG_DATA_AND_ANALYTICS, BIOTECHNOLOGY, BLOCKCHAIN_AND_CRYPTOCURRENCY, BUSINESS_PRODUCTS_AND_SERVICES, CLOUD_COMPUTING, COMPUTER_HARDWARE_AND_SEMICONDUCTORS, CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES, CONSTRUCTION, CONSUMER_PRODUCTS, CONSUMER_SERVICES, CYBERSECURITY, DEFENSE_AND_AEROSPACE, E-COMMERCE, EDUCATION, ENERGY, ENGINEERING, ENTERTAINMENT, ENVIRONMENTAL_SERVICES, FASHION_TEXTILE_AND_APPAREL, FINANCIAL_SERVICES, FOOD_AND_BEVERAGE, GAMING_AND_ESPORTS, GOVERNMENT_SERVICES, HEALTHCARE, HOSPITALITY, HUMAN_RESOURCES, INSURANCE, IT_SERVICES, LEGAL, MANUFACTURING, MEDIA, MINING_AND_METALS, NONPROFIT_AND_PHILANTHROPY, OIL_AND_GAS, PHARMACEUTICALS, PRIVATE_EQUITY_AND_VENTURE_CAPITAL, REAL_ESTATE, RENEWABLE_ENERGY, RESTAURANTS, RETAIL, SAAS, SECURITY, SOFTWARE, SPORTS_AND_RECREATION, SUPPLY_CHAIN_AND_PROCUREMENT, TELECOMMUNICATIONS, TRAVEL, WELLNESS_AND_LIFESTYLE.",
+            description="Filter by industry category (ANY-OF; prefix + to require a category). Valid values: ACCOUNTING, ADVERTISING_AND_MARKETING, AGRICULTURE_AND_NATURAL_RESOURCES, ALCOHOL_AND_TOBACCO, AUTOMOTIVE, BIG_DATA_AND_ANALYTICS, BIOTECHNOLOGY, BLOCKCHAIN_AND_CRYPTOCURRENCY, BUSINESS_PRODUCTS_AND_SERVICES, CLOUD_COMPUTING, COMPUTER_HARDWARE_AND_SEMICONDUCTORS, CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES, CONSTRUCTION, CONSUMER_PRODUCTS, CONSUMER_SERVICES, CYBERSECURITY, DEFENSE_AND_AEROSPACE, E-COMMERCE, EDUCATION, ENERGY, ENGINEERING, ENTERTAINMENT, ENVIRONMENTAL_SERVICES, FASHION_TEXTILE_AND_APPAREL, FINANCIAL_SERVICES, FOOD_AND_BEVERAGE, GAMING_AND_ESPORTS, GOVERNMENT_SERVICES, HEALTHCARE, HOSPITALITY, HUMAN_RESOURCES, INSURANCE, IT_SERVICES, LEGAL, MANUFACTURING, MEDIA, MINING_AND_METALS, NONPROFIT_AND_PHILANTHROPY, OIL_AND_GAS, PHARMACEUTICALS, PRIVATE_EQUITY_AND_VENTURE_CAPITAL, REAL_ESTATE, RENEWABLE_ENERGY, RESTAURANTS, RETAIL, SAAS, SECURITY, SOFTWARE, SPORTS_AND_RECREATION, SUPPLY_CHAIN_AND_PROCUREMENT, TELECOMMUNICATIONS, TRAVEL, WELLNESS_AND_LIFESTYLE.",
             title="Filter Industry",
         ),
     ] = None
@@ -294,7 +237,7 @@ class ContactsSearchParams(DiscolikeRequest):
     skills: Annotated[
         list[str] | None,
         Field(
-            description="Filter by skills. Multiple skills can be provided.",
+            description="Accepted and ignored. Contacts are no longer indexed by skills.",
             title="Skills",
         ),
     ] = None
@@ -322,14 +265,14 @@ class ContactsSearchParams(DiscolikeRequest):
     summary: Annotated[
         str | None,
         Field(
-            description="Match the profile summary text: a contact matches when its summary contains every word of any one term, in any order. Words are separate terms; quote a multi-word term to keep it together, prefix + to require a term.",
+            description="Matched against the job title: a contact matches when its title matches any one term. Unquoted words are separate terms; a quoted term is a phrase (adjacent, in order); prefix + to require a term.",
             title="Summary",
         ),
     ] = None
     negate_summary: Annotated[
         str | None,
         Field(
-            description="Exclude contacts whose profile summary contains every word of any one term, in any order. Quote a multi-word term to keep it together.",
+            description="Exclude contacts whose job title matches any one term. Unquoted words are separate terms; a quoted term is a phrase (adjacent, in order).",
             title="Negate Summary",
         ),
     ] = None
@@ -437,7 +380,7 @@ class ContactsSearchParams(DiscolikeRequest):
             le=10000,
             title="Max Records",
         ),
-    ] = 100
+    ] = 500
     max_companies: Annotated[
         int | None,
         Field(
@@ -485,66 +428,9 @@ class ContactsSearchParams(DiscolikeRequest):
 
 class ContactsCountParams(DiscolikeRequest):
     filter_industry: Annotated[
-        list[
-            Literal[
-                "ACCOUNTING",
-                "ADVERTISING_AND_MARKETING",
-                "AGRICULTURE_AND_NATURAL_RESOURCES",
-                "ALCOHOL_AND_TOBACCO",
-                "AUTOMOTIVE",
-                "BIG_DATA_AND_ANALYTICS",
-                "BIOTECHNOLOGY",
-                "BLOCKCHAIN_AND_CRYPTOCURRENCY",
-                "BUSINESS_PRODUCTS_AND_SERVICES",
-                "CLOUD_COMPUTING",
-                "COMPUTER_HARDWARE_AND_SEMICONDUCTORS",
-                "CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES",
-                "CONSTRUCTION",
-                "CONSUMER_PRODUCTS",
-                "CONSUMER_SERVICES",
-                "CYBERSECURITY",
-                "DEFENSE_AND_AEROSPACE",
-                "E-COMMERCE",
-                "EDUCATION",
-                "ENERGY",
-                "ENGINEERING",
-                "ENTERTAINMENT",
-                "ENVIRONMENTAL_SERVICES",
-                "FASHION_TEXTILE_AND_APPAREL",
-                "FINANCIAL_SERVICES",
-                "FOOD_AND_BEVERAGE",
-                "GAMING_AND_ESPORTS",
-                "GOVERNMENT_SERVICES",
-                "HEALTHCARE",
-                "HOSPITALITY",
-                "HUMAN_RESOURCES",
-                "INSURANCE",
-                "IT_SERVICES",
-                "LEGAL",
-                "MANUFACTURING",
-                "MEDIA",
-                "MINING_AND_METALS",
-                "NONPROFIT_AND_PHILANTHROPY",
-                "OIL_AND_GAS",
-                "PHARMACEUTICALS",
-                "PRIVATE_EQUITY_AND_VENTURE_CAPITAL",
-                "REAL_ESTATE",
-                "RENEWABLE_ENERGY",
-                "RESTAURANTS",
-                "RETAIL",
-                "SAAS",
-                "SECURITY",
-                "SOFTWARE",
-                "SPORTS_AND_RECREATION",
-                "SUPPLY_CHAIN_AND_PROCUREMENT",
-                "TELECOMMUNICATIONS",
-                "TRAVEL",
-                "WELLNESS_AND_LIFESTYLE",
-            ]
-        ]
-        | None,
+        list[str] | None,
         Field(
-            description="Filter by industry category. Valid values: ACCOUNTING, ADVERTISING_AND_MARKETING, AGRICULTURE_AND_NATURAL_RESOURCES, ALCOHOL_AND_TOBACCO, AUTOMOTIVE, BIG_DATA_AND_ANALYTICS, BIOTECHNOLOGY, BLOCKCHAIN_AND_CRYPTOCURRENCY, BUSINESS_PRODUCTS_AND_SERVICES, CLOUD_COMPUTING, COMPUTER_HARDWARE_AND_SEMICONDUCTORS, CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES, CONSTRUCTION, CONSUMER_PRODUCTS, CONSUMER_SERVICES, CYBERSECURITY, DEFENSE_AND_AEROSPACE, E-COMMERCE, EDUCATION, ENERGY, ENGINEERING, ENTERTAINMENT, ENVIRONMENTAL_SERVICES, FASHION_TEXTILE_AND_APPAREL, FINANCIAL_SERVICES, FOOD_AND_BEVERAGE, GAMING_AND_ESPORTS, GOVERNMENT_SERVICES, HEALTHCARE, HOSPITALITY, HUMAN_RESOURCES, INSURANCE, IT_SERVICES, LEGAL, MANUFACTURING, MEDIA, MINING_AND_METALS, NONPROFIT_AND_PHILANTHROPY, OIL_AND_GAS, PHARMACEUTICALS, PRIVATE_EQUITY_AND_VENTURE_CAPITAL, REAL_ESTATE, RENEWABLE_ENERGY, RESTAURANTS, RETAIL, SAAS, SECURITY, SOFTWARE, SPORTS_AND_RECREATION, SUPPLY_CHAIN_AND_PROCUREMENT, TELECOMMUNICATIONS, TRAVEL, WELLNESS_AND_LIFESTYLE.",
+            description="Filter by industry category (ANY-OF; prefix + to require a category). Valid values: ACCOUNTING, ADVERTISING_AND_MARKETING, AGRICULTURE_AND_NATURAL_RESOURCES, ALCOHOL_AND_TOBACCO, AUTOMOTIVE, BIG_DATA_AND_ANALYTICS, BIOTECHNOLOGY, BLOCKCHAIN_AND_CRYPTOCURRENCY, BUSINESS_PRODUCTS_AND_SERVICES, CLOUD_COMPUTING, COMPUTER_HARDWARE_AND_SEMICONDUCTORS, CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES, CONSTRUCTION, CONSUMER_PRODUCTS, CONSUMER_SERVICES, CYBERSECURITY, DEFENSE_AND_AEROSPACE, E-COMMERCE, EDUCATION, ENERGY, ENGINEERING, ENTERTAINMENT, ENVIRONMENTAL_SERVICES, FASHION_TEXTILE_AND_APPAREL, FINANCIAL_SERVICES, FOOD_AND_BEVERAGE, GAMING_AND_ESPORTS, GOVERNMENT_SERVICES, HEALTHCARE, HOSPITALITY, HUMAN_RESOURCES, INSURANCE, IT_SERVICES, LEGAL, MANUFACTURING, MEDIA, MINING_AND_METALS, NONPROFIT_AND_PHILANTHROPY, OIL_AND_GAS, PHARMACEUTICALS, PRIVATE_EQUITY_AND_VENTURE_CAPITAL, REAL_ESTATE, RENEWABLE_ENERGY, RESTAURANTS, RETAIL, SAAS, SECURITY, SOFTWARE, SPORTS_AND_RECREATION, SUPPLY_CHAIN_AND_PROCUREMENT, TELECOMMUNICATIONS, TRAVEL, WELLNESS_AND_LIFESTYLE.",
             title="Filter Industry",
         ),
     ] = None
@@ -716,7 +602,7 @@ class ContactsCountParams(DiscolikeRequest):
     skills: Annotated[
         list[str] | None,
         Field(
-            description="Filter by skills. Multiple skills can be provided.",
+            description="Accepted and ignored. Contacts are no longer indexed by skills.",
             title="Skills",
         ),
     ] = None
@@ -744,14 +630,14 @@ class ContactsCountParams(DiscolikeRequest):
     summary: Annotated[
         str | None,
         Field(
-            description="Match the profile summary text: a contact matches when its summary contains every word of any one term, in any order. Words are separate terms; quote a multi-word term to keep it together, prefix + to require a term.",
+            description="Matched against the job title: a contact matches when its title matches any one term. Unquoted words are separate terms; a quoted term is a phrase (adjacent, in order); prefix + to require a term.",
             title="Summary",
         ),
     ] = None
     negate_summary: Annotated[
         str | None,
         Field(
-            description="Exclude contacts whose profile summary contains every word of any one term, in any order. Quote a multi-word term to keep it together.",
+            description="Exclude contacts whose job title matches any one term. Unquoted words are separate terms; a quoted term is a phrase (adjacent, in order).",
             title="Negate Summary",
         ),
     ] = None
@@ -859,7 +745,7 @@ class ContactsCountParams(DiscolikeRequest):
             le=10000,
             title="Max Records",
         ),
-    ] = 100
+    ] = 500
     max_companies: Annotated[
         int | None,
         Field(
@@ -939,66 +825,9 @@ class ContactsMatchParams(DiscolikeRequest):
 
 class ContactFilters(DiscolikeRequest):
     filter_industry: Annotated[
-        list[
-            Literal[
-                "ACCOUNTING",
-                "ADVERTISING_AND_MARKETING",
-                "AGRICULTURE_AND_NATURAL_RESOURCES",
-                "ALCOHOL_AND_TOBACCO",
-                "AUTOMOTIVE",
-                "BIG_DATA_AND_ANALYTICS",
-                "BIOTECHNOLOGY",
-                "BLOCKCHAIN_AND_CRYPTOCURRENCY",
-                "BUSINESS_PRODUCTS_AND_SERVICES",
-                "CLOUD_COMPUTING",
-                "COMPUTER_HARDWARE_AND_SEMICONDUCTORS",
-                "CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES",
-                "CONSTRUCTION",
-                "CONSUMER_PRODUCTS",
-                "CONSUMER_SERVICES",
-                "CYBERSECURITY",
-                "DEFENSE_AND_AEROSPACE",
-                "E-COMMERCE",
-                "EDUCATION",
-                "ENERGY",
-                "ENGINEERING",
-                "ENTERTAINMENT",
-                "ENVIRONMENTAL_SERVICES",
-                "FASHION_TEXTILE_AND_APPAREL",
-                "FINANCIAL_SERVICES",
-                "FOOD_AND_BEVERAGE",
-                "GAMING_AND_ESPORTS",
-                "GOVERNMENT_SERVICES",
-                "HEALTHCARE",
-                "HOSPITALITY",
-                "HUMAN_RESOURCES",
-                "INSURANCE",
-                "IT_SERVICES",
-                "LEGAL",
-                "MANUFACTURING",
-                "MEDIA",
-                "MINING_AND_METALS",
-                "NONPROFIT_AND_PHILANTHROPY",
-                "OIL_AND_GAS",
-                "PHARMACEUTICALS",
-                "PRIVATE_EQUITY_AND_VENTURE_CAPITAL",
-                "REAL_ESTATE",
-                "RENEWABLE_ENERGY",
-                "RESTAURANTS",
-                "RETAIL",
-                "SAAS",
-                "SECURITY",
-                "SOFTWARE",
-                "SPORTS_AND_RECREATION",
-                "SUPPLY_CHAIN_AND_PROCUREMENT",
-                "TELECOMMUNICATIONS",
-                "TRAVEL",
-                "WELLNESS_AND_LIFESTYLE",
-            ]
-        ]
-        | None,
+        list[str] | None,
         Field(
-            description="Filter by industry category. Valid values: ACCOUNTING, ADVERTISING_AND_MARKETING, AGRICULTURE_AND_NATURAL_RESOURCES, ALCOHOL_AND_TOBACCO, AUTOMOTIVE, BIG_DATA_AND_ANALYTICS, BIOTECHNOLOGY, BLOCKCHAIN_AND_CRYPTOCURRENCY, BUSINESS_PRODUCTS_AND_SERVICES, CLOUD_COMPUTING, COMPUTER_HARDWARE_AND_SEMICONDUCTORS, CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES, CONSTRUCTION, CONSUMER_PRODUCTS, CONSUMER_SERVICES, CYBERSECURITY, DEFENSE_AND_AEROSPACE, E-COMMERCE, EDUCATION, ENERGY, ENGINEERING, ENTERTAINMENT, ENVIRONMENTAL_SERVICES, FASHION_TEXTILE_AND_APPAREL, FINANCIAL_SERVICES, FOOD_AND_BEVERAGE, GAMING_AND_ESPORTS, GOVERNMENT_SERVICES, HEALTHCARE, HOSPITALITY, HUMAN_RESOURCES, INSURANCE, IT_SERVICES, LEGAL, MANUFACTURING, MEDIA, MINING_AND_METALS, NONPROFIT_AND_PHILANTHROPY, OIL_AND_GAS, PHARMACEUTICALS, PRIVATE_EQUITY_AND_VENTURE_CAPITAL, REAL_ESTATE, RENEWABLE_ENERGY, RESTAURANTS, RETAIL, SAAS, SECURITY, SOFTWARE, SPORTS_AND_RECREATION, SUPPLY_CHAIN_AND_PROCUREMENT, TELECOMMUNICATIONS, TRAVEL, WELLNESS_AND_LIFESTYLE.",
+            description="Filter by industry category (ANY-OF; prefix + to require a category). Valid values: ACCOUNTING, ADVERTISING_AND_MARKETING, AGRICULTURE_AND_NATURAL_RESOURCES, ALCOHOL_AND_TOBACCO, AUTOMOTIVE, BIG_DATA_AND_ANALYTICS, BIOTECHNOLOGY, BLOCKCHAIN_AND_CRYPTOCURRENCY, BUSINESS_PRODUCTS_AND_SERVICES, CLOUD_COMPUTING, COMPUTER_HARDWARE_AND_SEMICONDUCTORS, CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES, CONSTRUCTION, CONSUMER_PRODUCTS, CONSUMER_SERVICES, CYBERSECURITY, DEFENSE_AND_AEROSPACE, E-COMMERCE, EDUCATION, ENERGY, ENGINEERING, ENTERTAINMENT, ENVIRONMENTAL_SERVICES, FASHION_TEXTILE_AND_APPAREL, FINANCIAL_SERVICES, FOOD_AND_BEVERAGE, GAMING_AND_ESPORTS, GOVERNMENT_SERVICES, HEALTHCARE, HOSPITALITY, HUMAN_RESOURCES, INSURANCE, IT_SERVICES, LEGAL, MANUFACTURING, MEDIA, MINING_AND_METALS, NONPROFIT_AND_PHILANTHROPY, OIL_AND_GAS, PHARMACEUTICALS, PRIVATE_EQUITY_AND_VENTURE_CAPITAL, REAL_ESTATE, RENEWABLE_ENERGY, RESTAURANTS, RETAIL, SAAS, SECURITY, SOFTWARE, SPORTS_AND_RECREATION, SUPPLY_CHAIN_AND_PROCUREMENT, TELECOMMUNICATIONS, TRAVEL, WELLNESS_AND_LIFESTYLE.",
             title="Filter Industry",
         ),
     ] = None
@@ -1170,7 +999,7 @@ class ContactFilters(DiscolikeRequest):
     skills: Annotated[
         list[str] | None,
         Field(
-            description="Filter by skills. Multiple skills can be provided.",
+            description="Accepted and ignored. Contacts are no longer indexed by skills.",
             title="Skills",
         ),
     ] = None
@@ -1198,14 +1027,14 @@ class ContactFilters(DiscolikeRequest):
     summary: Annotated[
         str | None,
         Field(
-            description="Match the profile summary text: a contact matches when its summary contains every word of any one term, in any order. Words are separate terms; quote a multi-word term to keep it together, prefix + to require a term.",
+            description="Matched against the job title: a contact matches when its title matches any one term. Unquoted words are separate terms; a quoted term is a phrase (adjacent, in order); prefix + to require a term.",
             title="Summary",
         ),
     ] = None
     negate_summary: Annotated[
         str | None,
         Field(
-            description="Exclude contacts whose profile summary contains every word of any one term, in any order. Quote a multi-word term to keep it together.",
+            description="Exclude contacts whose job title matches any one term. Unquoted words are separate terms; a quoted term is a phrase (adjacent, in order).",
             title="Negate Summary",
         ),
     ] = None
@@ -1313,7 +1142,7 @@ class ContactFilters(DiscolikeRequest):
             le=10000,
             title="Max Records",
         ),
-    ] = 100
+    ] = 500
     max_companies: Annotated[
         int | None,
         Field(
@@ -1574,66 +1403,9 @@ class DiscoverParams(DiscolikeRequest):
         ),
     ] = None
     category: Annotated[
-        list[
-            Literal[
-                "ACCOUNTING",
-                "ADVERTISING_AND_MARKETING",
-                "AGRICULTURE_AND_NATURAL_RESOURCES",
-                "ALCOHOL_AND_TOBACCO",
-                "AUTOMOTIVE",
-                "BIG_DATA_AND_ANALYTICS",
-                "BIOTECHNOLOGY",
-                "BLOCKCHAIN_AND_CRYPTOCURRENCY",
-                "BUSINESS_PRODUCTS_AND_SERVICES",
-                "CLOUD_COMPUTING",
-                "COMPUTER_HARDWARE_AND_SEMICONDUCTORS",
-                "CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES",
-                "CONSTRUCTION",
-                "CONSUMER_PRODUCTS",
-                "CONSUMER_SERVICES",
-                "CYBERSECURITY",
-                "DEFENSE_AND_AEROSPACE",
-                "E-COMMERCE",
-                "EDUCATION",
-                "ENERGY",
-                "ENGINEERING",
-                "ENTERTAINMENT",
-                "ENVIRONMENTAL_SERVICES",
-                "FASHION_TEXTILE_AND_APPAREL",
-                "FINANCIAL_SERVICES",
-                "FOOD_AND_BEVERAGE",
-                "GAMING_AND_ESPORTS",
-                "GOVERNMENT_SERVICES",
-                "HEALTHCARE",
-                "HOSPITALITY",
-                "HUMAN_RESOURCES",
-                "INSURANCE",
-                "IT_SERVICES",
-                "LEGAL",
-                "MANUFACTURING",
-                "MEDIA",
-                "MINING_AND_METALS",
-                "NONPROFIT_AND_PHILANTHROPY",
-                "OIL_AND_GAS",
-                "PHARMACEUTICALS",
-                "PRIVATE_EQUITY_AND_VENTURE_CAPITAL",
-                "REAL_ESTATE",
-                "RENEWABLE_ENERGY",
-                "RESTAURANTS",
-                "RETAIL",
-                "SAAS",
-                "SECURITY",
-                "SOFTWARE",
-                "SPORTS_AND_RECREATION",
-                "SUPPLY_CHAIN_AND_PROCUREMENT",
-                "TELECOMMUNICATIONS",
-                "TRAVEL",
-                "WELLNESS_AND_LIFESTYLE",
-            ]
-        ]
-        | None,
+        list[str] | None,
         Field(
-            description="Filter by industry category. Valid values: ACCOUNTING, ADVERTISING_AND_MARKETING, AGRICULTURE_AND_NATURAL_RESOURCES, ALCOHOL_AND_TOBACCO, AUTOMOTIVE, BIG_DATA_AND_ANALYTICS, BIOTECHNOLOGY, BLOCKCHAIN_AND_CRYPTOCURRENCY, BUSINESS_PRODUCTS_AND_SERVICES, CLOUD_COMPUTING, COMPUTER_HARDWARE_AND_SEMICONDUCTORS, CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES, CONSTRUCTION, CONSUMER_PRODUCTS, CONSUMER_SERVICES, CYBERSECURITY, DEFENSE_AND_AEROSPACE, E-COMMERCE, EDUCATION, ENERGY, ENGINEERING, ENTERTAINMENT, ENVIRONMENTAL_SERVICES, FASHION_TEXTILE_AND_APPAREL, FINANCIAL_SERVICES, FOOD_AND_BEVERAGE, GAMING_AND_ESPORTS, GOVERNMENT_SERVICES, HEALTHCARE, HOSPITALITY, HUMAN_RESOURCES, INSURANCE, IT_SERVICES, LEGAL, MANUFACTURING, MEDIA, MINING_AND_METALS, NONPROFIT_AND_PHILANTHROPY, OIL_AND_GAS, PHARMACEUTICALS, PRIVATE_EQUITY_AND_VENTURE_CAPITAL, REAL_ESTATE, RENEWABLE_ENERGY, RESTAURANTS, RETAIL, SAAS, SECURITY, SOFTWARE, SPORTS_AND_RECREATION, SUPPLY_CHAIN_AND_PROCUREMENT, TELECOMMUNICATIONS, TRAVEL, WELLNESS_AND_LIFESTYLE.",
+            description="Filter by industry category (ANY-OF; prefix + to require a category). Valid values: ACCOUNTING, ADVERTISING_AND_MARKETING, AGRICULTURE_AND_NATURAL_RESOURCES, ALCOHOL_AND_TOBACCO, AUTOMOTIVE, BIG_DATA_AND_ANALYTICS, BIOTECHNOLOGY, BLOCKCHAIN_AND_CRYPTOCURRENCY, BUSINESS_PRODUCTS_AND_SERVICES, CLOUD_COMPUTING, COMPUTER_HARDWARE_AND_SEMICONDUCTORS, CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES, CONSTRUCTION, CONSUMER_PRODUCTS, CONSUMER_SERVICES, CYBERSECURITY, DEFENSE_AND_AEROSPACE, E-COMMERCE, EDUCATION, ENERGY, ENGINEERING, ENTERTAINMENT, ENVIRONMENTAL_SERVICES, FASHION_TEXTILE_AND_APPAREL, FINANCIAL_SERVICES, FOOD_AND_BEVERAGE, GAMING_AND_ESPORTS, GOVERNMENT_SERVICES, HEALTHCARE, HOSPITALITY, HUMAN_RESOURCES, INSURANCE, IT_SERVICES, LEGAL, MANUFACTURING, MEDIA, MINING_AND_METALS, NONPROFIT_AND_PHILANTHROPY, OIL_AND_GAS, PHARMACEUTICALS, PRIVATE_EQUITY_AND_VENTURE_CAPITAL, REAL_ESTATE, RENEWABLE_ENERGY, RESTAURANTS, RETAIL, SAAS, SECURITY, SOFTWARE, SPORTS_AND_RECREATION, SUPPLY_CHAIN_AND_PROCUREMENT, TELECOMMUNICATIONS, TRAVEL, WELLNESS_AND_LIFESTYLE.",
             title="Category",
         ),
     ] = None
@@ -2042,6 +1814,10 @@ class DiscoverParams(DiscolikeRequest):
             title="Negate Business Model",
         ),
     ] = None
+    valid_mx: Annotated[
+        bool | None,
+        Field(description="Only companies with a mail server.", title="Valid Mx"),
+    ] = False
     exclude_leadgen: Annotated[
         bool | None,
         Field(
@@ -2091,12 +1867,12 @@ class DiscoverParams(DiscolikeRequest):
     max_records: Annotated[
         int | None,
         Field(
-            description="Maximum records to return (5-10000). Default 100.",
+            description="Maximum records to return (5-10000). Default 500.",
             ge=5,
             le=10000,
             title="Max Records",
         ),
-    ] = 100
+    ] = 500
     min_similarity: Annotated[
         int | None,
         Field(
@@ -2210,66 +1986,9 @@ class CountParams(DiscolikeRequest):
         ),
     ] = None
     category: Annotated[
-        list[
-            Literal[
-                "ACCOUNTING",
-                "ADVERTISING_AND_MARKETING",
-                "AGRICULTURE_AND_NATURAL_RESOURCES",
-                "ALCOHOL_AND_TOBACCO",
-                "AUTOMOTIVE",
-                "BIG_DATA_AND_ANALYTICS",
-                "BIOTECHNOLOGY",
-                "BLOCKCHAIN_AND_CRYPTOCURRENCY",
-                "BUSINESS_PRODUCTS_AND_SERVICES",
-                "CLOUD_COMPUTING",
-                "COMPUTER_HARDWARE_AND_SEMICONDUCTORS",
-                "CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES",
-                "CONSTRUCTION",
-                "CONSUMER_PRODUCTS",
-                "CONSUMER_SERVICES",
-                "CYBERSECURITY",
-                "DEFENSE_AND_AEROSPACE",
-                "E-COMMERCE",
-                "EDUCATION",
-                "ENERGY",
-                "ENGINEERING",
-                "ENTERTAINMENT",
-                "ENVIRONMENTAL_SERVICES",
-                "FASHION_TEXTILE_AND_APPAREL",
-                "FINANCIAL_SERVICES",
-                "FOOD_AND_BEVERAGE",
-                "GAMING_AND_ESPORTS",
-                "GOVERNMENT_SERVICES",
-                "HEALTHCARE",
-                "HOSPITALITY",
-                "HUMAN_RESOURCES",
-                "INSURANCE",
-                "IT_SERVICES",
-                "LEGAL",
-                "MANUFACTURING",
-                "MEDIA",
-                "MINING_AND_METALS",
-                "NONPROFIT_AND_PHILANTHROPY",
-                "OIL_AND_GAS",
-                "PHARMACEUTICALS",
-                "PRIVATE_EQUITY_AND_VENTURE_CAPITAL",
-                "REAL_ESTATE",
-                "RENEWABLE_ENERGY",
-                "RESTAURANTS",
-                "RETAIL",
-                "SAAS",
-                "SECURITY",
-                "SOFTWARE",
-                "SPORTS_AND_RECREATION",
-                "SUPPLY_CHAIN_AND_PROCUREMENT",
-                "TELECOMMUNICATIONS",
-                "TRAVEL",
-                "WELLNESS_AND_LIFESTYLE",
-            ]
-        ]
-        | None,
+        list[str] | None,
         Field(
-            description="Filter by industry category. Valid values: ACCOUNTING, ADVERTISING_AND_MARKETING, AGRICULTURE_AND_NATURAL_RESOURCES, ALCOHOL_AND_TOBACCO, AUTOMOTIVE, BIG_DATA_AND_ANALYTICS, BIOTECHNOLOGY, BLOCKCHAIN_AND_CRYPTOCURRENCY, BUSINESS_PRODUCTS_AND_SERVICES, CLOUD_COMPUTING, COMPUTER_HARDWARE_AND_SEMICONDUCTORS, CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES, CONSTRUCTION, CONSUMER_PRODUCTS, CONSUMER_SERVICES, CYBERSECURITY, DEFENSE_AND_AEROSPACE, E-COMMERCE, EDUCATION, ENERGY, ENGINEERING, ENTERTAINMENT, ENVIRONMENTAL_SERVICES, FASHION_TEXTILE_AND_APPAREL, FINANCIAL_SERVICES, FOOD_AND_BEVERAGE, GAMING_AND_ESPORTS, GOVERNMENT_SERVICES, HEALTHCARE, HOSPITALITY, HUMAN_RESOURCES, INSURANCE, IT_SERVICES, LEGAL, MANUFACTURING, MEDIA, MINING_AND_METALS, NONPROFIT_AND_PHILANTHROPY, OIL_AND_GAS, PHARMACEUTICALS, PRIVATE_EQUITY_AND_VENTURE_CAPITAL, REAL_ESTATE, RENEWABLE_ENERGY, RESTAURANTS, RETAIL, SAAS, SECURITY, SOFTWARE, SPORTS_AND_RECREATION, SUPPLY_CHAIN_AND_PROCUREMENT, TELECOMMUNICATIONS, TRAVEL, WELLNESS_AND_LIFESTYLE.",
+            description="Filter by industry category (ANY-OF; prefix + to require a category). Valid values: ACCOUNTING, ADVERTISING_AND_MARKETING, AGRICULTURE_AND_NATURAL_RESOURCES, ALCOHOL_AND_TOBACCO, AUTOMOTIVE, BIG_DATA_AND_ANALYTICS, BIOTECHNOLOGY, BLOCKCHAIN_AND_CRYPTOCURRENCY, BUSINESS_PRODUCTS_AND_SERVICES, CLOUD_COMPUTING, COMPUTER_HARDWARE_AND_SEMICONDUCTORS, CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES, CONSTRUCTION, CONSUMER_PRODUCTS, CONSUMER_SERVICES, CYBERSECURITY, DEFENSE_AND_AEROSPACE, E-COMMERCE, EDUCATION, ENERGY, ENGINEERING, ENTERTAINMENT, ENVIRONMENTAL_SERVICES, FASHION_TEXTILE_AND_APPAREL, FINANCIAL_SERVICES, FOOD_AND_BEVERAGE, GAMING_AND_ESPORTS, GOVERNMENT_SERVICES, HEALTHCARE, HOSPITALITY, HUMAN_RESOURCES, INSURANCE, IT_SERVICES, LEGAL, MANUFACTURING, MEDIA, MINING_AND_METALS, NONPROFIT_AND_PHILANTHROPY, OIL_AND_GAS, PHARMACEUTICALS, PRIVATE_EQUITY_AND_VENTURE_CAPITAL, REAL_ESTATE, RENEWABLE_ENERGY, RESTAURANTS, RETAIL, SAAS, SECURITY, SOFTWARE, SPORTS_AND_RECREATION, SUPPLY_CHAIN_AND_PROCUREMENT, TELECOMMUNICATIONS, TRAVEL, WELLNESS_AND_LIFESTYLE.",
             title="Category",
         ),
     ] = None
@@ -2678,6 +2397,10 @@ class CountParams(DiscolikeRequest):
             title="Negate Business Model",
         ),
     ] = None
+    valid_mx: Annotated[
+        bool | None,
+        Field(description="Only companies with a mail server.", title="Valid Mx"),
+    ] = False
     exclude_leadgen: Annotated[
         bool | None,
         Field(
@@ -2689,7 +2412,13 @@ class CountParams(DiscolikeRequest):
 
 class FindEmailRequest(DiscolikeRequest):
     first_name: Annotated[str, Field(description="First name of the person", title="First Name")]
-    last_name: Annotated[str, Field(description="Last name of the person", title="Last Name")]
+    last_name: Annotated[
+        str,
+        Field(
+            description="Last name; use an empty string to check only first@domain",
+            title="Last Name",
+        ),
+    ]
     domain: Annotated[str, Field(description="Target email domain", title="Domain")]
     known_pattern: Annotated[
         str | None,
@@ -3161,7 +2890,7 @@ class BulkContactMatchRequest(DiscolikeRequest):
     enrich: Annotated[
         bool | None,
         Field(
-            description="When true, hydrate full contact data from the vector database (costs credits).",
+            description="When true, hydrate contact data for free. Emails only echo the email supplied in that query.",
             title="Enrich",
         ),
     ] = False
@@ -3214,7 +2943,7 @@ class ProspectingBrief(DiscolikeRequest):
     ] = None
     exclude_domains: Annotated[list[str] | None, Field(max_length=1000, title="Exclude Domains")] = None
     target_companies: Annotated[int | None, Field(ge=1, le=10000, title="Target Companies")] = 1000
-    contacts_per_company: Annotated[int | None, Field(ge=1, le=10, title="Contacts Per Company")] = 3
+    contacts_per_company: Annotated[int | None, Field(ge=1, le=25, title="Contacts Per Company")] = 3
     max_candidates: Annotated[int | None, Field(ge=0, le=100000, title="Max Candidates")] = 0
     max_actions: Annotated[int | None, Field(ge=0, le=10000, title="Max Actions")] = 0
     validation_integration_id: Annotated[str | None, Field(max_length=128, title="Validation Integration Id")] = None
@@ -3269,7 +2998,7 @@ class ProspectingPlanSettings(DiscolikeRequest):
     max_spend_usd: Annotated[
         float | None,
         Field(
-            description="Most the run may spend on DiscoLike records and per-call fees, in USD at your plan's rates, before it stops; 0 removes the limit.",
+            description="Most the run may spend on DiscoLike records, in USD at your plan's rates, before it stops; 0 removes the limit.",
             ge=0.0,
             title="Max Spend Usd",
         ),
@@ -3288,7 +3017,7 @@ class ProspectingPlanSettings(DiscolikeRequest):
         Field(
             description="Most contacts to find at each qualified company.",
             ge=1,
-            le=10,
+            le=25,
             title="Contacts Per Company",
         ),
     ] = None
