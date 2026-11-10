@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import warnings
+from typing import Literal
 
 import httpx2
 import pydantic
@@ -28,6 +30,9 @@ def no_sleep(monkeypatch):
         return None
 
     monkeypatch.setattr(jobs_module.asyncio, "sleep", fake_sleep)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        yield
 
 
 def _results_sequence(payloads):
@@ -572,3 +577,53 @@ def test_find_sends_suggested_email_and_status_reads_outcome(make_client: Client
     assert status.email == "ghopper@navy.mil"
     assert isinstance(status.result, EnumerationOutput)
     assert status.result.method == "smtp"
+
+
+@pytest.mark.parametrize("kind", ["find", "verify"])
+@pytest.mark.parametrize("handle", ["job", "batch"])
+def test_reattachment_is_silent_and_still_polls(
+    make_client: ClientFactory, handle: str, kind: Literal["find", "verify"]
+) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        assert request.method == "GET"
+        if handle == "job":
+            assert request.url.path == "/v1/email/jobs/j-11"
+            return httpx2.Response(200, json=_VERIFY_JOB_PAYLOAD)
+        assert request.url.path == "/v1/email/batch/j-11/results"
+        return httpx2.Response(200, json={"total": 1, "results": [_VERIFY_JOB_PAYLOAD]})
+
+    with make_client(handler) as client:
+        attached = client.email.job("j-11", kind=kind) if handle == "job" else client.email.batch("j-11", kind=kind)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            output = attached.wait() if isinstance(attached, EmailJob) else attached.results().results[0].result
+
+    assert isinstance(output, ValidationOutput)
+    assert output.reason == "no_mailbox"
+
+
+@pytest.mark.parametrize("kind", ["find", "verify"])
+@pytest.mark.parametrize("handle", ["job", "batch"])
+async def test_reattachment_is_silent_and_still_polls_async(
+    make_async_client: AsyncClientFactory, handle: str, kind: Literal["find", "verify"]
+) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        assert request.method == "GET"
+        if handle == "job":
+            assert request.url.path == "/v1/email/jobs/j-11"
+            return httpx2.Response(200, json=_VERIFY_JOB_PAYLOAD)
+        assert request.url.path == "/v1/email/batch/j-11/results"
+        return httpx2.Response(200, json={"total": 1, "results": [_VERIFY_JOB_PAYLOAD]})
+
+    async with make_async_client(handler) as client:
+        attached = client.email.job("j-11", kind=kind) if handle == "job" else client.email.batch("j-11", kind=kind)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            output = (
+                await attached.wait()
+                if isinstance(attached, AsyncEmailJob)
+                else (await attached.results()).results[0].result
+            )
+
+    assert isinstance(output, ValidationOutput)
+    assert output.reason == "no_mailbox"

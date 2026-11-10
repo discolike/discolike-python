@@ -8,6 +8,7 @@ from typing import TypeVar
 
 from discolike._transport import AsyncTransport
 from discolike._transport import Transport
+from discolike._transport import register_route
 
 F = TypeVar("F", bound=Callable[..., Any])
 FileInput = pathlib.Path | str | BinaryIO
@@ -15,6 +16,7 @@ FileInput = pathlib.Path | str | BinaryIO
 
 def api_route(method: str, path: str, *, openapi: bool = True) -> Callable[[F], F]:
     def stamp(fn: F) -> F:
+        register_route(method, path)
         fn.__discolike_route__ = (method, path, openapi)  # ty: ignore[unresolved-attribute]
         return fn
 

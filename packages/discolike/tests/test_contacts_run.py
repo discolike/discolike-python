@@ -9,12 +9,16 @@ import pydantic
 import pytest
 
 import discolike.resources.contacts_run as module
+from discolike import InsufficientBalanceError
+from discolike import JobTimeoutError
+from discolike.requests import ContactsRunEventsParams
 from discolike.requests import ContactsRunGetParams
 from discolike.requests import ContactsRunListParams
 from discolike.requests import ContactsRunRequest
 from discolike.requests import ContinueRunRequest
 from discolike.requests import TitlePreviewRequest
 from discolike.resources.contacts_run import ContactsRun
+from discolike.resources.contacts_run import ContactsRunEventsResponse
 from discolike_testkit import AsyncClientFactory
 from discolike_testkit import ClientFactory
 
@@ -23,247 +27,303 @@ RUN_PATH = f"/v1/contacts/run/{RUN_ID}"
 TIMESTAMP = "2026-10-30T12:00:00Z"
 
 
-@pytest.fixture(autouse=True)
-def no_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(module.time, "sleep", lambda seconds: None)
-
-    async def fake_sleep(seconds: float) -> None:
-        return None
-
-    monkeypatch.setattr(module.asyncio, "sleep", fake_sleep)
-
-
-def run_payload(
-    *,
-    status: str = "waiting",
-    current_step: str = "find_contacts",
-    step_status: str = "done",
-    generation: int = 1,
-    rows: list[dict[str, Any]] | None = None,
-    rows_total: int = 0,
-) -> dict[str, Any]:
+def run_payload(status: str = "running", **extra: Any) -> dict[str, Any]:
     return {
-        "input": {"people": {"titles": ["Owner"]}},
         "id": RUN_ID,
         "kind": "contacts",
         "status": status,
-        "current_step": current_step,
-        "generation": generation,
-        "steps": {current_step: {"status": step_status, "estimate_usd": "1.50", "charged_usd": "0.75"}},
-        "total_estimate_usd": "1.50",
-        "total_charged_usd": "0.75",
+        "generation": 1,
         "created_at": TIMESTAMP,
         "updated_at": TIMESTAMP,
-        "expires_at": "2026-11-29T12:00:00Z",
-        "rows": rows or [],
-        "rows_total": rows_total,
-        "future_field": True,
+        "expires_at": TIMESTAMP,
+        **extra,
     }
-
-
-def row(key: str) -> dict[str, Any]:
-    return {"row_key": key, "domain": "acme.com", "name": "Jane Doe", "source": "database"}
 
 
 def request() -> ContactsRunRequest:
     return ContactsRunRequest.model_validate(
-        {"companies": {"source": "domains", "domains": ["acme.com"]}, "people": {"titles": ["Owner"]}}
+        {
+            "companies": {"source": "domains", "domains": ["acme.com"]},
+            "people": {"fit": "Owners"},
+        }
     )
 
 
-class StepServer:
-    """Fake run server: each continue enters the next step, which finishes and waits."""
+def test_create_wire_and_open_response(make_client: ClientFactory) -> None:
+    seen: list[httpx2.Request] = []
 
-    order = ("find_contacts", "find_missing", "review", "find_emails")
-
-    def __init__(self) -> None:
-        self.step = 0
-        self.generation = 1
-        self.continues: list[dict[str, Any]] = []
-
-    def __call__(self, request: httpx2.Request) -> httpx2.Response:
-        if request.method == "POST" and request.url.path.endswith("/continue"):
-            self.continues.append(json.loads(request.content))
-            self.step += 1
-            self.generation += 1
-        last = self.step == len(self.order) - 1
+    def handler(req: httpx2.Request) -> httpx2.Response:
+        seen.append(req)
         return httpx2.Response(
-            200,
+            202,
             json=run_payload(
-                status="done" if last else "waiting",
-                current_step=self.order[self.step],
-                generation=self.generation,
+                companies=[
+                    {
+                        "domain": "Company 1",
+                        "status": "future",
+                        "future": True,
+                        "contacts": [
+                            {"row_key": "r1", "domain": "Company 1", "email_status": "Validated (catch-all resolved)"},
+                        ],
+                    }
+                ],
+                companies_total=1,
+                summary={"companies_delivered": 1, "validated_contacts": 1, "spent_usd": "0.10"},
+                future=True,
             ),
         )
 
-
-def test_create_posts_body_and_parses_run(make_client: ClientFactory) -> None:
-    seen: list[httpx2.Request] = []
-
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        seen.append(request)
-        return httpx2.Response(202, json=run_payload(status="running", step_status="running"))
-
     with make_client(handler) as client:
         run = client.contacts_run.create(request())
-
-    assert seen[0].method == "POST"
     assert seen[0].url.path == "/v1/contacts/run"
-    assert json.loads(seen[0].content) == {
-        "companies": {"source": "domains", "domains": ["acme.com"]},
-        "people": {"titles": ["Owner"]},
-    }
-    assert isinstance(run, ContactsRun)
-    assert run.status == "running"
-    assert run.steps["find_contacts"].estimate_usd == Decimal("1.50")
-    assert run.total_charged_usd == Decimal("0.75")
-    assert run.model_extra == {"future_field": True}
+    assert json.loads(seen[0].content) == request().to_wire()
+    assert run.current_step is None
+    assert run.companies[0].contacts[0].email_state is None
+    assert run.companies[0].contacts[0].email_status == "Validated (catch-all resolved)"
+    assert run.summary is not None
+    assert run.summary.spent_usd == Decimal("0.10")
+    assert run.model_extra == {"future": True}
+    assert run.companies[0].model_extra == {"future": True}
 
 
-def test_max_contacts_and_auto_stop_sent_only_when_set() -> None:
-    assert request().to_wire().keys() == {"companies", "people"}
-    body = ContactsRunRequest.model_validate(request().to_wire() | {"max_contacts": 50, "auto_stop": False})
-    assert body.to_wire() == request().to_wire() | {"max_contacts": 50, "auto_stop": False}
-
-
-def test_max_contacts_out_of_range_rejected() -> None:
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("start", True),
+        ("max_contacts", 5),
+        ("auto_stop", False),
+        ("find_missing", {}),
+        ("mode", "run_all"),
+    ],
+)
+def test_removed_fields_rejected(field: str, value: Any) -> None:
     with pytest.raises(pydantic.ValidationError):
-        ContactsRunRequest.model_validate(
-            {
-                "companies": {"source": "domains", "domains": ["acme.com"]},
-                "people": {"titles": ["Owner"]},
-                "max_contacts": 0,
-            }
-        )
+        ContactsRunRequest.model_validate(request().to_wire() | {field: value})
 
 
-def test_prompt_companies_default_to_500() -> None:
+def test_request_defaults_and_supported_fields() -> None:
     body = ContactsRunRequest.model_validate(
-        {"companies": {"source": "prompt", "icp_text": "dental clinics"}, "people": {"titles": ["Owner"]}}
+        {
+            "companies": {"source": "prompt", "filters": {"filter_country": ["US"]}},
+            "max_companies": 15,
+            "per_company": 3,
+            "email_cap_usd": "12.50",
+            "create_key": "key",
+            "exclude_domains": ["acme.com"],
+            "exclude_query_ids": ["query"],
+            "relevance": "max_coverage",
+        }
     )
-    assert body.companies.max_companies == 500  # ty: ignore[unresolved-attribute]
+    assert body.people.fit == "Senior executives and decision makers"
+    assert body.to_wire()["max_companies"] == 15
+    assert "people" not in body.to_wire()
+    with pytest.raises(pydantic.ValidationError):
+        ContactsRunRequest.model_validate(request().to_wire() | {"people": {"titles": ["Owner"]}})
+    with pytest.raises(pydantic.ValidationError):
+        ContactsRunRequest.model_validate(request().to_wire() | {"per_company": "all"})
+    assert ContactsRunRequest.model_validate({"companies": {"source": "lookalike", "persona_ids": [1]}})
 
 
-def test_continue_sends_generation(make_client: ClientFactory) -> None:
-    seen: list[httpx2.Request] = []
+def test_live_routes(make_client: ClientFactory) -> None:
+    seen: list[tuple[str, str, dict[str, Any]]] = []
 
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        seen.append(request)
-        return httpx2.Response(202, json=run_payload(status="running", current_step="find_missing", generation=3))
-
-    with make_client(handler) as client:
-        run = client.contacts_run.continue_(RUN_ID, ContinueRunRequest(generation=2, relevance="max_coverage"))
-
-    assert seen[0].url.path == f"{RUN_PATH}/continue"
-    assert json.loads(seen[0].content) == {"generation": 2, "relevance": "max_coverage"}
-    assert run.generation == 3
-
-
-def test_get_list_cancel_and_title_preview_routes(make_client: ClientFactory) -> None:
-    seen: list[tuple[str, str, str]] = []
-
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        seen.append((request.method, request.url.path, request.url.query.decode()))
-        if request.url.path.endswith("title-preview"):
-            return httpx2.Response(200, json={"titles": [{"title": "Owner", "role": 0.9, "count": 12}]})
-        if request.url.path == "/v1/contacts/run":
-            return httpx2.Response(200, json=[run_payload()])
-        return httpx2.Response(200, json=run_payload(status="cancelled"))
+    def handler(req: httpx2.Request) -> httpx2.Response:
+        seen.append((req.method, req.url.path, json.loads(req.content) if req.content else dict(req.url.params)))
+        if req.url.path.endswith("title-preview"):
+            return httpx2.Response(200, json={"titles": [], "searched": ["Owner"]})
+        if req.url.path.endswith("events"):
+            return httpx2.Response(200, json={"events": [], "next_cursor": 5})
+        return httpx2.Response(200, json=[run_payload()] if req.url.path == "/v1/contacts/run" else run_payload())
 
     with make_client(handler) as client:
-        client.contacts_run.get(RUN_ID, ContactsRunGetParams(rows_offset=100, rows_limit=50))
+        client.contacts_run.get(RUN_ID, ContactsRunGetParams(rows_offset=2, rows_limit=3))
         client.contacts_run.list(ContactsRunListParams(limit=5))
         client.contacts_run.cancel(RUN_ID)
-        preview = client.contacts_run.title_preview(TitlePreviewRequest(titles=["Owner"], match="similar"))
-
+        client.contacts_run.continue_(RUN_ID, ContinueRunRequest(generation=2, redo=True))
+        client.contacts_run.title_preview(TitlePreviewRequest(titles=["Owner"], match="similar", relevance="balanced"))
+        assert client.contacts_run.events(RUN_ID, ContactsRunEventsParams(after=4, limit=10)).next_cursor == 5
     assert seen == [
-        ("GET", RUN_PATH, "rows_offset=100&rows_limit=50"),
-        ("GET", "/v1/contacts/run", "limit=5"),
-        ("POST", f"{RUN_PATH}/cancel", ""),
-        ("POST", "/v1/contacts/run/title-preview", ""),
+        ("GET", RUN_PATH, {"rows_offset": "2", "rows_limit": "3"}),
+        ("GET", "/v1/contacts/run", {"limit": "5"}),
+        ("POST", RUN_PATH + "/cancel", {}),
+        ("POST", RUN_PATH + "/continue", {"generation": 2, "redo": True}),
+        ("POST", "/v1/contacts/run/title-preview", {"titles": ["Owner"], "match": "similar", "relevance": "balanced"}),
+        ("GET", RUN_PATH + "/events", {"after": "4", "limit": "10"}),
     ]
-    assert preview.titles[0].count == 12
 
 
-def test_wait_without_follow_returns_paused_run(make_client: ClientFactory) -> None:
-    server = StepServer()
-    with make_client(server) as client:
-        run = client.contacts_run.wait(RUN_ID)
-    assert run.status == "waiting"
-    assert server.continues == []
+def test_open_events() -> None:
+    page = ContactsRunEventsResponse.model_validate(
+        {
+            "next_cursor": 1,
+            "future": True,
+            "events": [
+                {
+                    "seq": 1,
+                    "domain": "Company 1",
+                    "created_at": TIMESTAMP,
+                    "kind": "future",
+                    "status": "future",
+                    "validated_titles": [{"title": "Owner", "status": "future", "future": True}],
+                    "future": True,
+                }
+            ],
+        }
+    )
+    assert page.events[0].company_name is None
+    assert page.events[0].validated_titles[0].status == "future"
+    assert (
+        module.ContactsRunEvent.model_validate(page.events[0].model_dump() | {"company_name": "Acme"}).company_name
+        == "Acme"
+    )
+    assert ContactsRun.model_validate(
+        run_payload("future", current_step="future", steps={"future": {"status": "future"}})
+    )
 
 
-def test_wait_follow_stops_before_emails_without_cap(make_client: ClientFactory) -> None:
-    server = StepServer()
-    with make_client(server) as client:
-        run = client.contacts_run.wait(RUN_ID, follow=True)
-    assert run.status == "waiting"
-    assert run.current_step == "review"
-    assert server.continues == [{"generation": 1}, {"generation": 2}]
+@pytest.mark.parametrize("terminal", ["done", "failed", "cancelled"])
+def test_wait_only_polls(make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch, terminal: str) -> None:
+    monkeypatch.setattr(module.time, "sleep", lambda _: None)
+    statuses = iter(["ready", "running", terminal])
 
-
-def test_wait_follow_continues_into_emails_with_cap(make_client: ClientFactory) -> None:
-    server = StepServer()
-    with make_client(server) as client:
-        run = client.contacts_run.wait(RUN_ID, follow=True, email_cap_usd=25)
-    assert run.status == "done"
-    assert run.current_step == "find_emails"
-    assert server.continues == [{"generation": 1}, {"generation": 2}, {"generation": 3, "email_cap_usd": "25"}]
-
-
-def test_wait_follow_enters_emails_with_the_cap_set_at_create(make_client: ClientFactory) -> None:
-    server = StepServer()
-
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        response = server(request)
-        return httpx2.Response(200, json={**response.json(), "input": {"email_cap_usd": "30"}})
-
-    with make_client(handler) as client:
-        run = client.contacts_run.wait(RUN_ID, follow=True)
-    assert run.status == "done"
-    assert server.continues == [{"generation": 1}, {"generation": 2}, {"generation": 3}]
-
-
-def test_wait_follow_stops_at_a_failed_step(make_client: ClientFactory) -> None:
-    seen: list[str] = []
-
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        seen.append(request.method)
-        return httpx2.Response(200, json=run_payload(step_status="failed"))
+    def handler(req: httpx2.Request) -> httpx2.Response:
+        assert req.method == "GET"
+        return httpx2.Response(200, json=run_payload(next(statuses)))
 
     with make_client(handler) as client:
-        run = client.contacts_run.wait(RUN_ID, follow=True, email_cap_usd=25)
-    assert run.steps["find_contacts"].status == "failed"
-    assert seen == ["GET"]
+        assert client.contacts_run.wait(RUN_ID).status == terminal
 
 
-def test_rows_pages_until_total(make_client: ClientFactory) -> None:
-    offsets: list[str | None] = []
-    all_rows = [row(f"r{i}") for i in range(5)]
-
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        offset = int(request.url.params["rows_offset"])
-        limit = int(request.url.params["rows_limit"])
-        offsets.append(request.url.params["rows_offset"])
-        return httpx2.Response(200, json=run_payload(rows=all_rows[offset : offset + limit], rows_total=5))
-
-    with make_client(handler) as client:
-        rows = client.contacts_run.rows(RUN_ID, page_size=2)
-
-    assert [item.row_key for item in rows] == ["r0", "r1", "r2", "r3", "r4"]
-    assert offsets == ["0", "2", "4"]
+def test_wait_timeout(make_client: ClientFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(module, "_deadline", lambda *_: 0)
+    with make_client(lambda _: httpx2.Response(200, json=run_payload())) as client:
+        with pytest.raises(JobTimeoutError):
+            client.contacts_run.wait(RUN_ID)
 
 
-async def test_async_create_and_wait_follow(make_async_client: AsyncClientFactory) -> None:
-    server = StepServer()
+def company_page(req: httpx2.Request, *, kind: str = "contacts") -> httpx2.Response:
+    offset = int(req.url.params["rows_offset"])
+    pages = [
+        {"domain": "Company 1", "status": "skipped", "contacts": []},
+        {
+            "domain": "Company 2",
+            "status": "validated",
+            "contacts": [
+                {"row_key": "a", "domain": "Company 2"},
+                {"row_key": "b", "domain": "Company 2"},
+            ],
+        },
+        {"domain": "Company 3", "status": "validated", "contacts": [{"row_key": "c", "domain": "Company 3"}]},
+    ]
+    assert req.url.params["rows_limit"] == "1"
+    return httpx2.Response(
+        200, json=run_payload(kind=kind, companies=pages[offset : offset + 1], companies_total=3, contacts_total=3)
+    )
 
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        if request.url.path == "/v1/contacts/run":
-            return httpx2.Response(202, json=run_payload(status="running", step_status="running"))
-        return server(request)
+
+@pytest.mark.parametrize("kind", ["contacts", "companies"])
+def test_rows_pages_domains_including_empty_companies(make_client: ClientFactory, kind: str) -> None:
+    with make_client(lambda req: company_page(req, kind=kind)) as client:
+        assert [r.row_key for r in client.contacts_run.rows(RUN_ID, page_size=1)] == ["a", "b", "c"]
+
+
+@pytest.mark.parametrize("kind", ["contacts", "companies"])
+async def test_async_rows(make_async_client: AsyncClientFactory, kind: str) -> None:
+    async with make_async_client(lambda req: company_page(req, kind=kind)) as client:
+        assert [r.row_key for r in await client.contacts_run.rows(RUN_ID, page_size=1)] == ["a", "b", "c"]
+
+
+async def test_async_create_wait_events_cancel(
+    make_async_client: AsyncClientFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def no_sleep(_: float) -> None:
+        pass
+
+    monkeypatch.setattr(module.asyncio, "sleep", no_sleep)
+    statuses = iter(["ready", "running", "done"])
+
+    def handler(req: httpx2.Request) -> httpx2.Response:
+        if req.url.path.endswith("events"):
+            assert req.url.params["after"] == "5"
+            return httpx2.Response(200, json={"events": [], "next_cursor": 6})
+        if req.url.path.endswith("cancel"):
+            return httpx2.Response(200, json=run_payload("cancelled"))
+        if req.method == "POST":
+            assert json.loads(req.content) == request().to_wire()
+            return httpx2.Response(202, json=run_payload())
+        return httpx2.Response(200, json=run_payload(next(statuses)))
 
     async with make_async_client(handler) as client:
         created = await client.contacts_run.create(request())
-        run = await client.contacts_run.wait(created.id, follow=True)
-    assert run.current_step == "review"
-    assert server.continues == [{"generation": 1}, {"generation": 2}]
+        assert (await client.contacts_run.wait(created.id)).status == "done"
+        assert (await client.contacts_run.events(created.id, ContactsRunEventsParams(after=5))).next_cursor == 6
+        assert (await client.contacts_run.cancel(created.id)).status == "cancelled"
+
+
+def test_insufficient_balance(make_client: ClientFactory) -> None:
+    with make_client(
+        lambda _: httpx2.Response(
+            403,
+            json={
+                "detail": {
+                    "code": "INSUFFICIENT_BALANCE",
+                    "message": "Too expensive",
+                    "remaining_usd": "1.00",
+                    "max_affordable_records": 2,
+                }
+            },
+        )
+    ) as client:
+        with pytest.raises(InsufficientBalanceError) as exc:
+            client.contacts_run.create(request())
+    assert exc.value.max_affordable_records == 2
+
+
+def test_response_fields_accept_new_server_values() -> None:
+    run = ContactsRun.model_validate(
+        run_payload(
+            applied_company_filters={
+                "filter_industry": ["+FUTURE"],
+                "negate_filter_industry": ["FUTURE"],
+                "sub_industry": ["FUTURE"] * 100,
+                "future": True,
+            },
+            contacts_total=2,
+            progress={"future": 3},
+            summary={"skipped_no_mx": -1, "stop_reason": "future"},
+            companies=[
+                {
+                    "domain": "acme.com",
+                    "status": "future",
+                    "company": {"name": "Acme", "future": True},
+                    "contacts": [{"domain": "acme.com", "row_key": "a", "email_state": "future", "future": True}],
+                }
+            ],
+        )
+    )
+    assert run.contacts_total == 2
+    assert run.progress == {"future": 3}
+    assert run.applied_company_filters is not None
+    assert run.applied_company_filters.negate_filter_industry == ["FUTURE"]
+    assert run.applied_company_filters.model_extra == {"future": True}
+    assert run.summary is not None
+    assert run.summary.skipped_no_mx == -1
+    assert run.summary.stop_reason == "future"
+    assert run.companies[0].company == {"name": "Acme", "future": True}
+    assert run.companies[0].contacts[0].email_state == "future"
+    assert run.companies[0].contacts[0].model_extra == {"future": True}
+
+
+def test_response_fields_default_for_older_servers() -> None:
+    run = ContactsRun.model_validate(run_payload())
+    assert run.applied_company_filters is None
+    assert run.contacts_total == 0
+    assert run.progress == {}
+    summary = module.ContactsRunSummary()
+    assert summary.skipped_no_mx is None
+    assert summary.stop_reason is None
+    company = module.RunCompanyResponse(domain="acme.com", status="pending")
+    assert company.company == {}
+    assert not {"rows", "rows_total"} & ContactsRun.model_fields.keys()
+    assert not {"child_task_id", "state"} & module.ContactsRunStep.model_fields.keys()
+    assert not {"company", "source"} & module.ContactsRunRow.model_fields.keys()

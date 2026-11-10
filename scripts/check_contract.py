@@ -28,10 +28,15 @@ from discolike.resources.companies import Score
 from discolike.resources.companies import Subsidiary
 from discolike.resources.companies import Vendor
 from discolike.resources.contacts_run import ContactsRun
+from discolike.resources.contacts_run import ContactsRunEvent
+from discolike.resources.contacts_run import ContactsRunEventsResponse
 from discolike.resources.contacts_run import ContactsRunRow
 from discolike.resources.contacts_run import ContactsRunStep
+from discolike.resources.contacts_run import ContactsRunSummary
+from discolike.resources.contacts_run import RunCompanyResponse
 from discolike.resources.contacts_run import TitlePreview
 from discolike.resources.contacts_run import TitlePreviewTitle
+from discolike.resources.contacts_run import ValidatedRunTitle
 from discolike.resources.match import MatchResponse
 from discolike.resources.prospecting import ProspectingEvent
 from discolike.resources.prospecting import ProspectingInFlight
@@ -69,6 +74,12 @@ MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
 # Schemas of routes the platform hides from its public spec: checked only when the loaded spec carries them.
 HIDDEN_MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
     "ContactsRunResponse": ContactsRun,
+    "ContactsRunEvent": ContactsRunEvent,
+    "ContactsRunEventsResponse": ContactsRunEventsResponse,
+    "ContactsRunSummary": ContactsRunSummary,
+    "RunCompanyResponse": RunCompanyResponse,
+    "ValidatedRunTitle": ValidatedRunTitle,
+    "RunStepResponse": ContactsRunStep,
     "StepState": ContactsRunStep,
     "RunRow": ContactsRunRow,
     "TitlePreviewResponse": TitlePreview,

@@ -16,11 +16,15 @@ discolike discover --icp-prompt "Series A fintechs in Europe selling to SMBs" --
 discolike count --phrase-match "SOC 2" --country US --format json
 discolike discover --phrase-match "SOC 2" --country US --max-records 50 --format json | jq -r '.[].domain'
 
-# contacts_at_results.py: discover companies, then executives at the first ten of them
-discolike discover --icp-prompt "B2B SaaS companies selling to sales teams" --max-records 10 --format json \
-  | jq -r '.[].domain' \
-  | xargs -I{} printf -- '--domain %s ' {} \
-  | xargs discolike contacts search --seniority executive --has-email --format json
+# contacts_at_results.py: automatic validated contacts for an ICP and people fit
+cat > contacts-run.json <<'JSON'
+{"companies":{"source":"prompt","icp_text":"B2B SaaS selling to sales teams"},"people":{"fit":"Sales executives"},"max_companies":10,"per_company":3}
+JSON
+discolike contacts run create --params-file contacts-run.json --email-cap-usd 20
+# Use the returned run ID:
+# discolike contacts run events RUN_ID --after 0
+# discolike contacts run wait RUN_ID --timeout 3600
+# discolike contacts run get RUN_ID --all-rows
 
 # enrich_crm_export.py: one company profile by domain
 discolike company data stripe.com --format json

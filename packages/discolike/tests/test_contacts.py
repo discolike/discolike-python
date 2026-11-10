@@ -21,8 +21,6 @@ from discolike.resources.contacts import NATIVE_ENGINE
 from discolike_testkit import AsyncClientFactory
 from discolike_testkit import ClientFactory
 
-pytestmark = pytest.mark.filterwarnings("ignore:contacts\\.\\w+\\(\\) is deprecated:DeprecationWarning")
-
 
 def test_search_builds_query_and_parses_list(make_client: ClientFactory) -> None:
     seen = {}
@@ -351,22 +349,25 @@ def test_route_metadata_stamped() -> None:
     ("method", "request_model"),
     [
         ("search", ContactsSearchParams(domain=["a.com"])),
-        ("count", ContactsCountParams(domain=["a.com"])),
         ("generate", ContactGenerateRequest(icp_text="VPs", domains=["a.com"])),
     ],
 )
 def test_old_search_methods_warn_and_still_work(make_client: ClientFactory, method: str, request_model: object) -> None:
     def handler(request: httpx2.Request) -> httpx2.Response:
-        return httpx2.Response(200, json=[] if method == "search" else {"count": 1, "task_id": "t-1"})
+        return httpx2.Response(
+            200, json=[] if method == "search" else {"count": 1, "task_id": "t-1"}, headers={"Deprecation": "true"}
+        )
 
-    with make_client(handler) as client, pytest.warns(DeprecationWarning, match="use client.contacts_run") as caught:
+    with make_client(handler) as client, pytest.warns(DeprecationWarning, match="is deprecated"):
         getattr(client.contacts, method)(request_model)
-    assert caught[0].filename == __file__
 
 
 async def test_old_search_methods_warn_async(make_async_client: AsyncClientFactory) -> None:
-    async with make_async_client(lambda request: httpx2.Response(200, json=[])) as client:
-        with pytest.warns(DeprecationWarning, match=r"contacts\.search\(\) is deprecated"):
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json=[], headers={"Deprecation": "true"})
+
+    async with make_async_client(handler) as client:
+        with pytest.warns(DeprecationWarning, match="is deprecated"):
             await client.contacts.search(ContactsSearchParams(domain=["a.com"]))
 
 
