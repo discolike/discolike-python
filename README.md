@@ -283,6 +283,7 @@ Top-level commands: `discover`, `count`, `match`, `extract`, `validate-icp`, `ap
 | `client.discover()` / `client.count()` | Find lookalike companies by ICP text, phrases, tech stack, geo, and 40+ other filters |
 | `client.companies` | Company profiles: firmographics, scores, growth, redirects, vendors, subsidiaries |
 | `client.contacts` | Search, look up, match, and discover contacts at target companies |
+| `client.contacts_run` | Automatically find and deliver validated contacts under a spending cap |
 | `client.match` | Match company names (plus phone/city/state) to domains — single or bulk CSV |
 | `client.append()` | Enrich a CSV of domains with DiscoLike datasets |
 | `client.segment()` / `client.segment_file()` | Auto-segment a list of domains (comma-separated string or CSV upload) |
@@ -309,6 +310,36 @@ result = job.wait()
 `Job.status()` polls without blocking, `Job.cancel()` aborts, and `wait()` raises `JobFailedError` / `JobTimeoutError` on failure. On DiscoGen-family jobs the returned `JobStatus` also carries `warnings`, `estimated_cost` and `cost_metadata` (per-model usage plus a `search_provider` entry when a BYOS search provider ran; `search_calls` only counts the model's built-in search).
 
 `JobTimeoutError` is a client-side wait limit only — the task keeps running server-side (large DiscoGen runs can take hours), so call `wait()` again to resume or fetch `status()` later. Cancelled tasks still return results for every item that finished before cancellation. Send one job per list (up to 10,000 domains) rather than splitting into parallel jobs — concurrent DiscoGen jobs share your LLM provider key and slow each other down.
+
+### Contacts runs
+
+`client.contacts_run` automatically finds and validates contacts, using database candidates before web fallback. `max_companies` counts companies delivering at least one validated contact; `per_company` caps validated contacts at each company. Set `people.fit` to describe the people you want and optionally `email_cap_usd` to cap delivery spend.
+
+```python
+from discolike.requests import ContactsRunRequest, ContactsRunEventsParams
+
+run = client.contacts_run.create(
+    ContactsRunRequest.model_validate({
+        "companies": {"source": "prompt", "icp_text": "Independent dental clinics in Ohio"},
+        "people": {"fit": "Practice owners and office managers"},
+        "max_companies": 50,
+        "per_company": 3,
+        "email_cap_usd": 20,
+    })
+)
+page = client.contacts_run.events(run.id, ContactsRunEventsParams(after=0))
+run = client.contacts_run.wait(run.id)  # Returns on done, failed or cancelled.
+rows = client.contacts_run.rows(run.id)  # Pages company domains, keeping their contacts together.
+print(run.summary)
+```
+
+`companies` accepts a prompt (`icp_text` and/or `filters`), domains (`source="domains", domains=[...]`) or lookalike seeds (`source="lookalike", persona_ids=[...]`). `max_companies` is a top-level field, default 500. Responses include `companies`, `companies_total`, `rows_total` and summary totals (`companies_delivered`, `validated_contacts`, `spent_usd`). Domains may be masked as `Company N`; treat them as display labels. Delivered email labels are `Validated` and `Validated (catch-all resolved)`. Events include `next_cursor` for the next call's `after`.
+
+Runs start automatically. `cancel()` stops unfinished work; `wait()` only polls and a timeout stops local polling. `continue_()` remains available for companies runs and returns 409 for contacts runs. The separate `title_preview()` route remains live, but contacts runs take free-text people fit rather than title chips. A run idle for 30 days answers 410. A creation request exceeding the remaining balance raises `InsufficientBalanceError` (a `PlanAccessError` subclass).
+
+CLI: `discolike contacts run create|list|get|events|cancel|wait|continue|title-preview`. Create reads `--params-file` plus optional `--email-cap-usd`; `wait` takes `--timeout`; `get --all-rows` fetches all contacts. `get --rows-offset` and `--rows-limit` count company domains for contacts runs. `continue` only advances companies runs and accepts `--generation` and `--redo`.
+
+`contacts.search` and `contacts.generate` are deprecated in favor of contacts runs; their endpoints sunset on 2026-12-31.
 
 ### Contact generation without an LLM key
 

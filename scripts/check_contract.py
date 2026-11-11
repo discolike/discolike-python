@@ -27,6 +27,16 @@ from discolike.resources.companies import Redirect
 from discolike.resources.companies import Score
 from discolike.resources.companies import Subsidiary
 from discolike.resources.companies import Vendor
+from discolike.resources.contacts_run import ContactsRun
+from discolike.resources.contacts_run import ContactsRunEvent
+from discolike.resources.contacts_run import ContactsRunEventsResponse
+from discolike.resources.contacts_run import ContactsRunRow
+from discolike.resources.contacts_run import ContactsRunStep
+from discolike.resources.contacts_run import ContactsRunSummary
+from discolike.resources.contacts_run import RunCompanyResponse
+from discolike.resources.contacts_run import TitlePreview
+from discolike.resources.contacts_run import TitlePreviewTitle
+from discolike.resources.contacts_run import ValidatedRunTitle
 from discolike.resources.match import MatchResponse
 from discolike.resources.prospecting import ProspectingEvent
 from discolike.resources.prospecting import ProspectingInFlight
@@ -60,6 +70,20 @@ MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
     "PublicLinkResult": PublicLink,
     "MatchResponse": MatchResponse,
     "SavedQueriesListResponse": SavedQueries,
+}
+# Schemas of routes the platform hides from its public spec: checked only when the loaded spec carries them.
+HIDDEN_MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
+    "ContactsRunResponse": ContactsRun,
+    "ContactsRunEvent": ContactsRunEvent,
+    "ContactsRunEventsResponse": ContactsRunEventsResponse,
+    "ContactsRunSummary": ContactsRunSummary,
+    "RunCompanyResponse": RunCompanyResponse,
+    "ValidatedRunTitle": ValidatedRunTitle,
+    "RunStepResponse": ContactsRunStep,
+    "StepState": ContactsRunStep,
+    "RunRow": ContactsRunRow,
+    "TitlePreviewResponse": TitlePreview,
+    "TitlePreviewItem": TitlePreviewTitle,
 }
 # Request fields the platform accepts but hides from its OpenAPI schema (SkipJsonSchema), so the spec never lists them.
 HIDDEN_REQUEST_FIELDS: dict[str, frozenset[str]] = {"ProspectingBrief": frozenset({"checkpoints"})}
@@ -384,9 +408,14 @@ def main() -> int:
     for route in sorted(skipped, key=lambda r: r.path):
         print(f"skipped (not in public schema): {route.http_method} {route.path}")
 
-    mismatches = check(spec, routes) + check_models(spec)
+    schemas = spec.get("components", {}).get("schemas", {})
+    hidden = {name: model for name, model in HIDDEN_MIRRORED_SCHEMAS.items() if name in schemas}
+    mismatches = check(spec, routes) + check_models(spec) + check_models(spec, hidden)
 
-    print(f"checked {len(checked)} routes, skipped {len(skipped)} routes, {len(MIRRORED_SCHEMAS)} response models")
+    print(
+        f"checked {len(checked)} routes, skipped {len(skipped)} routes, "
+        f"{len(MIRRORED_SCHEMAS) + len(hidden)} response models"
+    )
 
     if mismatches:
         print("MISMATCHES:")

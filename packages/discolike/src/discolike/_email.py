@@ -16,9 +16,12 @@ from discolike._jobs import DEFAULT_WAIT_TIMEOUT_SECONDS
 from discolike._models import DiscolikeModel
 from discolike._transport import AsyncTransport
 from discolike._transport import Transport
+from discolike.resources._base import api_route
 
 EmailKind = Literal["find", "verify"]
 EMAIL_TERMINAL_STATUSES = frozenset({"completed", "failed"})
+EmailOutcome = Literal["valid", "valid_catch_all", "recovered", "pattern_inferred", "not_found", "unknown"] | str
+EvidenceMethod = Literal["smtp", "google_account", "microsoft_account", "pattern"] | str
 
 
 class EnumerationMatch(DiscolikeModel):
@@ -41,6 +44,7 @@ class EnumerationOutput(DiscolikeModel):
     attempts: int | None = None
     duration_ms: int | None = None
     error: str | None = None
+    method: EvidenceMethod | None = None
 
 
 class ValidationOutput(DiscolikeModel):
@@ -55,6 +59,7 @@ class ValidationOutput(DiscolikeModel):
     duration_ms: int | None = None
     error: str | None = None
     reason: str | None = None
+    method: EvidenceMethod | None = None
 
 
 class EmailJobResult(DiscolikeModel):
@@ -62,6 +67,8 @@ class EmailJobResult(DiscolikeModel):
     status: str | None = None
     result: EnumerationOutput | ValidationOutput | None = None
     error: str | None = None
+    outcome: EmailOutcome | None = None
+    email: str | None = None
 
 
 class EmailBatchResults(DiscolikeModel):
@@ -96,6 +103,8 @@ def _decode_job_result(kind: EmailKind, item: dict[str, Any]) -> EmailJobResult:
         status=item.get("status"),
         result=_decode_output(kind, item.get("result")),
         error=item.get("error"),
+        outcome=item.get("outcome"),
+        email=item.get("email"),
     )
 
 
@@ -130,6 +139,7 @@ class EmailJob:
         self.job_id = job_id
         self.kind = kind
 
+    @api_route("GET", "/email/jobs/{job_id}")
     def status(self) -> EmailJobResult:
         response = self._transport.request("GET", f"/email/jobs/{self.job_id}")
         return _decode_job_result(self.kind, response.json())
@@ -165,6 +175,7 @@ class AsyncEmailJob:
         self.job_id = job_id
         self.kind = kind
 
+    @api_route("GET", "/email/jobs/{job_id}")
     async def status(self) -> EmailJobResult:
         response = await self._transport.request("GET", f"/email/jobs/{self.job_id}")
         return _decode_job_result(self.kind, response.json())
@@ -200,6 +211,7 @@ class EmailBatch:
         self.batch_id = batch_id
         self.kind = kind
 
+    @api_route("GET", "/email/batch/{batch_id}/results")
     def results(
         self,
         *,
@@ -228,6 +240,7 @@ class AsyncEmailBatch:
         self.batch_id = batch_id
         self.kind = kind
 
+    @api_route("GET", "/email/batch/{batch_id}/results")
     async def results(
         self,
         *,

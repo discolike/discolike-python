@@ -78,6 +78,28 @@ result = job.wait()
 
 `JobTimeoutError` is a client-side wait limit only — the task keeps running server-side (large DiscoGen runs can take hours), so call `wait()` again to resume or fetch `status()` later. Cancelled tasks still return results for every item that finished before cancellation. Send one job per list (up to 10,000 domains) rather than splitting into parallel jobs — concurrent DiscoGen jobs share your LLM provider key and slow each other down.
 
+### Contacts runs
+
+`client.contacts_run` finds people at companies in four steps: `find_contacts`, `find_missing` (web search at companies with no indexed contact), `review` and `find_emails`. A `step_by_step` run (the default) pauses with `status="waiting"` after each step; `continue_()` starts the next one. `find_emails` bills per result; an optional `email_cap_usd`, given at create or on the continue that enters it, caps that spend, and without one it runs until the account balance runs out.
+
+```python
+from discolike.requests import ContactsRunRequest, ContinueRunRequest
+
+run = client.contacts_run.create(
+    ContactsRunRequest.model_validate(
+        {
+            "companies": {"source": "prompt", "icp_text": "Independent dental clinics in Ohio"},
+            "people": {"titles": ["Practice Owner", "Office Manager"]},
+        }
+    )
+)
+run = client.contacts_run.wait(run.id, follow=True)  # Stops before find_emails: no cap given.
+rows = client.contacts_run.rows(run.id)  # Every row, paged for you.
+run = client.contacts_run.continue_(run.id, ContinueRunRequest(generation=run.generation, email_cap_usd=20))
+```
+
+`companies` takes `{"source": "prompt", "icp_text": ...}` (up to `max_companies`, default 500), `{"source": "domains", "domains": [...]}` or `{"source": "lookalike", "persona_ids": [...]}`. `max_contacts` keeps only the best-fit N contacts across all companies (`per_company` still caps each one), and `auto_stop=False` turns off the relevance cut, keeping every contact up to `per_company`, best fit first; both stay off the wire unless set. `wait(follow=True)` also stops at a failed step, which you continue with `redo=True`. Every continue carries the run's current `generation`; a stale one is a 409 (`ValidationError`), and a run idle for 30 days answers 410. `contacts.search`, `contacts.count` and `contacts.generate` are deprecated in favor of contacts runs; their endpoints sunset on 2026-12-31.
+
 ### Contact generation without an LLM key
 
 `contacts.generate` runs on your own search provider plus either your own LLM or DiscoLike Groove, DiscoLike's native extractor. Pass `NATIVE_ENGINE` to skip the LLM entirely:

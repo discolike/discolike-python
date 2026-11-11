@@ -25,6 +25,8 @@ from discolike.resources.companies import AsyncCompaniesResource
 from discolike.resources.companies import CompaniesResource
 from discolike.resources.contacts import AsyncContactsResource
 from discolike.resources.contacts import ContactsResource
+from discolike.resources.contacts_run import AsyncContactsRunResource
+from discolike.resources.contacts_run import ContactsRunResource
 from discolike.resources.discogen import AsyncDiscogenResource
 from discolike.resources.discogen import AsyncValidateResource
 from discolike.resources.discogen import DiscogenResource
@@ -67,6 +69,7 @@ class Discolike:
         self.account = AccountResource(self._transport)
         self.companies = CompaniesResource(self._transport)
         self.contacts = ContactsResource(self._transport)
+        self.contacts_run = ContactsRunResource(self._transport)
         self.match = MatchResource(self._transport)
         self.discogen = DiscogenResource(self._transport)
         self.email = EmailResource(self._transport)
@@ -138,6 +141,7 @@ class AsyncDiscolike:
         self.account = AsyncAccountResource(self._transport)
         self.companies = AsyncCompaniesResource(self._transport)
         self.contacts = AsyncContactsResource(self._transport)
+        self.contacts_run = AsyncContactsRunResource(self._transport)
         self.match = AsyncMatchResource(self._transport)
         self.discogen = AsyncDiscogenResource(self._transport)
         self.email = AsyncEmailResource(self._transport)

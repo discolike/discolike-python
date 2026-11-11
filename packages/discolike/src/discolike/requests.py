@@ -1,5 +1,16 @@
 """Request models generated from the platform OpenAPI spec by scripts/gen_requests.py."""
 
+from discolike._contacts_run_requests import ContactsPeopleFit
+from discolike._contacts_run_requests import ContactsRunEventsParams
+from discolike._contacts_run_requests import ContactsRunGetParams
+from discolike._contacts_run_requests import ContactsRunListParams
+from discolike._contacts_run_requests import ContactsRunRequest
+from discolike._contacts_run_requests import ContinueRunRequest
+from discolike._contacts_run_requests import DomainCompanies
+from discolike._contacts_run_requests import LookalikeCompanies
+from discolike._contacts_run_requests import PromptCompanies
+from discolike._contacts_run_requests import PromptCompanyFilters
+from discolike._contacts_run_requests import TitlePreviewRequest
 from discolike._generated.requests import AppendParams
 from discolike._generated.requests import BulkContactMatchQueryItem
 from discolike._generated.requests import BulkContactMatchRequest
@@ -61,19 +72,29 @@ __all__ = [
     "ContactsCountParams",
     "ContactsLookupParams",
     "ContactsMatchParams",
+    "ContactsPeopleFit",
+    "ContactsRunEventsParams",
+    "ContactsRunGetParams",
+    "ContactsRunListParams",
+    "ContactsRunRequest",
     "ContactsSearchParams",
+    "ContinueRunRequest",
     "CountParams",
     "CreateExclusionListRequest",
     "DiscoGenPersonaProcessRequest",
     "DiscoGenProcessRequest",
     "DiscoverParams",
+    "DomainCompanies",
     "FindEmailBatchRequest",
     "FindEmailRequest",
     "IntakeAnswer",
     "LLMProviderCreateRequest",
     "LLMProviderUpdateRequest",
+    "LookalikeCompanies",
     "MatchBulkParams",
     "MatchCompanyParams",
+    "PromptCompanies",
+    "PromptCompanyFilters",
     "ProspectingApproveRequest",
     "ProspectingBrief",
     "ProspectingGetParams",
@@ -86,6 +107,7 @@ __all__ = [
     "SearchProviderRequest",
     "SegmentFileParams",
     "SegmentParams",
+    "TitlePreviewRequest",
     "UpdateQueryRequest",
     "ValidateIcpRequest",
 ]

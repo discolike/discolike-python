@@ -270,7 +270,7 @@ def test_update_plan_sends_run_shape_and_provider_limit(make_client: ClientFacto
         {"goal": "accounts"},
         {"max_provider_spend_usd": -1},
         {"target_companies": 0},
-        {"contacts_per_company": 11},
+        {"contacts_per_company": 26},
     ],
 )
 def test_update_plan_rejects_bad_run_shape_locally(values: dict) -> None:

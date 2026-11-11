@@ -41,6 +41,7 @@ from discolike_cli.discover import DOMAINS_FILE_HELP
 from discolike_cli.discover import PARAM_HELP
 from discolike_cli.discover import PARAMS_FILE_HELP
 from discolike_cli.discover import RELEVANCE_HELP
+from discolike_cli.discover import VALID_MX_HELP
 from discolike_cli.discover import VARIANCE_HELP
 from discolike_cli.discover import _merge_params
 
@@ -159,6 +160,7 @@ def companies_command(
     state: list[str] | None = typer.Option(None, help="State or region filter (repeatable)."),
     employee_range: str | None = typer.Option(None, help="Employee count range filter."),
     revenue_range: str | None = typer.Option(None, help="Revenue range filter."),
+    valid_mx: bool | None = typer.Option(None, "--valid-mx/--no-valid-mx", help=VALID_MX_HELP),
     relevance: str | None = typer.Option(None, help=RELEVANCE_HELP),
     variance: str | None = typer.Option(None, help=VARIANCE_HELP),
     exclusion_query_id: list[str] | None = typer.Option(None, help=EXCLUSION_QUERY_ID_HELP),
@@ -187,6 +189,7 @@ def companies_command(
             state=state,
             employee_range=employee_range,
             revenue_range=revenue_range,
+            valid_mx=valid_mx,
             relevance=relevance,
             variance=variance,
         ),

@@ -661,3 +661,16 @@ def test_bulk_rejects_non_positive_rate_limit(
     result = runner.invoke(app, ["bulk", *command, *extra, "--out", str(tmp_path / "c.csv"), "--rate-limit", "0"])
     assert result.exit_code == 2, result.output
     assert recorder.requests == []
+
+
+@pytest.mark.parametrize(("flags", "expected"), [([], None), (["--valid-mx"], "true"), (["--no-valid-mx"], "false")])
+def test_bulk_companies_valid_mx(
+    install_build_client: Callable[[Handler], None], tmp_path: Path, flags: list[str], expected: str | None
+) -> None:
+    recorder = Recorder(discover=[_companies("a", 1)])
+    install_build_client(recorder)
+    result = runner.invoke(
+        app, ["bulk", "companies", "--out", str(tmp_path / "companies.csv"), "--max-companies", "1", *flags]
+    )
+    assert result.exit_code == 0, result.output
+    assert recorder.params("/v1/discover")[0].get("valid_mx") == expected

@@ -59,6 +59,11 @@ MAX_COMPANIES_HELP = "Maximum number of enriched companies to return; cannot be 
 RESULTS_BY_COMPANY_HELP = "Maximum contacts per company domain (default 5; 0 removes the cap)."
 INCLUDE_SEARCH_CONTACTS_HELP = "Include contacts from the search index (broader coverage)."
 CONSENSUS_HELP = "Number of query vectors to combine for consensus search."
+# Printed only after success, so a failed command's stderr stays the single JSON error object.
+DEPRECATED_COMMAND_WARNING = (
+    "warning: `discolike contacts {command}` is deprecated and its endpoint sunsets on 2026-12-31; "
+    "use `discolike contacts run`."
+)
 
 
 def _email_validated_as_has_email(*, email_validated: bool | None, has_email: bool | None) -> bool | None:
@@ -174,6 +179,7 @@ def search_command(
         consensus=consensus,
     )
     emit(get_client(ctx).contacts.search(build_request(ContactsSearchParams, kwargs)), fmt=fmt)
+    typer.echo(DEPRECATED_COMMAND_WARNING.format(command="search"), err=True)
 
 
 @app.command("count")
@@ -510,3 +516,4 @@ def generate_command(
         ),
     )
     run_job(get_client(ctx).contacts.generate(request), wait=wait, timeout=timeout, fmt=fmt)
+    typer.echo(DEPRECATED_COMMAND_WARNING.format(command="generate"), err=True)

@@ -343,3 +343,44 @@ def test_route_metadata_stamped() -> None:
     assert get_discolike_route(ContactsResource.bulk_match) == ("POST", "/contacts/bulk-match", True)
     assert get_discolike_route(ContactsResource.discover) == ("POST", "/contacts/discover", True)
     assert get_discolike_route(ContactsResource.generate) == ("POST", "/contacts/discover/generate", True)
+
+
+@pytest.mark.parametrize(
+    ("method", "request_model"),
+    [
+        ("search", ContactsSearchParams(domain=["a.com"])),
+        ("generate", ContactGenerateRequest(icp_text="VPs", domains=["a.com"])),
+    ],
+)
+def test_old_search_methods_warn_and_still_work(make_client: ClientFactory, method: str, request_model: object) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200, json=[] if method == "search" else {"count": 1, "task_id": "t-1"}, headers={"Deprecation": "true"}
+        )
+
+    with make_client(handler) as client, pytest.warns(DeprecationWarning, match="is deprecated"):
+        getattr(client.contacts, method)(request_model)
+
+
+async def test_old_search_methods_warn_async(make_async_client: AsyncClientFactory) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, json=[], headers={"Deprecation": "true"})
+
+    async with make_async_client(handler) as client:
+        with pytest.warns(DeprecationWarning, match="is deprecated"):
+            await client.contacts.search(ContactsSearchParams(domain=["a.com"]))
+
+
+def test_discover_lookup_and_match_do_not_warn(make_client: ClientFactory, recwarn: pytest.WarningsRecorder) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.url.path.endswith("/discover"):
+            return httpx2.Response(200, json={"results": {}})
+        if request.url.path.endswith("/match"):
+            return httpx2.Response(200, json={"matches": []})
+        return httpx2.Response(200, json={"persona_id": 1})
+
+    with make_client(handler) as client:
+        client.contacts.discover(ContactFilters(domain=["a.com"]))
+        client.contacts.lookup(ContactsLookupParams(persona_id=1))
+        client.contacts.match(ContactsMatchParams(name="Jane Doe"))
+    assert not [w for w in recwarn if issubclass(w.category, DeprecationWarning)]

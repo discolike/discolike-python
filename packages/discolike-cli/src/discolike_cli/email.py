@@ -86,6 +86,12 @@ def find_command(
     known_pattern: str | None = typer.Option(
         None, "--known-pattern", help="Known email local-part pattern for this domain, e.g. first.last."
     ),
+    suggested_email: str | None = typer.Option(
+        None,
+        "--suggested-email",
+        help="Address you think is right: verified first, and the right one recovered if it is not proven. "
+        "Must be at DOMAIN or the company's mail domain.",
+    ),
     wait: bool = typer.Option(False, "--wait/--no-wait", help=WAIT_HELP),
     timeout: float = typer.Option(DEFAULT_WAIT_TIMEOUT_SECONDS, "--timeout", help=TIMEOUT_HELP),
     fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
@@ -95,7 +101,14 @@ def find_command(
 
     request = build_request(
         FindEmailRequest,
-        _merge_params(None, first_name=first_name, last_name=last_name, domain=domain, known_pattern=known_pattern),
+        _merge_params(
+            None,
+            first_name=first_name,
+            last_name=last_name,
+            domain=domain,
+            known_pattern=known_pattern,
+            suggested_email=suggested_email,
+        ),
     )
     job = get_client(ctx).email.find(request)
     if not wait:

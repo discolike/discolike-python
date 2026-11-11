@@ -4,6 +4,7 @@ import json
 from collections.abc import Callable
 
 import httpx2
+import pytest
 from typer.testing import CliRunner
 
 from discolike_cli.main import app
@@ -411,3 +412,20 @@ def test_discover_unauthorized_exits_3(install_build_client: Callable[[Handler],
     assert result.exit_code == 3
     payload = json.loads(result.stderr)
     assert payload["error"] == "AuthenticationError"
+
+
+@pytest.mark.parametrize("command", ["discover", "count"])
+@pytest.mark.parametrize(("flags", "expected"), [([], None), (["--valid-mx"], "true"), (["--no-valid-mx"], "false")])
+def test_valid_mx_flag(
+    install_build_client: Callable[[Handler], None], command: str, flags: list[str], expected: str | None
+) -> None:
+    seen: list[httpx2.QueryParams] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request.url.params)
+        return _count_ok(request) if command == "count" else _discover_ok(request)
+
+    install_build_client(handler)
+    result = runner.invoke(app, [command, *flags])
+    assert result.exit_code == 0, result.output
+    assert seen[0].get("valid_mx") == expected

@@ -532,7 +532,7 @@ def test_contacts_without_email_validated_does_not_warn(install_build_client: Ca
     install_build_client(lambda request: httpx2.Response(200, json=[]))
     result = runner.invoke(app, ["contacts", "search", "--name", "Jane"])
     assert result.exit_code == 0, result.output
-    assert "deprecated" not in result.stderr
+    assert "email-validated" not in result.stderr
 
 
 def test_contacts_generate_forwards_full_and_partial_domains(install_build_client: Callable[[Handler], None]) -> None:

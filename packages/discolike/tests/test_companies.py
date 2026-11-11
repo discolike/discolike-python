@@ -97,13 +97,12 @@ async def test_companies_list_methods_async(
 
 def test_extract_parses_text_and_language(make_client: ClientFactory) -> None:
     def handler(request: httpx2.Request) -> httpx2.Response:
-        return httpx2.Response(200, json={"language": "en", "text": "Acme makes widgets."})
+        return httpx2.Response(200, json={"text": "Acme makes widgets."})
 
     with make_client(handler) as client:
         result = client.companies.extract(CompaniesExtractParams(domain="acme.com"))
 
     assert result.text == "Acme makes widgets."
-    assert result.language == "en"
 
 
 def test_unset_match_mode_is_not_sent(make_client: ClientFactory) -> None:

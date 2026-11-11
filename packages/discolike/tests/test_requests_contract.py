@@ -1,5 +1,7 @@
 """The generated request models must carry the sub-industry and geo filters."""
 
+import pytest
+
 from discolike.requests import CountParams
 from discolike.requests import DiscoverParams
 from discolike.resources.companies import CompanyProfile
@@ -136,3 +138,12 @@ class TestCompanyProfile:
 
         assert profile.to_dict()["latitude"] == 40.7128
         assert profile.to_dict()["longitude"] == -74.006
+
+
+@pytest.mark.parametrize("model", [DiscoverParams, CountParams])
+@pytest.mark.parametrize("value", [True, False])
+def test_valid_mx_is_optional_and_sent_when_explicit(
+    model: type[DiscoverParams] | type[CountParams], value: bool
+) -> None:
+    assert "valid_mx" not in model().to_wire()
+    assert model(valid_mx=value).to_wire()["valid_mx"] is value
