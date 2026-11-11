@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.3 (2026-11-10)
 
 - SDK/CLI: a request with no credentials now gets a 401 whose `detail` is an object (`code: "UNAUTHENTICATED"`, `message`, `signup_url`, `plan`, `allowance_usd`, `cpc`, `cpm`) pointing at free signup: Pay as you go, a one-time $5 signup credit, then $5 per 1,000 records, no card. The SDK raises `AuthenticationError` with the server's `message`, as for any object `detail`; other 401s keep a string `detail`. No SDK code change; older versions show the JSON body as the message.
 - SDK/CLI: with `max_records` omitted, discover and the contacts endpoints now return, and bill, up to 500 records instead of 100; pass `max_records=100` to keep the old size. No SDK change; older versions get the new default too.
