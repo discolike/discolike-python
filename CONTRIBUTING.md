@@ -51,8 +51,8 @@ all talk to the same live API. Keep them working:
   extra fields (`extra="allow"`). Response enums are open
   (`Literal[...] | str`), never a closed `Literal`. Response fields carry no
   request-side limits (`max_length`, `ge`/`le`). Don't reuse a request model
-  as a response field (see `ProspectingRunBrief`). A new response field gets
-  a default, so the SDK still parses servers from before it existed.
+  as a response field. A new response field gets a default, so the SDK still
+  parses servers from before it existed.
 - **The SDK may be looser than the spec, never stricter.** The contract check
   flags only drift that breaks parsing: the SDK requiring a field the spec
   makes optional, or the spec allowing a type the SDK rejects.

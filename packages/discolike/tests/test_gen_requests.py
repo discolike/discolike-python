@@ -236,14 +236,6 @@ def test_apply_overlays_pins_sub_industry_over_a_spec_enum(gen) -> None:
     assert sub_industry["items"] == {"type": "string"}
 
 
-def test_apply_overlays_pins_the_brief_checkpoint_modes_the_spec_hides(gen) -> None:
-    kept = {"ProspectingBrief": {"type": "object", "properties": {"brief": {"type": "string"}}}}
-
-    brief = gen.apply_overlays(kept=kept)["ProspectingBrief"]["properties"]["checkpoints"]
-
-    assert (brief["enum"], brief["default"]) == (["ask", "auto"], "auto")
-
-
 def test_apply_overlays_skips_schemas_this_run_does_not_generate(gen) -> None:
     assert gen.apply_overlays(kept={}) == {}
 
@@ -274,5 +266,5 @@ def test_compare_prints_a_diff_and_returns_one_on_drift(gen, capsys) -> None:
 
 def test_collect_routes_covers_every_stamped_sync_route(gen) -> None:
     routes = gen.collect_routes()
-    assert len(routes) == 57
+    assert len(routes) == 48
     assert all(not route.class_name.startswith("Async") for route in routes)

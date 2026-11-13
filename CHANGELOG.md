@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Breaking:** Removed: prospecting resource and CLI command; the API endpoints were retired. `client.prospecting`, `CHECKPOINT_STOP_REASONS`, the `Prospecting*` request models and `IntakeAnswer` are gone from the SDK, and `discolike prospecting` and exit code 7 (`needs_input`) are gone from the CLI. There is no deprecation window because the endpoints no longer exist on the API; prospecting calls from older SDK versions fail.
 - CLI: `--phrase-match` help now explains the syntax: plain phrases are any-of, `+phrase` is required, and `+a|b` requires either `a` or `b`. The `|` alternatives need an API release that parses them.
 
 ## 0.6.3 (2026-11-10)

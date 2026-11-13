@@ -42,8 +42,6 @@ from discolike.resources.enrich import AsyncEnrichResource
 from discolike.resources.enrich import EnrichResource
 from discolike.resources.match import AsyncMatchResource
 from discolike.resources.match import MatchResource
-from discolike.resources.prospecting import AsyncProspectingResource
-from discolike.resources.prospecting import ProspectingResource
 from discolike.resources.providers import AsyncLLMProvidersResource
 from discolike.resources.providers import AsyncSearchProvidersResource
 from discolike.resources.providers import LLMProvidersResource
@@ -73,7 +71,6 @@ class Discolike:
         self.match = MatchResource(self._transport)
         self.discogen = DiscogenResource(self._transport)
         self.email = EmailResource(self._transport)
-        self.prospecting = ProspectingResource(self._transport)
         self.queries = QueriesResource(self._transport)
         self.search_providers = SearchProvidersResource(self._transport)
         self.llm_providers = LLMProvidersResource(self._transport)
@@ -145,7 +142,6 @@ class AsyncDiscolike:
         self.match = AsyncMatchResource(self._transport)
         self.discogen = AsyncDiscogenResource(self._transport)
         self.email = AsyncEmailResource(self._transport)
-        self.prospecting = AsyncProspectingResource(self._transport)
         self.queries = AsyncQueriesResource(self._transport)
         self.search_providers = AsyncSearchProvidersResource(self._transport)
         self.llm_providers = AsyncLLMProvidersResource(self._transport)

@@ -38,12 +38,6 @@ from discolike.resources.contacts_run import TitlePreview
 from discolike.resources.contacts_run import TitlePreviewTitle
 from discolike.resources.contacts_run import ValidatedRunTitle
 from discolike.resources.match import MatchResponse
-from discolike.resources.prospecting import ProspectingEvent
-from discolike.resources.prospecting import ProspectingInFlight
-from discolike.resources.prospecting import ProspectingMessage
-from discolike.resources.prospecting import ProspectingPlan
-from discolike.resources.prospecting import ProspectingRun
-from discolike.resources.prospecting import ProspectingRunSummary
 from discolike.resources.queries import SavedQueries
 
 IGNORE_PARAMS = {"file"}
@@ -54,12 +48,6 @@ ASYNC_CLASS_PREFIX = "Async"
 # checked field-by-field against the spec, so a platform-side model change surfaces as a
 # contract failure instead of silently landing in `extra`.
 MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
-    "ProspectingRunResponse": ProspectingRun,
-    "ProspectingPlan": ProspectingPlan,
-    "ProspectingEvent": ProspectingEvent,
-    "ProspectingMessage": ProspectingMessage,
-    "ProspectingInFlight": ProspectingInFlight,
-    "ProspectingRunSummary": ProspectingRunSummary,
     "CompanyResult": CompanyProfile,
     "ExtractResponse": ExtractResult,
     "ScoreResponse": Score,
@@ -86,12 +74,10 @@ HIDDEN_MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
     "TitlePreviewItem": TitlePreviewTitle,
 }
 # Request fields the platform accepts but hides from its OpenAPI schema (SkipJsonSchema), so the spec never lists them.
-HIDDEN_REQUEST_FIELDS: dict[str, frozenset[str]] = {"ProspectingBrief": frozenset({"checkpoints"})}
+HIDDEN_REQUEST_FIELDS: dict[str, frozenset[str]] = {}
 # Methods that build a route's body from their own arguments instead of taking its request model, mapped
 # argument -> body field, so each argument is checked against the body field it fills.
-BODY_BUILDERS: dict[tuple[str, str], dict[str, str]] = {
-    ("ProspectingResource", "answer_intake"): {"answers": "intake", "summary": "text"},
-}
+BODY_BUILDERS: dict[tuple[str, str], dict[str, str]] = {}
 SPEC_URL = "https://api.discolike.com/v1/openapi.json"
 REQUEST_TIMEOUT_SECONDS = 30.0
 

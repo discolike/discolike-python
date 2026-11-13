@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import builtins
+import math
 import time
 from datetime import datetime
 from decimal import Decimal
@@ -22,13 +23,13 @@ from discolike.requests import TitlePreviewRequest
 from discolike.resources._base import AsyncAPIResource
 from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
-from discolike.resources.prospecting import _deadline
 
 RUN_PATH = "/contacts/run"
 TERMINAL_STATUSES = frozenset({"done", "failed", "cancelled"})
 ROWS_PAGE_SIZE = 1000
 DEFAULT_MAX_WAIT_SECONDS = 3600.0
 DEFAULT_POLL_INTERVAL_SECONDS = 5.0
+MIN_POLL_INTERVAL_SECONDS = 5
 
 ContactsRunStatus = Literal["ready", "running", "waiting", "done", "failed", "cancelled"] | str
 ContactsRunStepName = Literal["find_contacts", "find_missing", "review", "find_emails", "discover", "validate"] | str
@@ -154,6 +155,17 @@ class TitlePreview(DiscolikeModel):
 
 def _path(run_id: str | UUID) -> str:
     return f"{RUN_PATH}/{UUID(str(run_id))}"
+
+
+def _deadline(max_wait: float, poll_interval: float) -> float:
+    if (
+        not math.isfinite(max_wait)
+        or max_wait <= 0
+        or not math.isfinite(poll_interval)
+        or poll_interval < MIN_POLL_INTERVAL_SECONDS
+    ):
+        raise ValueError("max_wait must be finite and positive; poll_interval must be finite and at least 5 seconds")
+    return time.monotonic() + max_wait
 
 
 class ContactsRunResource(SyncAPIResource):
