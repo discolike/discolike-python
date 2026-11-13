@@ -77,7 +77,10 @@ def discover_command(
     ctx: typer.Context,
     icp_prompt: str | None = typer.Option(None, help="Natural-language ideal customer profile description."),
     domain: list[str] | None = typer.Option(None, help="Seed domain for lookalike matching (repeatable)."),
-    phrase_match: list[str] | None = typer.Option(None, help="Phrase the company website must contain (repeatable). Any one plain phrase matches; prefix + to require it, +a|b requires a or b."),
+    phrase_match: list[str] | None = typer.Option(
+        None,
+        help="Phrase the company website must contain (repeatable). Any one plain phrase matches; prefix + to require it, +a|b requires a or b.",
+    ),
     negate_phrase_match: list[str] | None = typer.Option(None, help="Negate the --phrase-match filter (repeatable)."),
     category: list[str] | None = typer.Option(None, help="Industry category filter (repeatable)."),
     negate_category: list[str] | None = typer.Option(None, help="Negate the --category filter (repeatable)."),
@@ -216,7 +219,10 @@ def discover_command(
 @handle_errors
 def count_command(
     ctx: typer.Context,
-    phrase_match: list[str] | None = typer.Option(None, help="Phrase the company website must contain (repeatable). Any one plain phrase matches; prefix + to require it, +a|b requires a or b."),
+    phrase_match: list[str] | None = typer.Option(
+        None,
+        help="Phrase the company website must contain (repeatable). Any one plain phrase matches; prefix + to require it, +a|b requires a or b.",
+    ),
     negate_phrase_match: list[str] | None = typer.Option(None, help="Negate the --phrase-match filter (repeatable)."),
     category: list[str] | None = typer.Option(None, help="Industry category filter (repeatable)."),
     negate_category: list[str] | None = typer.Option(None, help="Negate the --category filter (repeatable)."),
