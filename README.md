@@ -334,9 +334,9 @@ print(run.summary)
 
 `companies` accepts a prompt (`icp_text` and/or `filters`), domains (`source="domains", domains=[...]`) or lookalike seeds (`source="lookalike", persona_ids=[...]`). `max_companies` is a top-level field, default 500. Responses include `companies`, `companies_total`, `rows_total` and summary totals (`companies_delivered`, `validated_contacts`, `spent_usd`). Domains may be masked as `Company N`; treat them as display labels. Delivered email labels are `Validated` and `Validated (catch-all resolved)`. Events include `next_cursor` for the next call's `after`.
 
-Runs start automatically. `cancel()` stops unfinished work; `wait()` only polls and a timeout stops local polling. `continue_()` remains available for companies runs and returns 409 for contacts runs. The separate `title_preview()` route remains live, but contacts runs take free-text people fit rather than title chips. A run idle for 30 days answers 410. A creation request exceeding the remaining balance raises `InsufficientBalanceError` (a `PlanAccessError` subclass).
+Runs start automatically. `cancel()` stops unfinished work; `wait()` only polls and a timeout stops local polling. `continue_()` remains available for companies runs and returns 409 for contacts runs. Contacts runs take free-text people fit rather than title chips. A run idle for 30 days answers 410. A creation request exceeding the remaining balance raises `InsufficientBalanceError` (a `PlanAccessError` subclass).
 
-CLI: `discolike contacts run create|list|get|events|cancel|wait|continue|title-preview`. Create reads `--params-file` plus optional `--email-cap-usd`; `wait` takes `--timeout`; `get --all-rows` fetches all contacts. `get --rows-offset` and `--rows-limit` count company domains for contacts runs. `continue` only advances companies runs and accepts `--generation` and `--redo`.
+CLI: `discolike contacts run create|list|get|events|cancel|wait|continue`. Create reads `--params-file` plus optional `--email-cap-usd`; `wait` takes `--timeout`; `get --all-rows` fetches all contacts. `get --rows-offset` and `--rows-limit` count company domains for contacts runs. `continue` only advances companies runs and accepts `--generation` and `--redo`.
 
 `contacts.search` and `contacts.generate` are deprecated in favor of contacts runs; their endpoints sunset on 2026-12-31.
 

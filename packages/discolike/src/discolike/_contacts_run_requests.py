@@ -13,14 +13,6 @@ from pydantic import Field
 from discolike._models import DiscolikeRequest
 
 
-class TitlePreviewRequest(DiscolikeRequest):
-    titles: Annotated[list[str], Field(max_length=50, min_length=1, title="Titles")]
-    exclude_titles: Annotated[list[str] | None, Field(title="Exclude Titles")] = None
-    match: Annotated[Literal["similar", "exact"], Field(title="Match")]
-    relevance: Literal["max_relevance", "balanced", "max_coverage"] = "balanced"
-    auto_stop: bool = True
-
-
 class DomainCompanies(DiscolikeRequest):
     source: Annotated[Literal["domains"], Field(title="Source")]
     domains: Annotated[

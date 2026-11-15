@@ -10,7 +10,6 @@ from discolike._contacts_run_requests import DomainCompanies
 from discolike._contacts_run_requests import LookalikeCompanies
 from discolike._contacts_run_requests import PromptCompanies
 from discolike._contacts_run_requests import PromptCompanyFilters
-from discolike._contacts_run_requests import TitlePreviewRequest
 from discolike._generated.requests import AppendParams
 from discolike._generated.requests import BulkContactMatchQueryItem
 from discolike._generated.requests import BulkContactMatchRequest
@@ -91,7 +90,6 @@ __all__ = [
     "SearchProviderRequest",
     "SegmentFileParams",
     "SegmentParams",
-    "TitlePreviewRequest",
     "UpdateQueryRequest",
     "ValidateIcpRequest",
 ]

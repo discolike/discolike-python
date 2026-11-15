@@ -34,8 +34,6 @@ from discolike.resources.contacts_run import ContactsRunRow
 from discolike.resources.contacts_run import ContactsRunStep
 from discolike.resources.contacts_run import ContactsRunSummary
 from discolike.resources.contacts_run import RunCompanyResponse
-from discolike.resources.contacts_run import TitlePreview
-from discolike.resources.contacts_run import TitlePreviewTitle
 from discolike.resources.contacts_run import ValidatedRunTitle
 from discolike.resources.match import MatchResponse
 from discolike.resources.queries import SavedQueries
@@ -70,8 +68,6 @@ HIDDEN_MIRRORED_SCHEMAS: dict[str, type[DiscolikeModel]] = {
     "RunStepResponse": ContactsRunStep,
     "StepState": ContactsRunStep,
     "RunRow": ContactsRunRow,
-    "TitlePreviewResponse": TitlePreview,
-    "TitlePreviewItem": TitlePreviewTitle,
 }
 # Request fields the platform accepts but hides from its OpenAPI schema (SkipJsonSchema), so the spec never lists them.
 HIDDEN_REQUEST_FIELDS: dict[str, frozenset[str]] = {}

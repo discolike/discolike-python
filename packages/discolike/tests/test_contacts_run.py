@@ -16,7 +16,7 @@ from discolike.requests import ContactsRunGetParams
 from discolike.requests import ContactsRunListParams
 from discolike.requests import ContactsRunRequest
 from discolike.requests import ContinueRunRequest
-from discolike.requests import TitlePreviewRequest
+from discolike.resources._base import get_discolike_route
 from discolike.resources.contacts_run import ContactsRun
 from discolike.resources.contacts_run import ContactsRunEventsResponse
 from discolike_testkit import AsyncClientFactory
@@ -129,8 +129,6 @@ def test_live_routes(make_client: ClientFactory) -> None:
 
     def handler(req: httpx2.Request) -> httpx2.Response:
         seen.append((req.method, req.url.path, json.loads(req.content) if req.content else dict(req.url.params)))
-        if req.url.path.endswith("title-preview"):
-            return httpx2.Response(200, json={"titles": [], "searched": ["Owner"]})
         if req.url.path.endswith("events"):
             return httpx2.Response(200, json={"events": [], "next_cursor": 5})
         return httpx2.Response(200, json=[run_payload()] if req.url.path == "/v1/contacts/run" else run_payload())
@@ -140,14 +138,12 @@ def test_live_routes(make_client: ClientFactory) -> None:
         client.contacts_run.list(ContactsRunListParams(limit=5))
         client.contacts_run.cancel(RUN_ID)
         client.contacts_run.continue_(RUN_ID, ContinueRunRequest(generation=2, redo=True))
-        client.contacts_run.title_preview(TitlePreviewRequest(titles=["Owner"], match="similar", relevance="balanced"))
         assert client.contacts_run.events(RUN_ID, ContactsRunEventsParams(after=4, limit=10)).next_cursor == 5
     assert seen == [
         ("GET", RUN_PATH, {"rows_offset": "2", "rows_limit": "3"}),
         ("GET", "/v1/contacts/run", {"limit": "5"}),
         ("POST", RUN_PATH + "/cancel", {}),
         ("POST", RUN_PATH + "/continue", {"generation": 2, "redo": True}),
-        ("POST", "/v1/contacts/run/title-preview", {"titles": ["Owner"], "match": "similar", "relevance": "balanced"}),
         ("GET", RUN_PATH + "/events", {"after": "4", "limit": "10"}),
     ]
 
@@ -327,3 +323,18 @@ def test_response_fields_default_for_older_servers() -> None:
     assert not {"rows", "rows_total"} & ContactsRun.model_fields.keys()
     assert not {"child_task_id", "state"} & module.ContactsRunStep.model_fields.keys()
     assert not {"company", "source"} & module.ContactsRunRow.model_fields.keys()
+
+
+@pytest.mark.parametrize("resource", [module.ContactsRunResource, module.AsyncContactsRunResource])
+def test_public_route_metadata(resource) -> None:
+    assert {
+        name: get_discolike_route(getattr(resource, name))
+        for name in ("create", "list", "get", "continue_", "events", "cancel")
+    } == {
+        "create": ("POST", "/contacts/run", True),
+        "list": ("GET", "/contacts/run", True),
+        "get": ("GET", "/contacts/run/{run_id}", True),
+        "continue_": ("POST", "/contacts/run/{run_id}/continue", True),
+        "events": ("GET", "/contacts/run/{run_id}/events", True),
+        "cancel": ("POST", "/contacts/run/{run_id}/cancel", True),
+    }
