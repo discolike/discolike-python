@@ -142,20 +142,6 @@ def test_run_list_sends_before(install_build_client: Callable[[Handler], None]) 
     assert queries[0]["limit"] == "5"
 
 
-def test_run_title_preview(install_build_client: Callable[[Handler], None]) -> None:
-    bodies: list[dict[str, Any]] = []
-
-    def handler(request: httpx2.Request) -> httpx2.Response:
-        bodies.append(json.loads(request.content))
-        return httpx2.Response(200, json={"titles": [{"title": "Owner", "role": 1.0, "count": 3}]})
-
-    install_build_client(handler)
-    result = runner.invoke(app, ["contacts", "run", "title-preview", "--title", "Owner", "--format", "json"])
-    assert result.exit_code == 0, result.output
-    assert bodies == [{"titles": ["Owner"], "match": "similar"}]
-    assert json.loads(result.stdout) == [{"title": "Owner", "role": 1.0, "count": 3}]
-
-
 def test_old_contacts_commands_print_deprecation(install_build_client: Callable[[Handler], None]) -> None:
     install_build_client(lambda request: httpx2.Response(200, json=[]))
     result = runner.invoke(app, ["contacts", "search", "--name", "Jane"])

@@ -24,7 +24,6 @@ from discolike_cli import discover
 from discolike_cli import email
 from discolike_cli import enrich
 from discolike_cli import match
-from discolike_cli import prospecting
 from discolike_cli import providers
 from discolike_cli import queries
 from discolike_cli import signup
@@ -88,7 +87,6 @@ contacts.app.add_typer(contacts_run.app, name="run")
 app.add_typer(discogen.app, name="discogen")
 app.add_typer(email.app, name="email")
 app.add_typer(queries.app, name="queries")
-app.add_typer(prospecting.app, name="prospecting")
 app.add_typer(account.app, name="account")
 app.add_typer(providers.search_providers_app, name="search-providers")
 app.add_typer(providers.llm_providers_app, name="llm-providers")

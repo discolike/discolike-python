@@ -23,7 +23,6 @@ KM_PER_MILE = 1.609344
 RADIUS_KM_SUFFIX = "km"
 RADIUS_MILE_SUFFIX = "mi"
 MAX_GEO_SHAPES = 10
-MESSAGE_CONTENT_FIELDS = frozenset({"text", "intake"})
 DEPRECATED_REQUEST_FIELDS: dict[str, str] = {
     "email_validated": (
         "email_validated is deprecated. Treated as has_email: "
@@ -90,15 +89,6 @@ class DiscolikeRequest(pydantic.BaseModel):
             for name in sorted(deprecated.keys() & data.keys()):
                 warnings.warn(deprecated[name], DeprecationWarning, stacklevel=2)
         return data
-
-    # Mirrors the platform's text_or_intake rule on ProspectingMessageRequest, which the spec cannot express.
-    @pydantic.model_validator(mode="after")
-    def _validate_message_content(self) -> DiscolikeRequest:
-        if not type(self).model_fields.keys() >= MESSAGE_CONTENT_FIELDS:
-            return self
-        if getattr(self, "text", None) is None and not getattr(self, "intake", None):
-            raise ValueError("send text or intake answers")
-        return self
 
     def to_wire(self) -> dict[str, Any]:
         return self.model_dump(mode="json", exclude_unset=True, by_alias=True)

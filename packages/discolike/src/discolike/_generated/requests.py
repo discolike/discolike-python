@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import Annotated
 from typing import Any
 from typing import Literal
-from uuid import UUID
 
+from pydantic import AwareDatetime
 from pydantic import Field
+from pydantic import RootModel
 
 from discolike._models import DiscolikeRequest
 
@@ -1229,6 +1230,42 @@ class ContactGenerateRequest(DiscolikeRequest):
     ] = False
 
 
+class EmailCapUsd(RootModel[float]):
+    root: Annotated[
+        float,
+        Field(description="Maximum delivery spend in USD.", ge=0.0, title="Email Cap Usd"),
+    ]
+
+
+class ContactsRunListParams(DiscolikeRequest):
+    before: Annotated[AwareDatetime | None, Field(title="Before")] = None
+    limit: Annotated[int | None, Field(ge=1, le=100, title="Limit")] = 20
+
+
+class ContactsRunGetParams(DiscolikeRequest):
+    rows_offset: Annotated[int | None, Field(ge=0, title="Rows Offset")] = 0
+    rows_limit: Annotated[int | None, Field(ge=1, le=1000, title="Rows Limit")] = 100
+
+
+class ContinueRunRequest(DiscolikeRequest):
+    generation: Annotated[
+        int,
+        Field(
+            description="Generation of the run you are continuing, as last returned.",
+            title="Generation",
+        ),
+    ]
+    redo: Annotated[
+        bool | None,
+        Field(description="Run the current companies step again.", title="Redo"),
+    ] = False
+
+
+class ContactsRunEventsParams(DiscolikeRequest):
+    after: Annotated[int | None, Field(ge=0, title="After")] = 0
+    limit: Annotated[int | None, Field(ge=1, le=500, title="Limit")] = 100
+
+
 class DiscoGenProcessRequest(DiscolikeRequest):
     query: Annotated[
         str,
@@ -1357,7 +1394,7 @@ class DiscoverParams(DiscolikeRequest):
     phrase_match: Annotated[
         list[str] | None,
         Field(
-            description="Exact text fragments to search for in site content. Up to 20 fragments, each at least 3 characters.",
+            description="Exact text fragments to search for in site content. Up to 20 fragments, each at least 3 characters. Any one plain fragment matches; prefix + to require one, and +a|b requires any one of a, b.",
             max_length=20,
             title="Phrase Match",
         ),
@@ -1940,7 +1977,7 @@ class CountParams(DiscolikeRequest):
     phrase_match: Annotated[
         list[str] | None,
         Field(
-            description="Exact text fragments to search for in site content. Up to 20 fragments, each at least 3 characters.",
+            description="Exact text fragments to search for in site content. Up to 20 fragments, each at least 3 characters. Any one plain fragment matches; prefix + to require one, and +a|b requires any one of a, b.",
             max_length=20,
             title="Phrase Match",
         ),
@@ -2631,21 +2668,6 @@ class MatchBulkParams(DiscolikeRequest):
     ] = 50
 
 
-class ProspectingListParams(DiscolikeRequest):
-    limit: Annotated[int | None, Field(ge=1, le=50, title="Limit")] = 20
-    before: Annotated[
-        UUID | None,
-        Field(description="Return the runs created before this run.", title="Before"),
-    ] = None
-
-
-class ProspectingGetParams(DiscolikeRequest):
-    offset: Annotated[int | None, Field(ge=0, title="Offset")] = 0
-    limit: Annotated[int | None, Field(ge=1, le=500, title="Limit")] = 100
-    events_after: Annotated[int | None, Field(ge=0, title="Events After")] = 0
-    messages_after: Annotated[int | None, Field(ge=0, title="Messages After")] = 0
-
-
 class LLMProviderCreateRequest(DiscolikeRequest):
     integration_name: Annotated[
         str,
@@ -2872,9 +2894,386 @@ class BulkContactMatchQueryItem(DiscolikeRequest):
     ] = None
 
 
-class IntakeAnswer(DiscolikeRequest):
-    values: Annotated[list[str] | None, Field(title="Values")] = None
-    other: Annotated[str | None, Field(max_length=200, title="Other")] = None
+class ContactsPeopleFit(DiscolikeRequest):
+    fit: Annotated[str | None, Field(max_length=4000, min_length=1, title="Fit")] = (
+        "Senior executives and decision makers"
+    )
+
+
+class DomainCompanies(DiscolikeRequest):
+    source: Annotated[Literal["domains"], Field(title="Source")]
+    domains: Annotated[
+        list[str],
+        Field(
+            description="Company domains to find contacts at.",
+            max_length=10000,
+            min_length=1,
+            title="Domains",
+        ),
+    ]
+    scores: Annotated[
+        dict[str, float] | None,
+        Field(
+            description="Optional relevance score per domain, keyed by domain.",
+            title="Scores",
+        ),
+    ] = None
+
+
+class LookalikeCompanies(DiscolikeRequest):
+    source: Annotated[Literal["lookalike"], Field(title="Source")]
+    persona_ids: Annotated[
+        list[int] | None,
+        Field(
+            description="Personas whose companies seed the lookalike search.",
+            title="Persona Ids",
+        ),
+    ] = None
+    linkedin_urls: Annotated[list[str] | None, Field(max_length=20, title="Linkedin Urls")] = None
+
+
+class PromptCompanyFilters(DiscolikeRequest):
+    filter_industry: Annotated[
+        list[str] | None,
+        Field(
+            description="Filter by industry category (ANY-OF; prefix + to require a category). Valid values: ACCOUNTING, ADVERTISING_AND_MARKETING, AGRICULTURE_AND_NATURAL_RESOURCES, ALCOHOL_AND_TOBACCO, AUTOMOTIVE, BIG_DATA_AND_ANALYTICS, BIOTECHNOLOGY, BLOCKCHAIN_AND_CRYPTOCURRENCY, BUSINESS_PRODUCTS_AND_SERVICES, CLOUD_COMPUTING, COMPUTER_HARDWARE_AND_SEMICONDUCTORS, CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES, CONSTRUCTION, CONSUMER_PRODUCTS, CONSUMER_SERVICES, CYBERSECURITY, DEFENSE_AND_AEROSPACE, E-COMMERCE, EDUCATION, ENERGY, ENGINEERING, ENTERTAINMENT, ENVIRONMENTAL_SERVICES, FASHION_TEXTILE_AND_APPAREL, FINANCIAL_SERVICES, FOOD_AND_BEVERAGE, GAMING_AND_ESPORTS, GOVERNMENT_SERVICES, HEALTHCARE, HOSPITALITY, HUMAN_RESOURCES, INSURANCE, IT_SERVICES, LEGAL, MANUFACTURING, MEDIA, MINING_AND_METALS, NONPROFIT_AND_PHILANTHROPY, OIL_AND_GAS, PHARMACEUTICALS, PRIVATE_EQUITY_AND_VENTURE_CAPITAL, REAL_ESTATE, RENEWABLE_ENERGY, RESTAURANTS, RETAIL, SAAS, SECURITY, SOFTWARE, SPORTS_AND_RECREATION, SUPPLY_CHAIN_AND_PROCUREMENT, TELECOMMUNICATIONS, TRAVEL, WELLNESS_AND_LIFESTYLE.",
+            title="Filter Industry",
+        ),
+    ] = None
+    negate_filter_industry: Annotated[
+        list[
+            Literal[
+                "ACCOUNTING",
+                "ADVERTISING_AND_MARKETING",
+                "AGRICULTURE_AND_NATURAL_RESOURCES",
+                "ALCOHOL_AND_TOBACCO",
+                "AUTOMOTIVE",
+                "BIG_DATA_AND_ANALYTICS",
+                "BIOTECHNOLOGY",
+                "BLOCKCHAIN_AND_CRYPTOCURRENCY",
+                "BUSINESS_PRODUCTS_AND_SERVICES",
+                "CLOUD_COMPUTING",
+                "COMPUTER_HARDWARE_AND_SEMICONDUCTORS",
+                "CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES",
+                "CONSTRUCTION",
+                "CONSUMER_PRODUCTS",
+                "CONSUMER_SERVICES",
+                "CYBERSECURITY",
+                "DEFENSE_AND_AEROSPACE",
+                "E-COMMERCE",
+                "EDUCATION",
+                "ENERGY",
+                "ENGINEERING",
+                "ENTERTAINMENT",
+                "ENVIRONMENTAL_SERVICES",
+                "FASHION_TEXTILE_AND_APPAREL",
+                "FINANCIAL_SERVICES",
+                "FOOD_AND_BEVERAGE",
+                "GAMING_AND_ESPORTS",
+                "GOVERNMENT_SERVICES",
+                "HEALTHCARE",
+                "HOSPITALITY",
+                "HUMAN_RESOURCES",
+                "INSURANCE",
+                "IT_SERVICES",
+                "LEGAL",
+                "MANUFACTURING",
+                "MEDIA",
+                "MINING_AND_METALS",
+                "NONPROFIT_AND_PHILANTHROPY",
+                "OIL_AND_GAS",
+                "PHARMACEUTICALS",
+                "PRIVATE_EQUITY_AND_VENTURE_CAPITAL",
+                "REAL_ESTATE",
+                "RENEWABLE_ENERGY",
+                "RESTAURANTS",
+                "RETAIL",
+                "SAAS",
+                "SECURITY",
+                "SOFTWARE",
+                "SPORTS_AND_RECREATION",
+                "SUPPLY_CHAIN_AND_PROCUREMENT",
+                "TELECOMMUNICATIONS",
+                "TRAVEL",
+                "WELLNESS_AND_LIFESTYLE",
+            ]
+        ]
+        | None,
+        Field(
+            description="Exclude contacts at companies in specified industries. Valid values: ACCOUNTING, ADVERTISING_AND_MARKETING, AGRICULTURE_AND_NATURAL_RESOURCES, ALCOHOL_AND_TOBACCO, AUTOMOTIVE, BIG_DATA_AND_ANALYTICS, BIOTECHNOLOGY, BLOCKCHAIN_AND_CRYPTOCURRENCY, BUSINESS_PRODUCTS_AND_SERVICES, CLOUD_COMPUTING, COMPUTER_HARDWARE_AND_SEMICONDUCTORS, CONGLOMERATES_SHELL_AND_HOLDING_COMPANIES, CONSTRUCTION, CONSUMER_PRODUCTS, CONSUMER_SERVICES, CYBERSECURITY, DEFENSE_AND_AEROSPACE, E-COMMERCE, EDUCATION, ENERGY, ENGINEERING, ENTERTAINMENT, ENVIRONMENTAL_SERVICES, FASHION_TEXTILE_AND_APPAREL, FINANCIAL_SERVICES, FOOD_AND_BEVERAGE, GAMING_AND_ESPORTS, GOVERNMENT_SERVICES, HEALTHCARE, HOSPITALITY, HUMAN_RESOURCES, INSURANCE, IT_SERVICES, LEGAL, MANUFACTURING, MEDIA, MINING_AND_METALS, NONPROFIT_AND_PHILANTHROPY, OIL_AND_GAS, PHARMACEUTICALS, PRIVATE_EQUITY_AND_VENTURE_CAPITAL, REAL_ESTATE, RENEWABLE_ENERGY, RESTAURANTS, RETAIL, SAAS, SECURITY, SOFTWARE, SPORTS_AND_RECREATION, SUPPLY_CHAIN_AND_PROCUREMENT, TELECOMMUNICATIONS, TRAVEL, WELLNESS_AND_LIFESTYLE.",
+            title="Negate Filter Industry",
+        ),
+    ] = None
+    filter_country: Annotated[
+        list[str] | None,
+        Field(
+            description="Filter by company country using ISO-3166-1 alpha-2 codes (e.g., US, GB, DE). Also accepts region aliases: EU, LATAM, MENA, APAC, NORDICS, DACH, BENELUX, GCC, ASEAN, CEE, ANZ, EUROPE, ASIA, AFRICA, NORTH_AMERICA, SOUTH_AMERICA, OCEANIA, ANTARCTICA.",
+            title="Filter Country",
+        ),
+    ] = None
+    negate_filter_country: Annotated[
+        list[str] | None,
+        Field(
+            description="Exclude contacts at companies in specified countries. Accepts same codes and region aliases as filter_country.",
+            title="Negate Filter Country",
+        ),
+    ] = None
+    filter_state: Annotated[
+        list[str] | None,
+        Field(
+            description="Filter by company state/region. Accepts ISO 3166-2 codes or names, listed at https://docs.discolike.com/states/, resolved against the selected countries; a value that resolves under none is ignored.",
+            title="Filter State",
+        ),
+    ] = None
+    negate_filter_state: Annotated[
+        list[str] | None,
+        Field(
+            description="Exclude contacts at companies in specified states. Same format as filter_state.",
+            title="Negate Filter State",
+        ),
+    ] = None
+    employee_range: Annotated[
+        str | None,
+        Field(
+            description="Filter by employee count range. Format: 'min,max' (e.g., '51,200'). Maps to buckets: 1-10, 11-50, 51-200, 201-500, 501-1000, 1001-5000, 5001-10000, 10001+.",
+            title="Employee Range",
+        ),
+    ] = None
+    revenue_range: Annotated[
+        str | None,
+        Field(
+            description="Company revenue range as 'min,max' in raw numbers, e.g. '10000000,50000000'.",
+            title="Revenue Range",
+        ),
+    ] = None
+    sub_industry: Annotated[
+        list[
+            Literal[
+                "CONSTRUCTION/ROOFING",
+                "CONSTRUCTION/PLUMBING",
+                "CONSTRUCTION/ELECTRICAL",
+                "CONSTRUCTION/HVAC",
+                "CONSTRUCTION/SOLAR_INSTALLATION",
+                "CONSTRUCTION/GENERAL_CONTRACTING",
+                "CONSTRUCTION/HOME_BUILDER",
+                "CONSTRUCTION/REMODELING",
+                "CONSTRUCTION/PAINTING",
+                "CONSTRUCTION/SIDING_CONTRACTOR",
+                "CONSTRUCTION/WINDOW_AND_DOOR_INSTALLER",
+                "CONSTRUCTION/FLOORING",
+                "CONSTRUCTION/CONCRETE_AND_MASONRY",
+                "CONSTRUCTION/EXCAVATION_AND_DEMOLITION",
+                "CONSTRUCTION/ARCHITECTURE",
+                "CONSTRUCTION/RESTORATION",
+                "HEALTHCARE/PRIMARY_AND_URGENT_CARE",
+                "HEALTHCARE/DENTIST",
+                "HEALTHCARE/OPTOMETRIST",
+                "HEALTHCARE/MENTAL_HEALTH_PRACTICE",
+                "HEALTHCARE/REHAB_CENTER",
+                "HEALTHCARE/CHIROPRACTOR",
+                "HEALTHCARE/PHYSICAL_THERAPY",
+                "HEALTHCARE/MEDSPA_AND_DERMATOLOGY",
+                "HEALTHCARE/VETERINARIAN",
+                "HEALTHCARE/HOSPITAL",
+                "HEALTHCARE/SENIOR_CARE",
+                "CONSUMER_SERVICES/HOUSE_CLEANING_SERVICE",
+                "CONSUMER_SERVICES/LAWN_CARE",
+                "CONSUMER_SERVICES/TREE_SERVICE",
+                "CONSUMER_SERVICES/RESIDENTIAL_PEST_CONTROL",
+                "CONSUMER_SERVICES/MOVING_COMPANY",
+                "CONSUMER_SERVICES/HANDYMAN",
+                "CONSUMER_SERVICES/APPLIANCE_REPAIR",
+                "CONSUMER_SERVICES/PHOTOGRAPHER",
+                "CONSUMER_SERVICES/WEDDING_PLANNER",
+                "CONSUMER_SERVICES/HAIR_SALON",
+                "CONSUMER_SERVICES/PET_GROOMING",
+                "CONSUMER_SERVICES/FUNERAL_HOME",
+                "LEGAL/PERSONAL_INJURY_LAWYER",
+                "LEGAL/FAMILY_LAWYER",
+                "LEGAL/CRIMINAL_DEFENSE_LAWYER",
+                "LEGAL/ESTATE_PLANNING_LAWYER",
+                "LEGAL/IMMIGRATION_LAWYER",
+                "LEGAL/BUSINESS_LAWYER",
+                "LEGAL/EMPLOYMENT_LAWYER",
+                "LEGAL/REAL_ESTATE_LAWYER",
+                "LEGAL/IP_LAWYER",
+                "LEGAL/BANKRUPTCY_LAWYER",
+                "REAL_ESTATE/REAL_ESTATE_AGENCY",
+                "REAL_ESTATE/COMMERCIAL_BROKERAGE",
+                "REAL_ESTATE/PROPERTY_MANAGEMENT",
+                "REAL_ESTATE/REAL_ESTATE_DEVELOPER",
+                "REAL_ESTATE/APARTMENT_OPERATOR",
+                "REAL_ESTATE/TITLE_AND_ESCROW",
+                "REAL_ESTATE/HOME_INSPECTOR",
+                "RESTAURANTS/PIZZERIA",
+                "RESTAURANTS/COFFEE_SHOP",
+                "RESTAURANTS/BAKERY",
+                "RESTAURANTS/BAR_AND_PUB",
+                "RESTAURANTS/FOOD_TRUCK",
+                "RESTAURANTS/CATERER",
+                "RESTAURANTS/FAST_FOOD",
+                "AUTOMOTIVE/CAR_DEALERSHIP",
+                "AUTOMOTIVE/AUTO_REPAIR_SHOP",
+                "AUTOMOTIVE/AUTO_BODY_SHOP",
+                "AUTOMOTIVE/TIRE_SHOP",
+                "AUTOMOTIVE/AUTO_DETAILING",
+                "AUTOMOTIVE/TOWING",
+                "AUTOMOTIVE/AUTO_PARTS_SUPPLIER",
+                "RETAIL/GROCERY_STORE",
+                "RETAIL/CLOTHING_STORE",
+                "RETAIL/FURNITURE_STORE",
+                "RETAIL/HARDWARE_STORE",
+                "RETAIL/JEWELRY_STORE",
+                "RETAIL/PHARMACY",
+                "WELLNESS_AND_LIFESTYLE/MASSAGE_THERAPY",
+                "WELLNESS_AND_LIFESTYLE/YOGA_STUDIO",
+                "WELLNESS_AND_LIFESTYLE/ACUPUNCTURE",
+                "WELLNESS_AND_LIFESTYLE/NUTRITIONIST",
+                "WELLNESS_AND_LIFESTYLE/LIFE_COACH",
+                "WELLNESS_AND_LIFESTYLE/DAY_SPA",
+                "FINANCIAL_SERVICES/BANK_AND_CREDIT_UNION",
+                "FINANCIAL_SERVICES/MORTGAGE_LENDER",
+                "FINANCIAL_SERVICES/FINANCIAL_ADVISOR",
+                "FINANCIAL_SERVICES/BUSINESS_LENDER",
+                "FINANCIAL_SERVICES/PAYMENT_PROCESSOR",
+                "FINANCIAL_SERVICES/DEBT_COLLECTION",
+                "EDUCATION/K12_SCHOOL",
+                "EDUCATION/UNIVERSITY",
+                "EDUCATION/PRESCHOOL_AND_DAYCARE",
+                "EDUCATION/TRADE_SCHOOL",
+                "EDUCATION/TUTORING",
+                "EDUCATION/DRIVING_SCHOOL",
+                "EDUCATION/ONLINE_COURSE_PLATFORM",
+                "SPORTS_AND_RECREATION/GYM_AND_FITNESS",
+                "SPORTS_AND_RECREATION/PERSONAL_TRAINING",
+                "SPORTS_AND_RECREATION/MARTIAL_ARTS",
+                "SPORTS_AND_RECREATION/DANCE_STUDIO",
+                "SPORTS_AND_RECREATION/GOLF_COURSE",
+                "E-COMMERCE/MARKETPLACE",
+                "E-COMMERCE/APPAREL_STORE",
+                "E-COMMERCE/BEAUTY_STORE",
+                "E-COMMERCE/HOME_GOODS_STORE",
+                "ADVERTISING_AND_MARKETING/MARKETING_AGENCY",
+                "ADVERTISING_AND_MARKETING/SEO_AND_PPC_AGENCY",
+                "ADVERTISING_AND_MARKETING/SOCIAL_MEDIA_AGENCY",
+                "ADVERTISING_AND_MARKETING/BRANDING_AGENCY",
+                "ADVERTISING_AND_MARKETING/WEB_DESIGN_AGENCY",
+                "ADVERTISING_AND_MARKETING/PR_AGENCY",
+                "ADVERTISING_AND_MARKETING/LEAD_GENERATION",
+                "MANUFACTURING/MACHINE_SHOP",
+                "MANUFACTURING/METAL_FABRICATION",
+                "MANUFACTURING/INJECTION_MOLDING",
+                "MANUFACTURING/CONTRACT_MANUFACTURER",
+                "MANUFACTURING/PACKAGING_MANUFACTURER",
+                "MANUFACTURING/ROBOTICS_AND_AUTOMATION",
+                "SAAS/CRM_SOFTWARE",
+                "SAAS/MARKETING_SOFTWARE",
+                "SAAS/DEVELOPER_TOOLS",
+                "SAAS/AI_PLATFORM",
+                "SAAS/ANALYTICS_SOFTWARE",
+                "SAAS/HELPDESK_SOFTWARE",
+                "BUSINESS_PRODUCTS_AND_SERVICES/JANITORIAL",
+                "BUSINESS_PRODUCTS_AND_SERVICES/UNIFORM_SUPPLIER",
+                "BUSINESS_PRODUCTS_AND_SERVICES/OFFICE_SUPPLIES",
+                "BUSINESS_PRODUCTS_AND_SERVICES/CALL_CENTER_AND_BPO",
+                "BUSINESS_PRODUCTS_AND_SERVICES/MANAGEMENT_CONSULTING",
+                "SUPPLY_CHAIN_AND_PROCUREMENT/FREIGHT_BROKER",
+                "SUPPLY_CHAIN_AND_PROCUREMENT/TRUCKING_COMPANY",
+                "SUPPLY_CHAIN_AND_PROCUREMENT/WAREHOUSING_AND_FULFILLMENT",
+                "SUPPLY_CHAIN_AND_PROCUREMENT/FREIGHT_FORWARDER",
+                "SUPPLY_CHAIN_AND_PROCUREMENT/COURIER",
+                "SUPPLY_CHAIN_AND_PROCUREMENT/WHOLESALE_DISTRIBUTOR",
+                "CONSUMER_PRODUCTS/BEAUTY_BRAND",
+                "CONSUMER_PRODUCTS/HOME_GOODS_BRAND",
+                "CONSUMER_PRODUCTS/PET_PRODUCTS_BRAND",
+                "CONSUMER_PRODUCTS/OUTDOOR_GEAR_BRAND",
+                "HOSPITALITY/HOTEL",
+                "HOSPITALITY/RESORT",
+                "HOSPITALITY/VACATION_RENTAL",
+                "HOSPITALITY/CAMPGROUND_AND_RV_PARK",
+                "HOSPITALITY/WEDDING_AND_CONFERENCE_VENUE",
+                "TRAVEL/TRAVEL_AGENCY",
+                "TRAVEL/TOUR_OPERATOR",
+                "TRAVEL/AIRLINE",
+                "TRAVEL/CRUISE_OPERATOR",
+                "MEDIA/NEWS_PUBLISHER",
+                "MEDIA/MAGAZINE_PUBLISHER",
+                "MEDIA/BOOK_PUBLISHER",
+                "MEDIA/PODCAST",
+                "MEDIA/RADIO_AND_TV_STATION",
+                "ENTERTAINMENT/MUSIC_LABEL_AND_STUDIO",
+                "ENTERTAINMENT/EVENT_PROMOTER",
+                "ENTERTAINMENT/FILM_PRODUCTION",
+                "ENTERTAINMENT/TALENT_AGENCY",
+                "ENTERTAINMENT/NIGHTCLUB",
+                "NONPROFIT_AND_PHILANTHROPY/CHURCH",
+                "NONPROFIT_AND_PHILANTHROPY/CHARITY",
+                "NONPROFIT_AND_PHILANTHROPY/FOUNDATION",
+                "NONPROFIT_AND_PHILANTHROPY/TRADE_ASSOCIATION",
+                "NONPROFIT_AND_PHILANTHROPY/MUSEUM",
+                "FASHION_TEXTILE_AND_APPAREL/WOMENS_APPAREL_BRAND",
+                "FASHION_TEXTILE_AND_APPAREL/MENS_APPAREL_BRAND",
+                "FASHION_TEXTILE_AND_APPAREL/FOOTWEAR_BRAND",
+                "FASHION_TEXTILE_AND_APPAREL/JEWELRY_BRAND",
+                "FASHION_TEXTILE_AND_APPAREL/CUSTOM_APPAREL_AND_EMBROIDERY",
+                "FOOD_AND_BEVERAGE/FOOD_MANUFACTURER",
+                "FOOD_AND_BEVERAGE/BEVERAGE_BRAND",
+                "FOOD_AND_BEVERAGE/COFFEE_ROASTER",
+                "FOOD_AND_BEVERAGE/FOOD_DISTRIBUTOR",
+                "IT_SERVICES/MSP",
+                "IT_SERVICES/IT_CONSULTING",
+                "IT_SERVICES/IT_STAFFING",
+                "ENGINEERING/CIVIL_ENGINEERING_FIRM",
+                "ENGINEERING/MECHANICAL_ENGINEERING_FIRM",
+                "ENGINEERING/ELECTRICAL_ENGINEERING_FIRM",
+                "ENGINEERING/LAND_SURVEYING",
+                "SOFTWARE/MOBILE_APP_DEVELOPER",
+                "SOFTWARE/CUSTOM_SOFTWARE_DEVELOPER",
+                "SOFTWARE/ENGINEERING_SOFTWARE",
+                "HUMAN_RESOURCES/STAFFING_AGENCY",
+                "HUMAN_RESOURCES/EXECUTIVE_SEARCH",
+                "HUMAN_RESOURCES/PEO_AND_PAYROLL",
+                "HUMAN_RESOURCES/BENEFITS_BROKER",
+                "HUMAN_RESOURCES/HR_CONSULTING",
+                "GAMING_AND_ESPORTS/GAME_STUDIO",
+                "GAMING_AND_ESPORTS/ESPORTS_ORGANIZATION",
+                "GAMING_AND_ESPORTS/ONLINE_CASINO_AND_BETTING",
+                "INSURANCE/INSURANCE_AGENCY",
+                "INSURANCE/INSURANCE_CARRIER",
+                "AGRICULTURE_AND_NATURAL_RESOURCES/CROP_FARM",
+                "AGRICULTURE_AND_NATURAL_RESOURCES/LIVESTOCK_RANCH",
+                "AGRICULTURE_AND_NATURAL_RESOURCES/FARM_EQUIPMENT_DEALER",
+                "AGRICULTURE_AND_NATURAL_RESOURCES/AGRICULTURAL_SUPPLIER",
+                "BLOCKCHAIN_AND_CRYPTOCURRENCY/CRYPTO_EXCHANGE",
+                "BLOCKCHAIN_AND_CRYPTOCURRENCY/CRYPTO_WALLET_AND_CUSTODY",
+                "BLOCKCHAIN_AND_CRYPTOCURRENCY/DEFI_PROTOCOL",
+                "BLOCKCHAIN_AND_CRYPTOCURRENCY/NFT_PLATFORM",
+                "CYBERSECURITY/MSSP",
+                "CYBERSECURITY/PENETRATION_TESTING",
+                "CYBERSECURITY/SECURITY_COMPLIANCE",
+                "PRIVATE_EQUITY_AND_VENTURE_CAPITAL/VENTURE_CAPITAL_FIRM",
+                "PRIVATE_EQUITY_AND_VENTURE_CAPITAL/PRIVATE_EQUITY_FIRM",
+                "ALCOHOL_AND_TOBACCO/BREWERY",
+                "ALCOHOL_AND_TOBACCO/WINERY",
+                "ALCOHOL_AND_TOBACCO/DISTILLERY",
+                "ALCOHOL_AND_TOBACCO/CANNABIS_DISPENSARY",
+                "SECURITY/SECURITY_GUARD_COMPANY",
+                "SECURITY/ALARM_AND_ACCESS_CONTROL",
+                "SECURITY/LOCKSMITH",
+                "ENVIRONMENTAL_SERVICES/WASTE_MANAGEMENT_COMPANY",
+                "ENVIRONMENTAL_SERVICES/RECYCLING_CENTER",
+                "ENVIRONMENTAL_SERVICES/ENVIRONMENTAL_CONSULTING",
+                "BIOTECHNOLOGY/THERAPEUTICS_DEVELOPER",
+                "BIOTECHNOLOGY/GENOMICS_COMPANY",
+                "BIOTECHNOLOGY/LAB_EQUIPMENT_SUPPLIER",
+            ]
+        ]
+        | None,
+        Field(
+            description="Only include companies in these sub-industries.",
+            title="Sub Industry",
+        ),
+    ] = None
 
 
 class BulkContactMatchRequest(DiscolikeRequest):
@@ -2900,147 +3299,60 @@ class BulkContactMatchRequest(DiscolikeRequest):
     ] = 10
 
 
-class ProspectingApproveRequest(DiscolikeRequest):
-    plan_version: Annotated[int, Field(ge=1, title="Plan Version")]
-    checkpoints: Literal["ask", "auto"] | None = None
-    seed_segments: Annotated[list[int] | None, Field(min_length=1, title="Seed Segments")] = None
-    segment: Annotated[bool | None, Field(title="Segment")] = None
-
-
-class ProspectingMessageRequest(DiscolikeRequest):
-    text: Annotated[str | None, Field(max_length=4000, min_length=1, title="Text")] = None
-    intake: Annotated[
-        dict[
-            Literal[
-                "deliverable", "company_activity", "industry", "geography", "company_size", "persona_roles", "list_size"
-            ],
-            IntakeAnswer,
-        ]
-        | None,
-        Field(title="Intake"),
+class PromptCompanies(DiscolikeRequest):
+    source: Annotated[Literal["prompt"], Field(title="Source")]
+    icp_text: Annotated[
+        str | None,
+        Field(
+            description="Plain-language description of the companies you want.",
+            min_length=3,
+            title="Icp Text",
+        ),
     ] = None
-    question_seq: Annotated[
+    filters: Annotated[
+        PromptCompanyFilters | None,
+        Field(description="Company filters applied on top of the description."),
+    ] = None
+
+
+class ContactsRunRequest(DiscolikeRequest):
+    companies: Annotated[
+        PromptCompanies | DomainCompanies | LookalikeCompanies,
+        Field(discriminator="source", title="Companies"),
+    ]
+    people: ContactsPeopleFit | None = None
+    relevance: Annotated[
+        Literal["max_relevance", "balanced", "max_coverage"] | None,
+        Field(
+            description="Contact fit threshold: max_relevance keeps the closest matches, balanced balances fit and coverage, max_coverage includes broader matches. Automatic stopping is always enabled.",
+            title="ContactsRelevance",
+        ),
+    ] = "balanced"
+    max_companies: Annotated[
         int | None,
         Field(
-            description="The seq of the question message whose suggested reply this is; the reply answers that question only, never a newer one.",
-            ge=1,
-            title="Question Seq",
-        ),
-    ] = None
-
-
-class ProspectingBrief(DiscolikeRequest):
-    brief: Annotated[str, Field(max_length=4000, min_length=10, title="Brief")]
-    domains: Annotated[list[str] | None, Field(max_length=1000, title="Domains")] = None
-    company_names: Annotated[list[str] | None, Field(max_length=100, title="Company Names")] = None
-    customer_domains: Annotated[
-        list[str] | None,
-        Field(
-            description="Your customers' domains, grouped into segments; lookalikes of each are found. Cannot be combined with domains or company_names.",
-            max_length=1000,
-            title="Customer Domains",
-        ),
-    ] = None
-    exclude_domains: Annotated[list[str] | None, Field(max_length=1000, title="Exclude Domains")] = None
-    target_companies: Annotated[int | None, Field(ge=1, le=10000, title="Target Companies")] = 1000
-    contacts_per_company: Annotated[int | None, Field(ge=1, le=25, title="Contacts Per Company")] = 3
-    max_candidates: Annotated[int | None, Field(ge=0, le=100000, title="Max Candidates")] = 0
-    max_actions: Annotated[int | None, Field(ge=0, le=10000, title="Max Actions")] = 0
-    validation_integration_id: Annotated[str | None, Field(max_length=128, title="Validation Integration Id")] = None
-    contact_integration_id: Annotated[str | None, Field(max_length=128, title="Contact Integration Id")] = None
-    search_provider_id: Annotated[str | None, Field(max_length=128, title="Search Provider Id")] = None
-    segment: Annotated[bool | None, Field(title="Segment")] = False
-    deliverable: Annotated[
-        Literal["leads", "accounts"] | None,
-        Field(description="leads finds people at the companies; accounts returns the checked companies only."),
-    ] = "leads"
-    goal: Annotated[
-        Literal["leads", "companies"] | None,
-        Field(
-            description="leads keeps adding rounds until the target is met; companies takes target_companies matching companies and works only those."
-        ),
-    ] = "leads"
-    checkpoints: Annotated[
-        Literal["ask", "auto"] | None,
-        Field(
-            description="ask: pause at checkpoints (pilot, tail_quality, short, target_reached, top_up, contacts_review) with status needs_input and a question to answer through message(). auto: never pause; a poor pilot is sharpened once and the run continues with a notice, stopping with stop_reason pilot_failed only if the re-pilot fit is still under 20%. Either mode pauses at top_up when another round would pass a spending limit, and at contacts_review before a wave's email lookups.",
-            title="Checkpoints",
-        ),
-    ] = "auto"
-
-
-class ProspectingPlanSettings(DiscolikeRequest):
-    plan_version: Annotated[int, Field(ge=1, title="Plan Version")]
-    contact_integration_id: Annotated[
-        str | None,
-        Field(
-            description="Contact research engine: an option id from the plan's contact_engine.",
-            max_length=128,
-            title="Contact Integration Id",
-        ),
-    ] = None
-    validation_integration_id: Annotated[
-        str | None,
-        Field(
-            description="Company check engine: an option id from the plan's company_check_engine.",
-            max_length=128,
-            title="Validation Integration Id",
-        ),
-    ] = None
-    search_provider_id: Annotated[
-        str | None,
-        Field(
-            description="Search provider: an option id from the plan's search_provider; 'none' skips web research.",
-            max_length=128,
-            title="Search Provider Id",
-        ),
-    ] = None
-    max_spend_usd: Annotated[
-        float | None,
-        Field(
-            description="Most the run may spend on DiscoLike records, in USD at your plan's rates, before it stops; 0 removes the limit.",
-            ge=0.0,
-            title="Max Spend Usd",
-        ),
-    ] = None
-    target_companies: Annotated[
-        int | None,
-        Field(
-            description="How many qualified companies the run aims for; the plan's limits are re-derived around it.",
+            description="Target companies delivering at least one validated contact.",
             ge=1,
             le=10000,
-            title="Target Companies",
+            title="Max Companies",
         ),
-    ] = None
-    contacts_per_company: Annotated[
+    ] = 500
+    per_company: Annotated[
         int | None,
         Field(
-            description="Most contacts to find at each qualified company.",
+            description="Maximum validated contacts per company.",
             ge=1,
-            le=25,
-            title="Contacts Per Company",
+            le=50,
+            title="Per Company",
         ),
+    ] = 10
+    email_cap_usd: Annotated[
+        EmailCapUsd | str | None,
+        Field(description="Maximum delivery spend in USD.", title="Email Cap Usd"),
     ] = None
-    deliverable: Annotated[
-        Literal["leads", "accounts"] | None,
-        Field(description="leads finds people at the companies; accounts returns the checked companies only."),
+    exclude_query_ids: Annotated[list[str] | None, Field(max_length=20, title="Exclude Query Ids")] = None
+    exclude_domains: Annotated[list[str] | None, Field(max_length=100, title="Exclude Domains")] = None
+    create_key: Annotated[
+        str | None,
+        Field(description="Idempotency key for starting a run.", title="Create Key"),
     ] = None
-    goal: Annotated[
-        Literal["leads", "companies"] | None,
-        Field(
-            description="leads keeps adding rounds until the target is met; companies takes target_companies matching companies and works only those."
-        ),
-    ] = None
-    max_provider_spend_usd: Annotated[
-        float | None,
-        Field(
-            description="Most the run may spend on your own AI and search provider keys, in USD, before it stops starting new work; batches already running finish, so the total can end slightly above it. 0 removes the limit.",
-            ge=0.0,
-            title="Max Provider Spend Usd",
-        ),
-    ] = None
-
-
-class ProspectingRunUpdate(DiscolikeRequest):
-    title: Annotated[str | None, Field(max_length=80, min_length=1, title="Title")] = None
-    checkpoints: Literal["ask", "auto"] | None = None

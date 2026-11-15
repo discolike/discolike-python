@@ -9,7 +9,6 @@ from discolike.requests import ContactsRunGetParams
 from discolike.requests import ContactsRunListParams
 from discolike.requests import ContactsRunRequest
 from discolike.requests import ContinueRunRequest
-from discolike.requests import TitlePreviewRequest
 from discolike_cli._output import build_request
 from discolike_cli._output import emit
 from discolike_cli._output import handle_errors
@@ -142,28 +141,3 @@ def events_command(
 
     params = build_request(ContactsRunEventsParams, _merge_params(None, after=after, limit=limit))
     emit(get_client(ctx).contacts_run.events(run_id, params))
-
-
-@app.command("title-preview")
-@handle_errors
-def title_preview_command(
-    ctx: typer.Context,
-    title: list[str] = typer.Option(..., "--title", help="Job title to preview (repeatable)."),
-    exclude_title: list[str] | None = typer.Option(
-        None, "--exclude-title", help="Job title to leave out (repeatable)."
-    ),
-    match: str = typer.Option("similar", help="similar also accepts close variants of a title; exact does not."),
-    relevance: str | None = typer.Option(None, help="max_relevance, balanced or max_coverage."),
-    auto_stop: bool | None = typer.Option(None, "--auto-stop/--no-auto-stop", help="Apply the relevance threshold."),
-    fmt: str | None = typer.Option(None, "--format", help=FORMAT_HELP),
-) -> None:
-    """Preview the titles a people spec matches, with role scores and contact counts."""
-    from discolike_cli.main import get_client
-
-    request = build_request(
-        TitlePreviewRequest,
-        _merge_params(
-            None, titles=title, exclude_titles=exclude_title, match=match, relevance=relevance, auto_stop=auto_stop
-        ),
-    )
-    emit(get_client(ctx).contacts_run.title_preview(request).titles, fmt=fmt)

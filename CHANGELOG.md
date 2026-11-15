@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0 (2026-11-15)
+
+- **Breaking:** Removed sync and async `contacts_run.title_preview()` and `discolike contacts run title-preview` because the endpoint is retired. Hidden API routes are not part of the SDK. Contacts run create, list, get, continue, events and cancel now participate in public OpenAPI contract checks.
+- **Breaking:** Removed: prospecting resource and CLI command; the API endpoints were retired. `client.prospecting`, `CHECKPOINT_STOP_REASONS`, the `Prospecting*` request models and `IntakeAnswer` are gone from the SDK, and `discolike prospecting` and exit code 7 (`needs_input`) are gone from the CLI. There is no deprecation window because the endpoints no longer exist on the API; prospecting calls from older SDK versions fail.
+- CLI: `--phrase-match` help now explains the syntax: plain phrases are any-of, `+phrase` is required, and `+a|b` requires either `a` or `b`.
+
 ## 0.6.3 (2026-11-10)
 
 - SDK/CLI: a request with no credentials now gets a 401 whose `detail` is an object (`code: "UNAUTHENTICATED"`, `message`, `signup_url`, `plan`, `allowance_usd`, `cpc`, `cpm`) pointing at free signup: Pay as you go, a one-time $5 signup credit, then $5 per 1,000 records, no card. The SDK raises `AuthenticationError` with the server's `message`, as for any object `detail`; other 401s keep a string `detail`. No SDK code change; older versions show the JSON body as the message.

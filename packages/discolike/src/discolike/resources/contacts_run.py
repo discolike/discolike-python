@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import builtins
+import math
 import time
 from datetime import datetime
 from decimal import Decimal
@@ -18,17 +19,16 @@ from discolike.requests import ContactsRunGetParams
 from discolike.requests import ContactsRunListParams
 from discolike.requests import ContactsRunRequest
 from discolike.requests import ContinueRunRequest
-from discolike.requests import TitlePreviewRequest
 from discolike.resources._base import AsyncAPIResource
 from discolike.resources._base import SyncAPIResource
 from discolike.resources._base import api_route
-from discolike.resources.prospecting import _deadline
 
 RUN_PATH = "/contacts/run"
 TERMINAL_STATUSES = frozenset({"done", "failed", "cancelled"})
 ROWS_PAGE_SIZE = 1000
 DEFAULT_MAX_WAIT_SECONDS = 3600.0
 DEFAULT_POLL_INTERVAL_SECONDS = 5.0
+MIN_POLL_INTERVAL_SECONDS = 5
 
 ContactsRunStatus = Literal["ready", "running", "waiting", "done", "failed", "cancelled"] | str
 ContactsRunStepName = Literal["find_contacts", "find_missing", "review", "find_emails", "discover", "validate"] | str
@@ -141,35 +141,35 @@ class ContactsRun(DiscolikeModel):
     expires_at: datetime
 
 
-class TitlePreviewTitle(DiscolikeModel):
-    title: str
-    role: float
-    count: int
-
-
-class TitlePreview(DiscolikeModel):
-    searched: list[str] = Field(default_factory=list)
-    titles: list[TitlePreviewTitle] = Field(default_factory=list)
-
-
 def _path(run_id: str | UUID) -> str:
     return f"{RUN_PATH}/{UUID(str(run_id))}"
 
 
+def _deadline(max_wait: float, poll_interval: float) -> float:
+    if (
+        not math.isfinite(max_wait)
+        or max_wait <= 0
+        or not math.isfinite(poll_interval)
+        or poll_interval < MIN_POLL_INTERVAL_SECONDS
+    ):
+        raise ValueError("max_wait must be finite and positive; poll_interval must be finite and at least 5 seconds")
+    return time.monotonic() + max_wait
+
+
 class ContactsRunResource(SyncAPIResource):
-    @api_route("POST", RUN_PATH, openapi=False)
+    @api_route("POST", RUN_PATH)
     def create(self, request: ContactsRunRequest) -> ContactsRun:
         """Start automatic contact discovery and validated delivery, optionally capped by email_cap_usd."""
         response = self._transport.request("POST", RUN_PATH, json_body=request.to_wire())
         return ContactsRun.model_validate(response.json())
 
-    @api_route("GET", RUN_PATH, openapi=False)
+    @api_route("GET", RUN_PATH)
     def list(self, params: ContactsRunListParams | None = None) -> builtins.list[ContactsRun]:
         """List your runs, newest first (default 20, maximum 100); page with `before`, the last run's created_at."""
         response = self._transport.request("GET", RUN_PATH, params=params.to_wire() if params else None)
         return [ContactsRun.model_validate(item) for item in response.json()]
 
-    @api_route("GET", RUN_PATH + "/{run_id}", openapi=False)
+    @api_route("GET", RUN_PATH + "/{run_id}")
     def get(self, run_id: str | UUID, params: ContactsRunGetParams | None = None) -> ContactsRun:
         response = self._transport.request("GET", _path(run_id), params=params.to_wire() if params else None)
         return ContactsRun.model_validate(response.json())
@@ -185,29 +185,23 @@ class ContactsRunResource(SyncAPIResource):
             if not run.companies or offset >= run.companies_total:
                 return rows
 
-    @api_route("POST", RUN_PATH + "/{run_id}/continue", openapi=False)
+    @api_route("POST", RUN_PATH + "/{run_id}/continue")
     def continue_(self, run_id: str | UUID, request: ContinueRunRequest) -> ContactsRun:
         """Advance a companies run; contacts runs proceed automatically and return 409 here."""
         response = self._transport.request("POST", _path(run_id) + "/continue", json_body=request.to_wire())
         return ContactsRun.model_validate(response.json())
 
-    @api_route("GET", RUN_PATH + "/{run_id}/events", openapi=False)
+    @api_route("GET", RUN_PATH + "/{run_id}/events")
     def events(self, run_id: str | UUID, params: ContactsRunEventsParams | None = None) -> ContactsRunEventsResponse:
         response = self._transport.request(
             "GET", _path(run_id) + "/events", params=params.to_wire() if params else None
         )
         return ContactsRunEventsResponse.model_validate(response.json())
 
-    @api_route("POST", RUN_PATH + "/{run_id}/cancel", openapi=False)
+    @api_route("POST", RUN_PATH + "/{run_id}/cancel")
     def cancel(self, run_id: str | UUID) -> ContactsRun:
         response = self._transport.request("POST", _path(run_id) + "/cancel")
         return ContactsRun.model_validate(response.json())
-
-    @api_route("POST", RUN_PATH + "/title-preview", openapi=False)
-    def title_preview(self, request: TitlePreviewRequest) -> TitlePreview:
-        """The titles a people spec would match, with each one's role score and contact count."""
-        response = self._transport.request("POST", RUN_PATH + "/title-preview", json_body=request.to_wire())
-        return TitlePreview.model_validate(response.json())
 
     def wait(
         self,
@@ -229,17 +223,17 @@ class ContactsRunResource(SyncAPIResource):
 
 
 class AsyncContactsRunResource(AsyncAPIResource):
-    @api_route("POST", RUN_PATH, openapi=False)
+    @api_route("POST", RUN_PATH)
     async def create(self, request: ContactsRunRequest) -> ContactsRun:
         response = await self._transport.request("POST", RUN_PATH, json_body=request.to_wire())
         return ContactsRun.model_validate(response.json())
 
-    @api_route("GET", RUN_PATH, openapi=False)
+    @api_route("GET", RUN_PATH)
     async def list(self, params: ContactsRunListParams | None = None) -> builtins.list[ContactsRun]:
         response = await self._transport.request("GET", RUN_PATH, params=params.to_wire() if params else None)
         return [ContactsRun.model_validate(item) for item in response.json()]
 
-    @api_route("GET", RUN_PATH + "/{run_id}", openapi=False)
+    @api_route("GET", RUN_PATH + "/{run_id}")
     async def get(self, run_id: str | UUID, params: ContactsRunGetParams | None = None) -> ContactsRun:
         response = await self._transport.request("GET", _path(run_id), params=params.to_wire() if params else None)
         return ContactsRun.model_validate(response.json())
@@ -254,12 +248,12 @@ class AsyncContactsRunResource(AsyncAPIResource):
             if not run.companies or offset >= run.companies_total:
                 return rows
 
-    @api_route("POST", RUN_PATH + "/{run_id}/continue", openapi=False)
+    @api_route("POST", RUN_PATH + "/{run_id}/continue")
     async def continue_(self, run_id: str | UUID, request: ContinueRunRequest) -> ContactsRun:
         response = await self._transport.request("POST", _path(run_id) + "/continue", json_body=request.to_wire())
         return ContactsRun.model_validate(response.json())
 
-    @api_route("GET", RUN_PATH + "/{run_id}/events", openapi=False)
+    @api_route("GET", RUN_PATH + "/{run_id}/events")
     async def events(
         self, run_id: str | UUID, params: ContactsRunEventsParams | None = None
     ) -> ContactsRunEventsResponse:
@@ -268,15 +262,10 @@ class AsyncContactsRunResource(AsyncAPIResource):
         )
         return ContactsRunEventsResponse.model_validate(response.json())
 
-    @api_route("POST", RUN_PATH + "/{run_id}/cancel", openapi=False)
+    @api_route("POST", RUN_PATH + "/{run_id}/cancel")
     async def cancel(self, run_id: str | UUID) -> ContactsRun:
         response = await self._transport.request("POST", _path(run_id) + "/cancel")
         return ContactsRun.model_validate(response.json())
-
-    @api_route("POST", RUN_PATH + "/title-preview", openapi=False)
-    async def title_preview(self, request: TitlePreviewRequest) -> TitlePreview:
-        response = await self._transport.request("POST", RUN_PATH + "/title-preview", json_body=request.to_wire())
-        return TitlePreview.model_validate(response.json())
 
     async def wait(
         self,
