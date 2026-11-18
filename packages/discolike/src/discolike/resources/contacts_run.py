@@ -60,7 +60,7 @@ class ContactsRunRow(DiscolikeModel):
     floor: bool = False
     not_fit: bool = False
     email: str | None = None
-    email_status: Literal["Validated", "Validated (catch-all resolved)"] | str | None = None
+    email_status: Literal["Validated", "Validated (catch-all resolved)", "LinkedIn"] | str | None = None
     email_state: Literal["checking", "queued", "skipped"] | str | None = None
 
 
@@ -71,6 +71,7 @@ class RunCompanyResponse(DiscolikeModel):
     people_reviewed: int = 0
     mailboxes_checked: int = 0
     validated_contacts: int = 0
+    linkedin_contacts: int = 0
     contacts: list[ContactsRunRow] = Field(default_factory=list)
 
 
@@ -79,6 +80,7 @@ class ContactsRunSummary(DiscolikeModel):
     stop_reason: Literal["low_delivery_yield", "source_exhausted"] | str | None = None
     companies_delivered: int = 0
     validated_contacts: int = 0
+    linkedin_contacts: int = 0
     spent_usd: Decimal = Decimal(0)
 
 

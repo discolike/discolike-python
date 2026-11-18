@@ -241,6 +241,7 @@ class ContactsRunRequest(DiscolikeRequest):
     max_companies: int = Field(default=500, ge=1, le=10000)
     per_company: int = Field(default=10, ge=1, le=50)
     email_cap_usd: Decimal | None = Field(default=None, ge=0)
+    include_linkedin_only: bool | None = None
     exclude_query_ids: list[str] = Field(default_factory=list, max_length=20)
     exclude_domains: list[str] = Field(default_factory=list, max_length=100)
     create_key: str | None = None
