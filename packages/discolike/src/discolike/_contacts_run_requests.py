@@ -245,6 +245,7 @@ class ContactsRunRequest(DiscolikeRequest):
     exclude_query_ids: list[str] = Field(default_factory=list, max_length=20)
     exclude_domains: list[str] = Field(default_factory=list, max_length=100)
     create_key: str | None = None
+    timezone: str | None = None
 
 
 class ContactsRunEventsParams(DiscolikeRequest):
