@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- SDK/CLI: `ContactsRunRequest.include_linkedin_only` (default off, omitted unless set) also delivers people whose email could not be verified, with no email and their LinkedIn profile, at 1 record each. Rows have `email: None` and `email_status: "LinkedIn"`; companies and the run summary gain `linkedin_contacts` (default 0). It needs an API release that knows the field.
+- SDK/CLI: `ContactsRunRequest.include_linkedin_only` (default off, omitted unless set) also delivers people whose email could not be verified, with no email and their LinkedIn profile, at 1 record each. `discolike contacts run create --include-linkedin-only` sets it. Rows have `email: None` and `email_status: "LinkedIn"`; companies and the run summary gain `linkedin_contacts` (default 0). It needs an API release that knows the field.
 
 ## 0.7.0 (2026-11-15)
 
