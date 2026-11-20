@@ -129,6 +129,17 @@ def test_run_events(install_build_client: Callable[[Handler], None]) -> None:
     assert json.loads(result.stdout)["next_cursor"] == 5
 
 
+def test_run_events_tail(install_build_client: Callable[[Handler], None]) -> None:
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        assert dict(request.url.params) == {"tail": "true", "limit": "20"}
+        return httpx2.Response(200, json={"events": [], "next_cursor": 9})
+
+    install_build_client(handler)
+    result = runner.invoke(app, ["contacts", "run", "events", RUN_ID, "--tail", "--limit", "20"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["next_cursor"] == 9
+
+
 @pytest.mark.parametrize("flag", ["--follow", "--email-cap-usd"])
 def test_removed_wait_flags(flag: str) -> None:
     assert runner.invoke(app, ["contacts", "run", "wait", RUN_ID, flag]).exit_code == 2

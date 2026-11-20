@@ -1264,6 +1264,7 @@ class ContinueRunRequest(DiscolikeRequest):
 class ContactsRunEventsParams(DiscolikeRequest):
     after: Annotated[int | None, Field(ge=0, title="After")] = 0
     limit: Annotated[int | None, Field(ge=1, le=500, title="Limit")] = 100
+    tail: Annotated[bool | None, Field(title="Tail")] = False
 
 
 class DiscoGenProcessRequest(DiscolikeRequest):
@@ -3304,7 +3305,7 @@ class PromptCompanies(DiscolikeRequest):
     icp_text: Annotated[
         str | None,
         Field(
-            description="Plain-language description of the companies you want.",
+            description="Describe the companies you want. Omit company criteria to search all companies by the titles in people.fit.",
             min_length=3,
             title="Icp Text",
         ),
@@ -3331,7 +3332,7 @@ class ContactsRunRequest(DiscolikeRequest):
     max_companies: Annotated[
         int | None,
         Field(
-            description="Target companies delivering at least one validated contact.",
+            description="Target companies delivering at least one validated contact, or LinkedIn contact when include_linkedin_only is set.",
             ge=1,
             le=10000,
             title="Max Companies",
@@ -3340,12 +3341,19 @@ class ContactsRunRequest(DiscolikeRequest):
     per_company: Annotated[
         int | None,
         Field(
-            description="Maximum validated contacts per company.",
+            description="Maximum validated contacts per company, LinkedIn contacts included when include_linkedin_only is set.",
             ge=1,
             le=50,
             title="Per Company",
         ),
     ] = 10
+    include_linkedin_only: Annotated[
+        bool | None,
+        Field(
+            description="Also deliver people whose email could not be verified, without an email and with their LinkedIn profile, at 1 record each. They count toward max_companies and per_company.",
+            title="Include Linkedin Only",
+        ),
+    ] = False
     email_cap_usd: Annotated[
         EmailCapUsd | str | None,
         Field(description="Maximum delivery spend in USD.", title="Email Cap Usd"),
@@ -3355,4 +3363,12 @@ class ContactsRunRequest(DiscolikeRequest):
     create_key: Annotated[
         str | None,
         Field(description="Idempotency key for starting a run.", title="Create Key"),
+    ] = None
+    timezone: Annotated[
+        str | None,
+        Field(
+            description="IANA time zone, such as America/New_York, for the time in the run's default saved-list name. UTC when omitted.",
+            max_length=64,
+            title="Timezone",
+        ),
     ] = None
