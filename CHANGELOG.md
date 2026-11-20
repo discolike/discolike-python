@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1 (2026-11-19)
+
+- SDK: `ContactsRunRequest.timezone` (an IANA zone such as `America/New_York`, omitted unless set) names the run's saved list in that zone instead of UTC. It needs an API release that knows the field.
+- SDK/CLI: `ContactsRunRequest.include_linkedin_only` (default off, omitted unless set) also delivers people whose email could not be verified, with no email and their LinkedIn profile, at 1 record each. `discolike contacts run create --include-linkedin-only` sets it. Rows have `email: None` and `email_status: "LinkedIn"`; companies and the run summary gain `linkedin_contacts` (default 0). It needs an API release that knows the field.
+
 ## 0.7.0 (2026-11-15)
 
 - **Breaking:** Removed sync and async `contacts_run.title_preview()` and `discolike contacts run title-preview` because the endpoint is retired. Hidden API routes are not part of the SDK. Contacts run create, list, get, continue, events and cancel now participate in public OpenAPI contract checks.

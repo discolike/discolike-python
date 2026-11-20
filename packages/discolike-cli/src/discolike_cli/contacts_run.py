@@ -23,6 +23,10 @@ PARAMS_FILE_HELP = (
 )
 PARAM_HELP = "Extra key=value body field (repeatable)."
 EMAIL_CAP_HELP = "Maximum USD to spend on validated delivery; omit for no cap."
+LINKEDIN_ONLY_HELP = (
+    "Also deliver people whose email could not be verified, with their LinkedIn profile and no email, "
+    "at 1 record each. They count toward max_companies."
+)
 GENERATION_HELP = "Generation of the companies run you are continuing; fetched when omitted."
 
 app = typer.Typer(help="Find and validate contacts automatically. Poll company progress and delivery totals.")
@@ -35,11 +39,17 @@ def create_command(
     params_file: pathlib.Path | None = typer.Option(None, help=PARAMS_FILE_HELP),
     param: list[str] | None = typer.Option(None, "--param", help=PARAM_HELP),
     email_cap_usd: float | None = typer.Option(None, "--email-cap-usd", help=EMAIL_CAP_HELP),
+    include_linkedin_only: bool | None = typer.Option(
+        None, "--include-linkedin-only/--no-include-linkedin-only", help=LINKEDIN_ONLY_HELP
+    ),
 ) -> None:
     """Start a contacts run from a JSON request."""
     from discolike_cli.main import get_client
 
-    request = build_request(ContactsRunRequest, _merge_params(param, params_file, email_cap_usd=email_cap_usd))
+    request = build_request(
+        ContactsRunRequest,
+        _merge_params(param, params_file, email_cap_usd=email_cap_usd, include_linkedin_only=include_linkedin_only),
+    )
     emit(get_client(ctx).contacts_run.create(request))
 
 

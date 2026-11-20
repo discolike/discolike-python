@@ -67,6 +67,25 @@ def test_run_create_posts_params_file(install_build_client: Callable[[Handler], 
     assert json.loads(result.stdout)["status"] == "running"
 
 
+def test_run_create_include_linkedin_only_flag(
+    install_build_client: Callable[[Handler], None], tmp_path: pathlib.Path
+) -> None:
+    bodies: list[dict[str, Any]] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        bodies.append(json.loads(request.content))
+        return httpx2.Response(202, json=run_payload(status="running"))
+
+    install_build_client(handler)
+    params_file = tmp_path / "run.json"
+    params_file.write_text(json.dumps({"companies": {"source": "domains", "domains": ["acme.com"]}}))
+    result = runner.invoke(
+        app, ["contacts", "run", "create", "--params-file", str(params_file), "--include-linkedin-only"]
+    )
+    assert result.exit_code == 0, result.output
+    assert bodies[0]["include_linkedin_only"] is True
+
+
 def test_run_continue_fetches_generation_when_omitted(install_build_client: Callable[[Handler], None]) -> None:
     seen: list[tuple[str, str, Any]] = []
 
