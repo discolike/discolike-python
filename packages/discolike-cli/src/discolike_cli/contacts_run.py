@@ -145,9 +145,10 @@ def events_command(
     run_id: str = typer.Argument(..., help="Run ID."),
     after: int | None = typer.Option(None, help="Return events after this cursor."),
     limit: int | None = typer.Option(None, help="Events per page (default 100, maximum 500)."),
+    tail: bool = typer.Option(False, "--tail", help="Return the newest page instead of reading from --after."),
 ) -> None:
     """Read company progress events and the next cursor."""
     from discolike_cli.main import get_client
 
-    params = build_request(ContactsRunEventsParams, _merge_params(None, after=after, limit=limit))
+    params = build_request(ContactsRunEventsParams, _merge_params(None, after=after, limit=limit, tail=tail or None))
     emit(get_client(ctx).contacts_run.events(run_id, params))

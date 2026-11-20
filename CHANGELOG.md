@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.2 (2026-11-19)
+
+- SDK/CLI: `ContactsRunEventsParams.tail` (`discolike contacts run events --tail`) returns the newest page of a run's events instead of reading from `after`, so a finished or long run shows what happened last. Poll on with `after=next_cursor`. Omitted unless set; it needs an API release that knows the parameter.
+
 ## 0.7.1 (2026-11-19)
 
 - SDK: `ContactsRunRequest.timezone` (an IANA zone such as `America/New_York`, omitted unless set) names the run's saved list in that zone instead of UTC. It needs an API release that knows the field.

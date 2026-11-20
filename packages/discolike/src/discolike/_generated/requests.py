@@ -1264,6 +1264,7 @@ class ContinueRunRequest(DiscolikeRequest):
 class ContactsRunEventsParams(DiscolikeRequest):
     after: Annotated[int | None, Field(ge=0, title="After")] = 0
     limit: Annotated[int | None, Field(ge=1, le=500, title="Limit")] = 100
+    tail: Annotated[bool | None, Field(title="Tail")] = False
 
 
 class DiscoGenProcessRequest(DiscolikeRequest):
